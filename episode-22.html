@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ep 22: RAG Pipeline End-to-End: From Document to Answer</title>
+<meta name="description" content="You've learned the pieces: embeddings, vector databases, chunking, hybrid search, reranking. Now let's build the whole machine.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,300&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0d0d1a;--page:#ffffff;--paper:#f8f9ff;
+  --navy:#124093;--navy-dim:rgba(18,64,147,0.07);--navy-mid:rgba(18,64,147,0.15);
+  --red:#e2190e;--gold:#c8973a;--muted:#6b7280;--rule:#e5e7ef;--code-bg:#0d0d1f;
+  --title:'Roboto',sans-serif;--body:'Poppins',sans-serif;--mono:'DM Mono',monospace;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--page);color:var(--ink);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:#fff}
+::-webkit-scrollbar-thumb{background:var(--navy);border-radius:2px}
+
+/* NAV */
+nav.top{position:sticky;top:0;z-index:200;background:#fff;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(20px,5vw,60px);border-bottom:1px solid var(--rule);box-shadow:0 1px 12px rgba(0,0,0,0.05)}
+.logo-wrap{display:flex;align-items:center;text-decoration:none}
+.logo-img{height:38px;width:auto;object-fit:contain;display:block}
+.nav-right{display:flex;align-items:center;gap:6px}
+.nav-link{font-family:var(--body);font-size:11.5px;font-weight:500;color:var(--muted);text-decoration:none;padding:6px 14px;border-radius:6px;transition:all 0.2s}
+.nav-link:hover{color:var(--navy);background:var(--navy-dim)}
+.nav-cta{background:var(--navy)!important;color:#fff!important}
+.nav-cta:hover{background:#1a52c0!important;color:#fff!important}
+
+/* PROGRESS */
+.progress-bar-fixed{position:fixed;top:60px;left:0;right:0;height:2.5px;background:rgba(18,64,147,0.1);z-index:199}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--navy),#4f7ff7);width:0%;transition:width 0.1s;border-radius:0 2px 2px 0}
+
+/* HERO */
+.hero{background:#fff;position:relative;overflow:hidden;min-height:88vh;display:flex;flex-direction:column;justify-content:center}
+.hero-bg{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.hero-blob-1{position:absolute;top:-120px;right:-120px;width:700px;height:700px;background:radial-gradient(circle at 60% 40%,rgba(18,64,147,0.07) 0%,rgba(18,64,147,0.03) 40%,transparent 70%);border-radius:50%}
+.hero-blob-2{position:absolute;bottom:-80px;left:-80px;width:500px;height:500px;background:radial-gradient(circle,rgba(79,127,247,0.06) 0%,transparent 65%);border-radius:50%}
+.hero-lines{position:absolute;top:0;right:0;width:45%;height:100%;opacity:0.06}
+.hero-lines svg{width:100%;height:100%}
+.hero-tokens{position:absolute;top:0;right:0;width:46%;height:100%;display:flex;align-items:center;justify-content:center}
+.token-float-wrap{position:relative;width:360px;height:360px}
+.tf{position:absolute;font-family:var(--mono);font-size:13px;font-weight:500;padding:8px 16px;border-radius:8px;white-space:nowrap;animation:float-anim 6s ease-in-out infinite;box-shadow:0 4px 20px rgba(0,0,0,0.08)}
+.tf-1{top:20px;left:60px;background:rgba(18,64,147,0.09);color:#124093;border:1px solid rgba(18,64,147,0.18);animation-delay:0s}
+.tf-2{top:70px;right:20px;background:rgba(79,127,247,0.09);color:#2563eb;border:1px solid rgba(79,127,247,0.2);animation-delay:0.8s}
+.tf-3{top:140px;left:20px;background:rgba(16,185,129,0.08);color:#059669;border:1px solid rgba(16,185,129,0.18);animation-delay:1.6s}
+.tf-4{top:170px;right:50px;background:rgba(168,85,247,0.08);color:#7c3aed;border:1px solid rgba(168,85,247,0.18);animation-delay:0.4s}
+.tf-5{bottom:140px;left:80px;background:rgba(234,179,8,0.08);color:#b45309;border:1px solid rgba(234,179,8,0.2);animation-delay:1.2s}
+.tf-6{bottom:90px;right:30px;background:rgba(236,72,153,0.08);color:#db2777;border:1px solid rgba(236,72,153,0.2);animation-delay:2s}
+.tf-7{bottom:30px;left:40px;background:rgba(239,68,68,0.08);color:#dc2626;border:1px solid rgba(239,68,68,0.18);animation-delay:0.6s}
+.tf-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:110px;height:110px;background:var(--navy);border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;box-shadow:0 12px 40px rgba(18,64,147,0.3);animation:pulse-center 3s ease-in-out infinite}
+.tf-center .big{font-family:var(--title);font-size:28px;font-weight:900;color:#fff;line-height:1}
+.tf-center .small{font-family:var(--body);font-size:9px;font-weight:500;color:rgba(255,255,255,0.6);letter-spacing:1.5px;text-transform:uppercase}
+@keyframes float-anim{0%,100%{transform:translateY(0px)}50%{transform:translateY(-10px)}}
+@keyframes pulse-center{0%,100%{box-shadow:0 12px 40px rgba(18,64,147,0.3)}50%{box-shadow:0 12px 60px rgba(18,64,147,0.5)}}
+.hero-content{position:relative;z-index:2;width:54%;padding:clamp(48px,8vw,96px) clamp(24px,5vw,72px) clamp(48px,8vw,96px)}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:5px 14px;background:var(--navy-dim);border:1px solid rgba(18,64,147,0.18);border-radius:100px;margin-bottom:22px;font-family:var(--body);font-size:10px;font-weight:600;color:var(--navy);letter-spacing:1.2px;text-transform:uppercase}
+.hero-eyebrow .dot{width:5px;height:5px;background:var(--navy);border-radius:50%}
+.hero h1{font-family:var(--title);font-size:clamp(28px,4.5vw,52px);font-weight:900;color:var(--ink);line-height:1.08;letter-spacing:-1.2px;margin-bottom:20px}
+.hero h1 .line2{display:block;color:var(--navy)}
+.hero-sub{font-family:var(--body);font-size:clamp(13px,1.6vw,15px);font-weight:300;color:#4b5563;line-height:1.85;max-width:500px;margin-bottom:34px}
+.breadcrumb{display:flex;align-items:center;gap:7px;margin-bottom:28px;font-family:var(--mono);font-size:10px;color:#9ca3af}
+.breadcrumb a{color:inherit;text-decoration:none;transition:color 0.2s}
+.breadcrumb a:hover{color:var(--navy)}
+.breadcrumb .sep{color:#d1d5db}
+.breadcrumb .cur{color:#6b7280}
+.meta-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:14px 20px;background:var(--paper);border:1px solid var(--rule);border-radius:10px;margin-bottom:24px}
+.meta-item{font-family:var(--body);font-size:10.5px;font-weight:500;color:var(--muted);display:flex;align-items:center;gap:5px}
+.tags-row{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-family:var(--body);font-size:10px;font-weight:500;color:var(--navy);background:var(--navy-dim);padding:4px 11px;border-radius:100px;border:1px solid rgba(18,64,147,0.15)}
+@media(max-width:900px){.hero{min-height:auto;padding-bottom:48px}.hero-content{width:100%;padding:48px 24px 36px}.hero-tokens{display:none}.hero-lines{display:none}}
+
+/* SECTION NAV DOTS */
+.section-nav{position:fixed;right:clamp(12px,2vw,24px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:9px;z-index:100}
+.snav-dot{width:7px;height:7px;border-radius:50%;background:#d1d5db;border:none;padding:0;cursor:pointer;transition:all 0.3s;position:relative}
+.snav-dot::after{content:attr(data-label);position:absolute;right:16px;top:50%;transform:translateY(-50%);font-family:var(--body);font-size:9px;font-weight:500;color:var(--ink);background:#fff;padding:3px 9px;border-radius:4px;border:1px solid var(--rule);box-shadow:0 2px 8px rgba(0,0,0,0.06);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.2s}
+.snav-dot:hover::after{opacity:1}
+.snav-dot.active{background:var(--navy);transform:scale(1.5)}
+.snav-dot:hover:not(.active){background:rgba(18,64,147,0.4)}
+@media(max-width:768px){.section-nav{display:none}}
+
+/* LAYOUT */
+.layout{max-width:860px;margin:0 auto;padding:clamp(40px,6vw,68px) clamp(20px,5vw,56px) 80px}
+
+/* TOC */
+.toc{background:var(--paper);border:1px solid var(--rule);border-left:4px solid var(--navy);border-radius:10px;padding:22px 26px;margin-bottom:52px}
+.toc-title{font-family:var(--title);font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
+.toc-list{list-style:none;display:flex;flex-direction:column;gap:3px}
+.toc-list li a{display:flex;align-items:center;gap:12px;text-decoration:none;padding:6px 0;font-family:var(--body);font-size:13px;font-weight:400;color:var(--ink);transition:color 0.2s}
+.toc-list li a:hover{color:var(--navy)}
+.toc-num{font-family:var(--mono);font-size:9px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* PROSE */
+.prose{line-height:1.85}
+.prose h2{font-family:var(--title);font-size:clamp(18px,2.5vw,23px);font-weight:700;color:var(--ink);letter-spacing:-0.4px;margin:52px 0 8px;line-height:1.2;scroll-margin-top:80px;padding-left:18px;position:relative}
+.prose h2::before{content:'';position:absolute;left:0;top:5px;bottom:5px;width:3px;background:var(--navy);border-radius:2px}
+.prose h2:first-child{margin-top:0}
+.prose h3{font-family:var(--title);font-size:14px;font-weight:700;color:var(--ink);margin:26px 0 8px}
+.section-rule{width:36px;height:2px;background:var(--navy);border-radius:2px;margin:8px 0 22px 18px;opacity:0.4}
+.prose p{font-family:var(--body);font-size:clamp(13.5px,1.7vw,15px);line-height:1.88;color:#374151;margin-bottom:16px;font-weight:300}
+.prose p strong{font-weight:600;color:var(--ink)}
+.prose ul,.prose ol{list-style:none;padding:0;margin:4px 0 20px}
+.prose ul li,.prose ol li{font-family:var(--body);font-size:clamp(13.5px,1.7vw,14.5px);line-height:1.8;color:#374151;padding:4px 0 4px 26px;position:relative;font-weight:300}
+.prose ul li::before{content:'';position:absolute;left:5px;top:14px;width:5px;height:5px;background:var(--navy);border-radius:50%;opacity:0.55}
+.prose ol{counter-reset:li}
+.prose ol li{counter-increment:li}
+.prose ol li::before{content:counter(li);position:absolute;left:0;top:5px;font-family:var(--mono);font-size:8px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.ic{font-family:var(--mono);font-size:12.5px;background:var(--navy-dim);color:var(--navy);padding:1.5px 6px;border-radius:4px;border:1px solid rgba(18,64,147,0.15)}
+
+/* CODE */
+.code-block{background:var(--code-bg);border-radius:10px;margin:24px 0;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.12),0 0 0 1px rgba(18,64,147,0.1)}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.02)}
+.code-dots{display:flex;gap:5px}
+.cd{width:10px;height:10px;border-radius:50%}
+.cd-r{background:#ff5f56}.cd-y{background:#ffbd2e}.cd-g{background:#27c93f}
+.code-filename{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,0.25)}
+.code-lang{font-family:var(--mono);font-size:9px;color:rgba(91,140,247,0.6);letter-spacing:1px;text-transform:uppercase}
+.code-body{padding:20px 22px;overflow-x:auto}
+.code-body pre{margin:0}
+.code-body code{font-family:var(--mono);font-size:12.5px;line-height:1.9;color:#c9d4f5}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;margin:24px 0;border-radius:10px;border:1px solid var(--rule);box-shadow:0 2px 12px rgba(0,0,0,0.04)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:var(--ink)}
+thead th{padding:12px 16px;text-align:left;font-family:var(--body);font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,0.45)}
+thead th:first-child{color:#6b9fff}
+tbody tr{border-bottom:1px solid var(--rule);transition:background 0.15s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--paper)}
+tbody td{padding:10px 16px;font-family:var(--body);font-size:13px;color:#374151;font-weight:300;line-height:1.5}
+tbody td:first-child{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--navy)}
+
+/* CALLOUTS */
+.callout{border-radius:9px;padding:16px 20px;margin:24px 0;display:flex;gap:13px;align-items:flex-start}
+.callout-tip{background:rgba(18,64,147,0.05);border:1px solid rgba(18,64,147,0.16);border-left:3px solid var(--navy)}
+.callout-warn{background:rgba(220,38,38,0.04);border:1px solid rgba(220,38,38,0.14);border-left:3px solid #dc2626}
+.callout-note{background:rgba(200,151,58,0.05);border:1px solid rgba(200,151,58,0.2);border-left:3px solid var(--gold)}
+.callout-icon{font-size:16px;flex-shrink:0;margin-top:1px;line-height:1}
+.callout p{font-size:13.5px!important;line-height:1.7!important;color:#374151!important;margin:0!important}
+
+/* EP NAV */
+.ep-nav{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:64px;padding-top:32px;border-top:1px solid var(--rule)}
+@media(max-width:500px){.ep-nav{grid-template-columns:1fr}}
+.ep-nav-card{display:flex;flex-direction:column;text-decoration:none;padding:20px 22px;border:1px solid var(--rule);border-radius:10px;background:var(--paper);transition:all 0.25s;gap:5px}
+.ep-nav-card:hover{border-color:rgba(18,64,147,0.3);background:var(--navy-dim);transform:translateY(-2px);box-shadow:0 6px 20px rgba(18,64,147,0.08)}
+.ep-nav-dir{font-family:var(--body);font-size:9px;font-weight:600;color:var(--navy);letter-spacing:1px;text-transform:uppercase}
+.ep-nav-title{font-family:var(--title);font-size:13px;font-weight:600;color:var(--ink);line-height:1.4}
+.ep-nav-card.next{align-items:flex-end;text-align:right}
+
+/* FOOTER */
+footer{background:var(--ink);padding:44px clamp(20px,5vw,60px);border-top:3px solid var(--navy)}
+.footer-inner{max-width:860px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.footer-logo{height:32px;width:auto;object-fit:contain;filter:brightness(0) invert(1);opacity:0.7}
+.footer-tagline{font-family:var(--body);font-size:11px;color:rgba(255,255,255,0.22);font-style:italic;margin-top:4px;font-weight:300}
+.footer-links{display:flex;gap:20px;flex-wrap:wrap}
+.footer-links a{font-family:var(--body);font-size:11px;font-weight:400;color:rgba(255,255,255,0.3);text-decoration:none;transition:color 0.2s}
+.footer-links a:hover{color:rgba(255,255,255,0.75)}
+
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.hero-content>*{animation:fadeUp 0.65s cubic-bezier(0.22,1,0.36,1) both}
+.hero-content>*:nth-child(1){animation-delay:0.05s}
+.hero-content>*:nth-child(2){animation-delay:0.1s}
+.hero-content>*:nth-child(3){animation-delay:0.15s}
+.hero-content>*:nth-child(4){animation-delay:0.2s}
+.hero-content>*:nth-child(5){animation-delay:0.25s}
+.hero-content>*:nth-child(6){animation-delay:0.3s}
+.hero-content>*:nth-child(7){animation-delay:0.35s}
+@media(max-width:640px){.nav-link:not(.nav-cta){display:none}}
+</style>
+</head>
+<body>
+
+<div class="progress-bar-fixed"><div class="progress-fill" id="prog"></div></div>
+
+<nav class="top">
+  <a href="field-manual-index.html" class="logo-wrap">
+    <img class="logo-img" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+  </a>
+  <div class="nav-right">
+    <a href="field-manual-index.html" class="nav-link">All Episodes</a>
+    <a href="field-manual-index.html#g4" class="nav-link nav-cta">📚 RAG Architecture</a>
+  </div>
+</nav>
+
+<nav class="section-nav" id="sectionNav"></nav>
+
+<header class="hero">
+  <div class="hero-bg">
+    <div class="hero-blob-1"></div>
+    <div class="hero-blob-2"></div>
+    <div class="hero-lines">
+      <svg viewBox="0 0 600 800" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+        <line x1="0" y1="200" x2="600" y2="0" stroke="#124093" stroke-width="1"/>
+        <line x1="0" y1="400" x2="600" y2="200" stroke="#124093" stroke-width="0.6"/>
+        <line x1="0" y1="600" x2="600" y2="400" stroke="#124093" stroke-width="0.4"/>
+        <circle cx="500" cy="150" r="120" stroke="#124093" stroke-width="0.8" fill="none"/>
+        <circle cx="500" cy="150" r="80" stroke="#124093" stroke-width="0.4" fill="none"/>
+        <circle cx="500" cy="150" r="40" stroke="#124093" stroke-width="0.3" fill="none"/>
+        <line x1="300" y1="0" x2="300" y2="800" stroke="#124093" stroke-width="0.4" stroke-dasharray="6,12"/>
+        <rect x="360" y="480" width="160" height="160" stroke="#124093" stroke-width="0.6" fill="none" transform="rotate(15 440 560)"/>
+      </svg>
+    </div>
+  </div>
+  <div class="hero-tokens" aria-hidden="true">
+    <div class="token-float-wrap">
+      <div class="tf tf-1">token</div>
+<div class="tf tf-2">model</div>
+<div class="tf tf-3">layer</div>
+<div class="tf tf-4">vector</div>
+<div class="tf tf-5">embed</div>
+<div class="tf tf-6">weight</div>
+<div class="tf tf-7">param</div>
+      <div class="tf-center">
+        <span class="big">RAG</span>
+        <span class="small">EP 22</span>
+      </div>
+    </div>
+  </div>
+  <div class="hero-content">
+    <nav class="breadcrumb">
+      <a href="field-manual-index.html">Field Manual</a>
+      <span class="sep">›</span>
+      <a href="field-manual-index.html#g4">📚 RAG Architecture</a>
+      <span class="sep">›</span>
+      <span class="cur">Episode 22</span>
+    </nav>
+    <div class="hero-eyebrow"><span class="dot"></span>MODULE 4 &nbsp;·&nbsp; RAG Architecture</div>
+    <h1>RAG Pipeline End-to-End: From Document to Answer</h1>
+    <p class="hero-sub">You've learned the pieces: embeddings, vector databases, chunking, hybrid search, reranking. Now let's build the whole machine.</p>
+    <div class="meta-row">
+      <div class="meta-item"><span>📅</span> Mar 2026</div>
+      <div class="meta-item"><span>⏱</span> 10 min read</div>
+      <div class="meta-item"><span>🎯</span> Episode 22 of 98</div>
+    </div>
+    <div class="tags-row"><span class="tag">RAG</span><span class="tag">Pipeline</span><span class="tag">Architecture</span><span class="tag">End-to-End</span></div>
+  </div>
+</header>
+
+<main class="layout">
+  <div class="toc">
+  <div class="toc-title">In this episode</div>
+  <ul class="toc-list"><li><a href="#s1"><span class="toc-num">1</span>The Two Phases</a></li>
+<li><a href="#s2"><span class="toc-num">2</span>PHASE 1: INGESTION (offline, batch)</a></li>
+<li><a href="#s3"><span class="toc-num">3</span>PHASE 2: QUERY (online, real-time)</a></li>
+<li><a href="#s4"><span class="toc-num">4</span>Phase 1: Ingestion Pipeline</a></li>
+<li><a href="#s5"><span class="toc-num">5</span>Step 1: Document Collection</a></li>
+<li><a href="#s6"><span class="toc-num">6</span>Sources:</a></li>
+<li><a href="#s7"><span class="toc-num">7</span>Step 2: Document Parsing</a></li>
+<li><a href="#s8"><span class="toc-num">8</span>Load different formats</a></li>
+<li><a href="#s9"><span class="toc-num">9</span>Step 3: Chunking</a></li>
+<li><a href="#s10"><span class="toc-num">10</span>Step 4: Embedding</a></li>
+<li><a href="#s11"><span class="toc-num">11</span>Convert each chunk into a vector:</a></li>
+<li><a href="#s12"><span class="toc-num">12</span>Embed in batches (API limits)</a></li>
+<li><a href="#s13"><span class="toc-num">13</span>Using nomic-embed-text locally</a></li>
+<li><a href="#s14"><span class="toc-num">14</span>Step 5: Store in Vector Database</a></li>
+<li><a href="#s15"><span class="toc-num">15</span>Create collection</a></li>
+<li><a href="#s16"><span class="toc-num">16</span>Upload points</a></li>
+<li><a href="#s17"><span class="toc-num">17</span>Batch upload</a></li>
+<li><a href="#s18"><span class="toc-num">18</span>The Complete Ingestion Pipeline</a></li>
+<li><a href="#s19"><span class="toc-num">19</span>Phase 2: Query Pipeline</a></li>
+<li><a href="#s20"><span class="toc-num">20</span>Step 1: Embed the Query</a></li>
+<li><a href="#s21"><span class="toc-num">21</span>Step 2: Retrieve Candidates</a></li>
+<li><a href="#s22"><span class="toc-num">22</span>Vector search</a></li>
+<li><a href="#s23"><span class="toc-num">23</span>Step 3: Rerank</a></li>
+<li><a href="#s24"><span class="toc-num">24</span>Get top 5 reranked chunks</a></li>
+<li><a href="#s25"><span class="toc-num">25</span>Step 4: Build the Prompt</a></li>
+<li><a href="#s26"><span class="toc-num">26</span>Context:</a></li>
+<li><a href="#s27"><span class="toc-num">27</span>Step 5: Generate the Answer</a></li>
+<li><a href="#s28"><span class="toc-num">28</span>The Complete Query Pipeline</a></li>
+<li><a href="#s29"><span class="toc-num">29</span>The Full Architecture</a></li>
+<li><a href="#s30"><span class="toc-num">30</span>Latency Breakdown</a></li>
+<li><a href="#s31"><span class="toc-num">31</span>Step	Time	Notes</a></li>
+<li><a href="#s32"><span class="toc-num">32</span>Step	Cost	Provider</a></li>
+<li><a href="#s33"><span class="toc-num">33</span>Common Mistakes</a></li>
+<li><a href="#s34"><span class="toc-num">34</span>Mistake	Impact	Fix</a></li>
+<li><a href="#s35"><span class="toc-num">35</span>Practical Takeaways</a></li>
+<li><a href="#s36"><span class="toc-num">36</span>Ep 21: Reranking</a></li>
+<li><a href="#s37"><span class="toc-num">37</span>Ep 23: Document Parsing</a></li>
+<li><a href="#s38"><span class="toc-num">38</span>Next: Episode 23 — Document Parsing</a></li>
+</ul>
+</div>
+  <article class="prose" id="s0">
+<p>You've learned the pieces: embeddings, vector databases, chunking, hybrid search, reranking. Now let's build the whole machine.</p>
+<p>RAG — Retrieval-Augmented Generation — is the pattern that makes LLMs useful for your specific data. Instead of hoping the LLM memorized the answer during training, you retrieve relevant documents and stuff them into the prompt. The LLM generates an answer grounded in your actual data.</p>
+<p>No fine-tuning. No retraining. Just smart retrieval + prompt engineering.</p>
+<p>This is the episode where everything clicks together.</p>
+<h2 id="s1">The Two Phases</h2><div class="section-rule"></div>
+<p>A RAG system has two distinct phases that run at very different times:</p>
+<h2 id="s2">PHASE 1: INGESTION (offline, batch)</h2><div class="section-rule"></div>
+<p>─────────────────────────────────────</p>
+<p>Documents → Parse → Chunk → Embed → Store in Vector DB</p>
+<p>(runs once per document, or on update)</p>
+<h2 id="s3">PHASE 2: QUERY (online, real-time)</h2><div class="section-rule"></div>
+<p>─────────────────────────────────────</p>
+<p>User Question → Embed → Search → Rerank → Build Prompt → LLM → Answer</p>
+<p>(runs every time a user asks something)</p>
+<div class="callout callout-tip"><span class="callout-icon">⚡</span><p></p></div>
+<h2 id="s4">Phase 1: Ingestion Pipeline</h2><div class="section-rule"></div>
+<h2 id="s5">Step 1: Document Collection</h2><div class="section-rule"></div>
+<p>Gather your source documents. This could be:</p>
+<h2 id="s6">Sources:</h2><div class="section-rule"></div>
+<p>├── Confluence pages (HTML)</p>
+<p>├── Google Docs (API export)</p>
+<p>├── PDFs (contracts, manuals)</p>
+<p>├── GitHub repos (code + docs)</p>
+<p>├── Slack/Discord messages (JSON)</p>
+<p>├── Database records (SQL export)</p>
+<p>└── Web pages (scraping)</p>
+<h2 id="s7">Step 2: Document Parsing</h2><div class="section-rule"></div>
+<p>Convert raw formats into clean text. This is harder than it sounds (more in Episode 23).</p>
+<p>python</p>
+<p>from langchain.document_loaders import (</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>PyPDFLoader,
+    UnstructuredHTMLLoader,
+    TextLoader,
+    CSVLoader,</code></pre></div>
+</div>
+<p>)</p>
+<h2 id="s8">Load different formats</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>pdf_docs = PyPDFLoader("manual.pdf").load()
+html_docs = UnstructuredHTMLLoader("page.html").load()
+text_docs = TextLoader("readme.md").load()</code></pre></div>
+</div>
+<h2 id="s9">Step 3: Chunking</h2><div class="section-rule"></div>
+<p>Split documents into retrieval-friendly chunks (see Episode 19):</p>
+<p>python</p>
+<p>from langchain.text_splitter import RecursiveCharacterTextSplitter</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>splitter = RecursiveCharacterTextSplitter(
+chunk_size=500,       # ~500 characters per chunk
+    chunk_overlap=50,     # 10% overlap
+    length_function=len,</code></pre></div>
+</div>
+<p>)</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>chunks = []</code></pre></div>
+</div>
+<p>for doc in all_documents:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>doc_chunks = splitter.split_documents([doc])
+    chunks.extend(doc_chunks)</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>print(f"Total chunks: {len(chunks)}")  # e.g., 15,432</code></pre></div>
+</div>
+<h2 id="s10">Step 4: Embedding</h2><div class="section-rule"></div>
+<h2 id="s11">Convert each chunk into a vector:</h2><div class="section-rule"></div>
+<p>python</p>
+<p>from openai import OpenAI</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>client = OpenAI()
+def embed_batch(texts, model="text-embedding-3-small"):
+response = client.embeddings.create(model=model, input=texts)
+    return [r.embedding for r in response.data]</code></pre></div>
+</div>
+<h2 id="s12">Embed in batches (API limits)</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>batch_size = 100
+all_embeddings = []</code></pre></div>
+</div>
+<p>for i in range(0, len(chunks), batch_size):</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>batch = [chunk.page_content for chunk in chunks[i:i+batch_size]]
+    embeddings = embed_batch(batch)
+    all_embeddings.extend(embeddings)</code></pre></div>
+</div>
+<p>Or with Ollama (free, local):</p>
+<p>bash</p>
+<h2 id="s13">Using nomic-embed-text locally</h2><div class="section-rule"></div>
+<p>curl http://localhost:11434/api/embeddings -d '{</p>
+<p>"model": "nomic-embed-text",</p>
+<p>"prompt": "Your chunk text here"</p>
+<p>}'</p>
+<h2 id="s14">Step 5: Store in Vector Database</h2><div class="section-rule"></div>
+<p>python</p>
+<p>from qdrant_client import QdrantClient, models</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>client = QdrantClient("localhost", port=6333)</code></pre></div>
+</div>
+<h2 id="s15">Create collection</h2><div class="section-rule"></div>
+<p>client.create_collection(</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>collection_name="knowledge_base",
+    vectors_config=models.VectorParams(
+        size=1536,                    # Match your embedding model
+        distance=models.Distance.COSINE,
+    ),</code></pre></div>
+</div>
+<p>)</p>
+<h2 id="s16">Upload points</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>points = []</code></pre></div>
+</div>
+<p>for i, (chunk, embedding) in enumerate(zip(chunks, all_embeddings)):</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>points.append(models.PointStruct(
+        id=i,
+        vector=embedding,
+        payload={
+            "content": chunk.page_content,
+            "source": chunk.metadata.get("source", "unknown"),
+            "page": chunk.metadata.get("page", None),
+            "chunk_index": i,
+        }
+    ))</code></pre></div>
+</div>
+<h2 id="s17">Batch upload</h2><div class="section-rule"></div>
+<p>client.upsert(collection_name="knowledge_base", points=points)</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>print(f"Uploaded {len(points)} chunks to Qdrant")</code></pre></div>
+</div>
+<h2 id="s18">The Complete Ingestion Pipeline</h2><div class="section-rule"></div>
+<p>python</p>
+<p>def ingest_documents(file_paths: list[str]):</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>"""Full ingestion pipeline."""
+    # 1. Load
+    documents = []
+    for path in file_paths:
+        loader = get_loader(path)  # Pick loader by file type
+        documents.extend(loader.load())</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># 2. Chunk
+    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+    chunks = splitter.split_documents(documents)</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># 3. Embed
+    texts = [c.page_content for c in chunks]
+    embeddings = embed_batch(texts)</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># 4. Store
+    points = [
+        models.PointStruct(id=i, vector=emb, payload={
+            "content": chunk.page_content,
+            "source": chunk.metadata["source"],
+        })
+        for i, (chunk, emb) in enumerate(zip(chunks, embeddings))
+    ]
+    qdrant.upsert(collection_name="kb", points=points)</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>return len(points)</code></pre></div>
+</div>
+<p>🔧</p>
+<h2 id="s19">Phase 2: Query Pipeline</h2><div class="section-rule"></div>
+<h2 id="s20">Step 1: Embed the Query</h2><div class="section-rule"></div>
+<p>python</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>query = "How do I set memory limits for Kubernetes pods?"
+query_vector = embed(query)  # Same model as ingestion!</code></pre></div>
+</div>
+<p>Critical: Use the same embedding model for queries as you used for documents. Mixing models (e.g., embedding docs with nomic-embed but querying with text-embedding-3) produces vectors in different spaces — cosine similarity becomes meaningless.</p>
+<h2 id="s21">Step 2: Retrieve Candidates</h2><div class="section-rule"></div>
+<p>python</p>
+<h2 id="s22">Vector search</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>candidates = qdrant.search(
+collection_name="knowledge_base",
+    query_vector=query_vector,
+    limit=20,  # Get more than you need for reranking</code></pre></div>
+</div>
+<p>)</p>
+<p>For hybrid search (vector + BM25):</p>
+<p>python</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>candidates = qdrant.query_points(
+collection_name="knowledge_base",
+    prefetch=[
+        models.Prefetch(query=query_vector, using="dense", limit=20),
+        models.Prefetch(query=query_text, using="sparse", limit=20),
+    ],
+    query=models.FusionQuery(fusion=models.Fusion.RRF),
+    limit=20,</code></pre></div>
+</div>
+<p>)</p>
+<h2 id="s23">Step 3: Rerank</h2><div class="section-rule"></div>
+<p>python</p>
+<p>import cohere</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>co = cohere.Client("YOUR_KEY")
+docs = [hit.payload["content"] for hit in candidates]
+reranked = co.rerank(
+model="rerank-english-v3.0",
+    query=query,
+    documents=docs,
+    top_n=5,</code></pre></div>
+</div>
+<p>)</p>
+<h2 id="s24">Get top 5 reranked chunks</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>top_chunks = [candidates[r.index].payload["content"] for r in reranked.results]</code></pre></div>
+</div>
+<h2 id="s25">Step 4: Build the Prompt</h2><div class="section-rule"></div>
+<p>python</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>context = "\n\n---\n\n".join(top_chunks)
+prompt = f"""Answer the user's question based on the following context.</code></pre></div>
+</div>
+<p>If the context doesn't contain enough information, say so.</p>
+<h2 id="s26">Context:</h2><div class="section-rule"></div>
+<p>{context}</p>
+<p>Question: {query}</p>
+<p>Answer:"""</p>
+<h2 id="s27">Step 5: Generate the Answer</h2><div class="section-rule"></div>
+<p>python</p>
+<p>from openai import OpenAI</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>client = OpenAI()
+response = client.chat.completions.create(
+model="gpt-4o",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant. Answer based on the provided context only."},
+        {"role": "user", "content": prompt}
+    ],
+    temperature=0.1,  # Low temp for factual answers</code></pre></div>
+</div>
+<p>)</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>answer = response.choices[0].message.content</code></pre></div>
+</div>
+<h2 id="s28">The Complete Query Pipeline</h2><div class="section-rule"></div>
+<p>python</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>def answer_question(query: str) -&gt; dict:
+"""Full RAG query pipeline."""
+    # 1. Embed query
+    query_vector = embed(query)
+# 2. Retrieve candidates
+    candidates = qdrant.search(
+        collection_name="kb",
+        query_vector=query_vector,
+        limit=20,
+    )
+# 3. Rerank
+    docs = [hit.payload["content"] for hit in candidates]
+    reranked = co.rerank(
+        model="rerank-english-v3.0",
+        query=query, documents=docs, top_n=5,
+    )
+    top_chunks = [docs[r.index] for r in reranked.results]
+# 4. Build prompt
+    context = "\n\n---\n\n".join(top_chunks)
+    prompt = f"Context:\n{context}\n\nQuestion: {query}\n\nAnswer:"
+# 5. Generate
+    response = llm.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": "Answer based on context only."},
+            {"role": "user", "content": prompt},
+        ],
+    )
+return {
+        "answer": response.choices[0].message.content,
+        "sources": [candidates[r.index].payload["source"] for r in reranked.results],
+        "chunks_used": len(top_chunks),
+    }</code></pre></div>
+</div>
+<p>📊</p>
+<h2 id="s29">The Full Architecture</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>INGESTION (offline)</code></pre></div>
+</div>
+<p>╔══════════════════════════════════════════════════════╗</p>
+<p>║  Documents → Parser → Chunker → Embedder → VectorDB ║</p>
+<p>╚══════════════════════════════════════════════════════╝</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>QUERY (real-time)</code></pre></div>
+</div>
+<p>╔══════════════════════════════════════════════════════╗</p>
+<p>║  Question → Embedder → VectorDB → Reranker →        ║</p>
+<p>║            → Prompt Builder → LLM → Answer           ║</p>
+<p>╚══════════════════════════════════════════════════════╝</p>
+<h2 id="s30">Latency Breakdown</h2><div class="section-rule"></div>
+<h2 id="s31">Step	Time	Notes</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>Query embedding</th><th>20-50ms</th><th>API call to embedding model</th></tr></thead><tbody><tr><td>Vector search</td><td>5-20ms</td><td>HNSW approximate search</td></tr><tr><td>Reranking</td><td>100-300ms</td><td>Cross-encoder on 20 candidates</td></tr><tr><td>Prompt building</td><td><1ms</td><td>String concatenation</td></tr><tr><td>LLM generation</td><td>500-3000ms</td><td>Depends on model and output length</td></tr><tr><td>Total</td><td>~700-3500ms</td><td>Most time spent on LLM generation</td></tr></tbody></table></div>
+<p>Cost Breakdown (per query, approximate)</p>
+<h2 id="s32">Step	Cost	Provider</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>Query embedding</th><th>$0.00002</th><th>OpenAI text-embedding-3-small</th></tr></thead><tbody><tr><td>Vector search</td><td>$0.0001</td><td>Self-hosted Qdrant</td></tr><tr><td>Reranking (20 docs)</td><td>$0.00004</td><td>Cohere Rerank</td></tr><tr><td>LLM (1K input + 500 output)</td><td>$0.005</td><td>GPT-4o</td></tr><tr><td>Total per query</td><td>~$0.005</td><td>Dominated by LLM cost</td></tr></tbody></table></div>
+<h2 id="s33">Common Mistakes</h2><div class="section-rule"></div>
+<h2 id="s34">Mistake	Impact	Fix</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>Different embedding models for ingestion and query</th><th>Zero relevant results</th><th>Always use the same model</th></tr></thead><tbody><tr><td>No chunking overlap</td><td>Lost context at boundaries</td><td>10-15% overlap</td></tr><tr><td>Retrieving too few candidates</td><td>Missed relevant docs</td><td>Retrieve 20-50, rerank to top 5</td></tr><tr><td>Stuffing too many chunks in prompt</td><td>Confuses LLM, "lost in the middle"</td><td>3-5 chunks is usually optimal</td></tr><tr><td>No source attribution</td><td>Users can't verify answers</td><td>Always return source metadata</td></tr><tr><td>Skipping reranking</td><td>Best result buried at position #7</td><td>Always rerank for production</td></tr></tbody></table></div>
+<div class="callout callout-tip"><span class="callout-icon">💡</span><p></p></div>
+<h2 id="s35">Practical Takeaways</h2><div class="section-rule"></div>
+<p>RAG has two phases — ingestion (offline, batch) and query (online, real-time)</p>
+<p>Same embedding model everywhere — query and documents must be in the same vector space</p>
+<p>Retrieve more, use less — get 20-50 candidates, rerank to top 5</p>
+<p>LLM is the biggest cost and latency — optimize retrieval to minimize what you send to the LLM</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Always return sources — let users verify the answer</code></pre></div>
+</div>
+<p>Start simple, iterate — basic RAG pipeline first, then add hybrid search, reranking, advanced chunking</p>
+<p>🔬</p>
+<p>What's Next?</p>
+<p>Episode 23: Document Parsing — The ingestion pipeline starts with raw documents. PDFs, HTML, scanned images, tables. Getting clean text out of messy formats is a whole engineering challenge. Let's dig into it.</p>
+<p>← Previous</p>
+<h2 id="s36">Ep 21: Reranking</h2><div class="section-rule"></div>
+<p>Next →</p>
+<h2 id="s37">Ep 23: Document Parsing</h2><div class="section-rule"></div>
+<h2 id="s38">Next: Episode 23 — Document Parsing</h2><div class="section-rule"></div>
+<p>Your boss hands you a 200-page PDF. 'Build a chatbot that answers questions about this.' Step one: extract the text. Harder than it sounds.</p>
+<p>This is part of a 98-episode series covering AI engineering from tokens to production deployment.</p>
+  </article>
+  <div class="ep-nav">
+    <a href="episode-21.html" class="ep-nav-card">
+      <span class="ep-nav-dir">← Previous</span>
+      <span class="ep-nav-title">Ep 21: Reranking: Why Your First Search Results Aren't the Bes…</span>
+    </a>
+    <a href="episode-23.html" class="ep-nav-card next">
+      <span class="ep-nav-dir">Next Episode →</span>
+      <span class="ep-nav-title">Ep 23: Document Parsing: Getting Clean Text From Messy Formats</span>
+    </a>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <img class="footer-logo" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+      <div class="footer-tagline">98 Field Manual · Build with AI, not just use it · Free forever</div>
+    </div>
+    <div class="footer-links">
+      <a href="field-manual-index.html">All Episodes</a>
+      <a href="field-manual-index.html#g4">RAG Architecture</a>
+      <a href="episode-21.html">← Ep 21</a>
+      <a href="episode-23.html">Ep 23 →</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+const prog=document.getElementById('prog');
+window.addEventListener('scroll',()=>{
+  const total=document.documentElement.scrollHeight-window.innerHeight;
+  prog.style.width=Math.min(100,(window.scrollY/total)*100)+'%';
+},{passive:true});
+
+// Build section nav dots from h2s
+const h2s=document.querySelectorAll('.prose h2');
+const sNav=document.getElementById('sectionNav');
+const dots=[];
+h2s.forEach((h,i)=>{
+  const btn=document.createElement('button');
+  btn.className='snav-dot';
+  btn.setAttribute('data-label',h.textContent.trim().substring(0,28));
+  btn.onclick=()=>h.scrollIntoView({behavior:'smooth',block:'start'});
+  sNav.appendChild(btn);
+  dots.push({btn,h});
+});
+
+const dotObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      const idx=dots.findIndex(d=>d.h===e.target);
+      if(idx>-1) dots.forEach((d,i)=>d.btn.classList.toggle('active',i===idx));
+    }
+  });
+},{rootMargin:'-30% 0px -60% 0px'});
+dots.forEach(d=>dotObs.observe(d.h));
+
+// Scroll reveal
+const revObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='translateY(0)';}});
+},{threshold:0.08});
+document.querySelectorAll('.toc,.callout,.table-wrap,.code-block,.ep-nav-card').forEach(el=>{
+  el.style.opacity='0';
+  el.style.transform='translateY(14px)';
+  el.style.transition='opacity 0.55s ease,transform 0.55s ease';
+  revObs.observe(el);
+});
+</script>
+</body>
+</html>

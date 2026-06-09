@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ep 68: Cloud GPU Pricing: Where to Train and Inference Without Going Broke</title>
+<meta name="description" content="You need GPU compute. Cloud providers all want your money. Here's the real pricing breakdown so you don't go broke.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,300&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0d0d1a;--page:#ffffff;--paper:#f8f9ff;
+  --navy:#124093;--navy-dim:rgba(18,64,147,0.07);--navy-mid:rgba(18,64,147,0.15);
+  --red:#e2190e;--gold:#c8973a;--muted:#6b7280;--rule:#e5e7ef;--code-bg:#0d0d1f;
+  --title:'Roboto',sans-serif;--body:'Poppins',sans-serif;--mono:'DM Mono',monospace;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--page);color:var(--ink);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:#fff}
+::-webkit-scrollbar-thumb{background:var(--navy);border-radius:2px}
+
+/* NAV */
+nav.top{position:sticky;top:0;z-index:200;background:#fff;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(20px,5vw,60px);border-bottom:1px solid var(--rule);box-shadow:0 1px 12px rgba(0,0,0,0.05)}
+.logo-wrap{display:flex;align-items:center;text-decoration:none}
+.logo-img{height:38px;width:auto;object-fit:contain;display:block}
+.nav-right{display:flex;align-items:center;gap:6px}
+.nav-link{font-family:var(--body);font-size:11.5px;font-weight:500;color:var(--muted);text-decoration:none;padding:6px 14px;border-radius:6px;transition:all 0.2s}
+.nav-link:hover{color:var(--navy);background:var(--navy-dim)}
+.nav-cta{background:var(--navy)!important;color:#fff!important}
+.nav-cta:hover{background:#1a52c0!important;color:#fff!important}
+
+/* PROGRESS */
+.progress-bar-fixed{position:fixed;top:60px;left:0;right:0;height:2.5px;background:rgba(18,64,147,0.1);z-index:199}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--navy),#4f7ff7);width:0%;transition:width 0.1s;border-radius:0 2px 2px 0}
+
+/* HERO */
+.hero{background:#fff;position:relative;overflow:hidden;min-height:88vh;display:flex;flex-direction:column;justify-content:center}
+.hero-bg{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.hero-blob-1{position:absolute;top:-120px;right:-120px;width:700px;height:700px;background:radial-gradient(circle at 60% 40%,rgba(18,64,147,0.07) 0%,rgba(18,64,147,0.03) 40%,transparent 70%);border-radius:50%}
+.hero-blob-2{position:absolute;bottom:-80px;left:-80px;width:500px;height:500px;background:radial-gradient(circle,rgba(79,127,247,0.06) 0%,transparent 65%);border-radius:50%}
+.hero-lines{position:absolute;top:0;right:0;width:45%;height:100%;opacity:0.06}
+.hero-lines svg{width:100%;height:100%}
+.hero-tokens{position:absolute;top:0;right:0;width:46%;height:100%;display:flex;align-items:center;justify-content:center}
+.token-float-wrap{position:relative;width:360px;height:360px}
+.tf{position:absolute;font-family:var(--mono);font-size:13px;font-weight:500;padding:8px 16px;border-radius:8px;white-space:nowrap;animation:float-anim 6s ease-in-out infinite;box-shadow:0 4px 20px rgba(0,0,0,0.08)}
+.tf-1{top:20px;left:60px;background:rgba(18,64,147,0.09);color:#124093;border:1px solid rgba(18,64,147,0.18);animation-delay:0s}
+.tf-2{top:70px;right:20px;background:rgba(79,127,247,0.09);color:#2563eb;border:1px solid rgba(79,127,247,0.2);animation-delay:0.8s}
+.tf-3{top:140px;left:20px;background:rgba(16,185,129,0.08);color:#059669;border:1px solid rgba(16,185,129,0.18);animation-delay:1.6s}
+.tf-4{top:170px;right:50px;background:rgba(168,85,247,0.08);color:#7c3aed;border:1px solid rgba(168,85,247,0.18);animation-delay:0.4s}
+.tf-5{bottom:140px;left:80px;background:rgba(234,179,8,0.08);color:#b45309;border:1px solid rgba(234,179,8,0.2);animation-delay:1.2s}
+.tf-6{bottom:90px;right:30px;background:rgba(236,72,153,0.08);color:#db2777;border:1px solid rgba(236,72,153,0.2);animation-delay:2s}
+.tf-7{bottom:30px;left:40px;background:rgba(239,68,68,0.08);color:#dc2626;border:1px solid rgba(239,68,68,0.18);animation-delay:0.6s}
+.tf-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:110px;height:110px;background:var(--navy);border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;box-shadow:0 12px 40px rgba(18,64,147,0.3);animation:pulse-center 3s ease-in-out infinite}
+.tf-center .big{font-family:var(--title);font-size:28px;font-weight:900;color:#fff;line-height:1}
+.tf-center .small{font-family:var(--body);font-size:9px;font-weight:500;color:rgba(255,255,255,0.6);letter-spacing:1.5px;text-transform:uppercase}
+@keyframes float-anim{0%,100%{transform:translateY(0px)}50%{transform:translateY(-10px)}}
+@keyframes pulse-center{0%,100%{box-shadow:0 12px 40px rgba(18,64,147,0.3)}50%{box-shadow:0 12px 60px rgba(18,64,147,0.5)}}
+.hero-content{position:relative;z-index:2;width:54%;padding:clamp(48px,8vw,96px) clamp(24px,5vw,72px) clamp(48px,8vw,96px)}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:5px 14px;background:var(--navy-dim);border:1px solid rgba(18,64,147,0.18);border-radius:100px;margin-bottom:22px;font-family:var(--body);font-size:10px;font-weight:600;color:var(--navy);letter-spacing:1.2px;text-transform:uppercase}
+.hero-eyebrow .dot{width:5px;height:5px;background:var(--navy);border-radius:50%}
+.hero h1{font-family:var(--title);font-size:clamp(28px,4.5vw,52px);font-weight:900;color:var(--ink);line-height:1.08;letter-spacing:-1.2px;margin-bottom:20px}
+.hero h1 .line2{display:block;color:var(--navy)}
+.hero-sub{font-family:var(--body);font-size:clamp(13px,1.6vw,15px);font-weight:300;color:#4b5563;line-height:1.85;max-width:500px;margin-bottom:34px}
+.breadcrumb{display:flex;align-items:center;gap:7px;margin-bottom:28px;font-family:var(--mono);font-size:10px;color:#9ca3af}
+.breadcrumb a{color:inherit;text-decoration:none;transition:color 0.2s}
+.breadcrumb a:hover{color:var(--navy)}
+.breadcrumb .sep{color:#d1d5db}
+.breadcrumb .cur{color:#6b7280}
+.meta-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:14px 20px;background:var(--paper);border:1px solid var(--rule);border-radius:10px;margin-bottom:24px}
+.meta-item{font-family:var(--body);font-size:10.5px;font-weight:500;color:var(--muted);display:flex;align-items:center;gap:5px}
+.tags-row{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-family:var(--body);font-size:10px;font-weight:500;color:var(--navy);background:var(--navy-dim);padding:4px 11px;border-radius:100px;border:1px solid rgba(18,64,147,0.15)}
+@media(max-width:900px){.hero{min-height:auto;padding-bottom:48px}.hero-content{width:100%;padding:48px 24px 36px}.hero-tokens{display:none}.hero-lines{display:none}}
+
+/* SECTION NAV DOTS */
+.section-nav{position:fixed;right:clamp(12px,2vw,24px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:9px;z-index:100}
+.snav-dot{width:7px;height:7px;border-radius:50%;background:#d1d5db;border:none;padding:0;cursor:pointer;transition:all 0.3s;position:relative}
+.snav-dot::after{content:attr(data-label);position:absolute;right:16px;top:50%;transform:translateY(-50%);font-family:var(--body);font-size:9px;font-weight:500;color:var(--ink);background:#fff;padding:3px 9px;border-radius:4px;border:1px solid var(--rule);box-shadow:0 2px 8px rgba(0,0,0,0.06);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.2s}
+.snav-dot:hover::after{opacity:1}
+.snav-dot.active{background:var(--navy);transform:scale(1.5)}
+.snav-dot:hover:not(.active){background:rgba(18,64,147,0.4)}
+@media(max-width:768px){.section-nav{display:none}}
+
+/* LAYOUT */
+.layout{max-width:860px;margin:0 auto;padding:clamp(40px,6vw,68px) clamp(20px,5vw,56px) 80px}
+
+/* TOC */
+.toc{background:var(--paper);border:1px solid var(--rule);border-left:4px solid var(--navy);border-radius:10px;padding:22px 26px;margin-bottom:52px}
+.toc-title{font-family:var(--title);font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
+.toc-list{list-style:none;display:flex;flex-direction:column;gap:3px}
+.toc-list li a{display:flex;align-items:center;gap:12px;text-decoration:none;padding:6px 0;font-family:var(--body);font-size:13px;font-weight:400;color:var(--ink);transition:color 0.2s}
+.toc-list li a:hover{color:var(--navy)}
+.toc-num{font-family:var(--mono);font-size:9px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* PROSE */
+.prose{line-height:1.85}
+.prose h2{font-family:var(--title);font-size:clamp(18px,2.5vw,23px);font-weight:700;color:var(--ink);letter-spacing:-0.4px;margin:52px 0 8px;line-height:1.2;scroll-margin-top:80px;padding-left:18px;position:relative}
+.prose h2::before{content:'';position:absolute;left:0;top:5px;bottom:5px;width:3px;background:var(--navy);border-radius:2px}
+.prose h2:first-child{margin-top:0}
+.prose h3{font-family:var(--title);font-size:14px;font-weight:700;color:var(--ink);margin:26px 0 8px}
+.section-rule{width:36px;height:2px;background:var(--navy);border-radius:2px;margin:8px 0 22px 18px;opacity:0.4}
+.prose p{font-family:var(--body);font-size:clamp(13.5px,1.7vw,15px);line-height:1.88;color:#374151;margin-bottom:16px;font-weight:300}
+.prose p strong{font-weight:600;color:var(--ink)}
+.prose ul,.prose ol{list-style:none;padding:0;margin:4px 0 20px}
+.prose ul li,.prose ol li{font-family:var(--body);font-size:clamp(13.5px,1.7vw,14.5px);line-height:1.8;color:#374151;padding:4px 0 4px 26px;position:relative;font-weight:300}
+.prose ul li::before{content:'';position:absolute;left:5px;top:14px;width:5px;height:5px;background:var(--navy);border-radius:50%;opacity:0.55}
+.prose ol{counter-reset:li}
+.prose ol li{counter-increment:li}
+.prose ol li::before{content:counter(li);position:absolute;left:0;top:5px;font-family:var(--mono);font-size:8px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.ic{font-family:var(--mono);font-size:12.5px;background:var(--navy-dim);color:var(--navy);padding:1.5px 6px;border-radius:4px;border:1px solid rgba(18,64,147,0.15)}
+
+/* CODE */
+.code-block{background:var(--code-bg);border-radius:10px;margin:24px 0;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.12),0 0 0 1px rgba(18,64,147,0.1)}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.02)}
+.code-dots{display:flex;gap:5px}
+.cd{width:10px;height:10px;border-radius:50%}
+.cd-r{background:#ff5f56}.cd-y{background:#ffbd2e}.cd-g{background:#27c93f}
+.code-filename{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,0.25)}
+.code-lang{font-family:var(--mono);font-size:9px;color:rgba(91,140,247,0.6);letter-spacing:1px;text-transform:uppercase}
+.code-body{padding:20px 22px;overflow-x:auto}
+.code-body pre{margin:0}
+.code-body code{font-family:var(--mono);font-size:12.5px;line-height:1.9;color:#c9d4f5}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;margin:24px 0;border-radius:10px;border:1px solid var(--rule);box-shadow:0 2px 12px rgba(0,0,0,0.04)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:var(--ink)}
+thead th{padding:12px 16px;text-align:left;font-family:var(--body);font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,0.45)}
+thead th:first-child{color:#6b9fff}
+tbody tr{border-bottom:1px solid var(--rule);transition:background 0.15s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--paper)}
+tbody td{padding:10px 16px;font-family:var(--body);font-size:13px;color:#374151;font-weight:300;line-height:1.5}
+tbody td:first-child{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--navy)}
+
+/* CALLOUTS */
+.callout{border-radius:9px;padding:16px 20px;margin:24px 0;display:flex;gap:13px;align-items:flex-start}
+.callout-tip{background:rgba(18,64,147,0.05);border:1px solid rgba(18,64,147,0.16);border-left:3px solid var(--navy)}
+.callout-warn{background:rgba(220,38,38,0.04);border:1px solid rgba(220,38,38,0.14);border-left:3px solid #dc2626}
+.callout-note{background:rgba(200,151,58,0.05);border:1px solid rgba(200,151,58,0.2);border-left:3px solid var(--gold)}
+.callout-icon{font-size:16px;flex-shrink:0;margin-top:1px;line-height:1}
+.callout p{font-size:13.5px!important;line-height:1.7!important;color:#374151!important;margin:0!important}
+
+/* EP NAV */
+.ep-nav{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:64px;padding-top:32px;border-top:1px solid var(--rule)}
+@media(max-width:500px){.ep-nav{grid-template-columns:1fr}}
+.ep-nav-card{display:flex;flex-direction:column;text-decoration:none;padding:20px 22px;border:1px solid var(--rule);border-radius:10px;background:var(--paper);transition:all 0.25s;gap:5px}
+.ep-nav-card:hover{border-color:rgba(18,64,147,0.3);background:var(--navy-dim);transform:translateY(-2px);box-shadow:0 6px 20px rgba(18,64,147,0.08)}
+.ep-nav-dir{font-family:var(--body);font-size:9px;font-weight:600;color:var(--navy);letter-spacing:1px;text-transform:uppercase}
+.ep-nav-title{font-family:var(--title);font-size:13px;font-weight:600;color:var(--ink);line-height:1.4}
+.ep-nav-card.next{align-items:flex-end;text-align:right}
+
+/* FOOTER */
+footer{background:var(--ink);padding:44px clamp(20px,5vw,60px);border-top:3px solid var(--navy)}
+.footer-inner{max-width:860px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.footer-logo{height:32px;width:auto;object-fit:contain;filter:brightness(0) invert(1);opacity:0.7}
+.footer-tagline{font-family:var(--body);font-size:11px;color:rgba(255,255,255,0.22);font-style:italic;margin-top:4px;font-weight:300}
+.footer-links{display:flex;gap:20px;flex-wrap:wrap}
+.footer-links a{font-family:var(--body);font-size:11px;font-weight:400;color:rgba(255,255,255,0.3);text-decoration:none;transition:color 0.2s}
+.footer-links a:hover{color:rgba(255,255,255,0.75)}
+
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.hero-content>*{animation:fadeUp 0.65s cubic-bezier(0.22,1,0.36,1) both}
+.hero-content>*:nth-child(1){animation-delay:0.05s}
+.hero-content>*:nth-child(2){animation-delay:0.1s}
+.hero-content>*:nth-child(3){animation-delay:0.15s}
+.hero-content>*:nth-child(4){animation-delay:0.2s}
+.hero-content>*:nth-child(5){animation-delay:0.25s}
+.hero-content>*:nth-child(6){animation-delay:0.3s}
+.hero-content>*:nth-child(7){animation-delay:0.35s}
+@media(max-width:640px){.nav-link:not(.nav-cta){display:none}}
+</style>
+</head>
+<body>
+
+<div class="progress-bar-fixed"><div class="progress-fill" id="prog"></div></div>
+
+<nav class="top">
+  <a href="field-manual-index.html" class="logo-wrap">
+    <img class="logo-img" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+  </a>
+  <div class="nav-right">
+    <a href="field-manual-index.html" class="nav-link">All Episodes</a>
+    <a href="field-manual-index.html#g10" class="nav-link nav-cta">💻 GPU & Hardware</a>
+  </div>
+</nav>
+
+<nav class="section-nav" id="sectionNav"></nav>
+
+<header class="hero">
+  <div class="hero-bg">
+    <div class="hero-blob-1"></div>
+    <div class="hero-blob-2"></div>
+    <div class="hero-lines">
+      <svg viewBox="0 0 600 800" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+        <line x1="0" y1="200" x2="600" y2="0" stroke="#124093" stroke-width="1"/>
+        <line x1="0" y1="400" x2="600" y2="200" stroke="#124093" stroke-width="0.6"/>
+        <line x1="0" y1="600" x2="600" y2="400" stroke="#124093" stroke-width="0.4"/>
+        <circle cx="500" cy="150" r="120" stroke="#124093" stroke-width="0.8" fill="none"/>
+        <circle cx="500" cy="150" r="80" stroke="#124093" stroke-width="0.4" fill="none"/>
+        <circle cx="500" cy="150" r="40" stroke="#124093" stroke-width="0.3" fill="none"/>
+        <line x1="300" y1="0" x2="300" y2="800" stroke="#124093" stroke-width="0.4" stroke-dasharray="6,12"/>
+        <rect x="360" y="480" width="160" height="160" stroke="#124093" stroke-width="0.6" fill="none" transform="rotate(15 440 560)"/>
+      </svg>
+    </div>
+  </div>
+  <div class="hero-tokens" aria-hidden="true">
+    <div class="token-float-wrap">
+      <div class="tf tf-1">token</div>
+<div class="tf tf-2">model</div>
+<div class="tf tf-3">layer</div>
+<div class="tf tf-4">vector</div>
+<div class="tf tf-5">embed</div>
+<div class="tf tf-6">weight</div>
+<div class="tf tf-7">param</div>
+      <div class="tf-center">
+        <span class="big">CLOU</span>
+        <span class="small">EP 68</span>
+      </div>
+    </div>
+  </div>
+  <div class="hero-content">
+    <nav class="breadcrumb">
+      <a href="field-manual-index.html">Field Manual</a>
+      <span class="sep">›</span>
+      <a href="field-manual-index.html#g10">💻 GPU & Hardware</a>
+      <span class="sep">›</span>
+      <span class="cur">Episode 68</span>
+    </nav>
+    <div class="hero-eyebrow"><span class="dot"></span>MODULE 10 &nbsp;·&nbsp; GPU & Hardware</div>
+    <h1>Cloud GPU Pricing: Where to Train and Inference Without Going Broke</h1>
+    <p class="hero-sub">You need GPU compute. Cloud providers all want your money. Here's the real pricing breakdown so you don't go broke.</p>
+    <div class="meta-row">
+      <div class="meta-item"><span>📅</span> Mar 2026</div>
+      <div class="meta-item"><span>⏱</span> 10 min read</div>
+      <div class="meta-item"><span>🎯</span> Episode 68 of 98</div>
+    </div>
+    <div class="tags-row"><span class="tag">Cloud GPU</span><span class="tag">Pricing</span><span class="tag">AWS</span><span class="tag">Cost</span></div>
+  </div>
+</header>
+
+<main class="layout">
+  <div class="toc">
+  <div class="toc-title">In this episode</div>
+  <ul class="toc-list"><li><a href="#s1"><span class="toc-num">1</span>The Big Three: AWS, GCP, Azure</a></li>
+<li><a href="#s2"><span class="toc-num">2</span>AWS (EC2 + SageMaker)</a></li>
+<li><a href="#s3"><span class="toc-num">3</span>Instance Type	GPU	VRAM	On-Demand	Spot</a></li>
+<li><a href="#s4"><span class="toc-num">4</span>AWS Pros:</a></li>
+<li><a href="#s5"><span class="toc-num">5</span>Reliability is top-tier</a></li>
+<li><a href="#s6"><span class="toc-num">6</span>SageMaker makes training jobs easy</a></li>
+<li><a href="#s7"><span class="toc-num">7</span>Integration with the rest of AWS ecosystem</a></li>
+<li><a href="#s8"><span class="toc-num">8</span>AWS Cons:</a></li>
+<li><a href="#s9"><span class="toc-num">9</span>Most expensive option</a></li>
+<li><a href="#s10"><span class="toc-num">10</span>GPU availability can be spotty for A100/H100</a></li>
+<li><a href="#s11"><span class="toc-num">11</span>Google Cloud Platform (GCP)</a></li>
+<li><a href="#s12"><span class="toc-num">12</span>Instance Type	GPU	VRAM	On-Demand	Spot</a></li>
+<li><a href="#s13"><span class="toc-num">13</span>GCP Pros:</a></li>
+<li><a href="#s14"><span class="toc-num">14</span>Good integration with Vertex AI</a></li>
+<li><a href="#s15"><span class="toc-num">15</span>Preemptible pricing can be very cheap</a></li>
+<li><a href="#s16"><span class="toc-num">16</span>GCP Cons:</a></li>
+<li><a href="#s17"><span class="toc-num">17</span>GPU availability is the worst of the big three</a></li>
+<li><a href="#s18"><span class="toc-num">18</span>Spot/preemptible instances get reclaimed constantly</a></li>
+<li><a href="#s19"><span class="toc-num">19</span>Azure</a></li>
+<li><a href="#s20"><span class="toc-num">20</span>Instance Type	GPU	VRAM	On-Demand	Spot</a></li>
+<li><a href="#s21"><span class="toc-num">21</span>NC4as T4 v3	T4	16 GB	$0.526/hr	~$0.08/hr</a></li>
+<li><a href="#s22"><span class="toc-num">22</span>NC24ads A100 v4	A100	80 GB	$3.60/hr	~$1.08/hr</a></li>
+<li><a href="#s23"><span class="toc-num">23</span>ND96asr A100 v4	A100 × 8	640 GB	$36.29/hr	~$10.89/hr</a></li>
+<li><a href="#s24"><span class="toc-num">24</span>ND96isr H100 v5	H100 × 8	640 GB	~$90/hr	~$27/hr</a></li>
+<li><a href="#s25"><span class="toc-num">25</span>Azure Pros:</a></li>
+<li><a href="#s26"><span class="toc-num">26</span>Spot pricing is aggressive</a></li>
+<li><a href="#s27"><span class="toc-num">27</span>Best for Windows/enterprise workflows</a></li>
+<li><a href="#s28"><span class="toc-num">28</span>Azure Cons:</a></li>
+<li><a href="#s29"><span class="toc-num">29</span>Documentation can be fragmented</a></li>
+<li><a href="#s30"><span class="toc-num">30</span>Less community content than AWS</a></li>
+<li><a href="#s31"><span class="toc-num">31</span>The Challengers: Lambda Labs, RunPod, Vast.ai</a></li>
+<li><a href="#s32"><span class="toc-num">32</span>Lambda Labs</a></li>
+<li><a href="#s33"><span class="toc-num">33</span>GPU	VRAM	Price/hr	Notes</a></li>
+<li><a href="#s34"><span class="toc-num">34</span>RTX A6000	48 GB	$0.80	Great for inference</a></li>
+<li><a href="#s35"><span class="toc-num">35</span>Lambda Pros:</a></li>
+<li><a href="#s36"><span class="toc-num">36</span>Jupyter notebooks built-in</a></li>
+<li><a href="#s37"><span class="toc-num">37</span>Lambda Cons:</a></li>
+<li><a href="#s38"><span class="toc-num">38</span>Smaller ecosystem than AWS/GCP</a></li>
+<li><a href="#s39"><span class="toc-num">39</span>Occasional availability issues</a></li>
+<li><a href="#s40"><span class="toc-num">40</span>RunPod</a></li>
+<li><a href="#s41"><span class="toc-num">41</span>GPU	VRAM	Community Cloud	Secure Cloud</a></li>
+<li><a href="#s42"><span class="toc-num">42</span>RTX 4090	24 GB	$0.44/hr	$0.69/hr</a></li>
+<li><a href="#s43"><span class="toc-num">43</span>RTX A6000	48 GB	$0.80/hr	$1.19/hr</a></li>
+<li><a href="#s44"><span class="toc-num">44</span>RunPod Pros:</a></li>
+<li><a href="#s45"><span class="toc-num">45</span>Cheapest option for many GPUs</a></li>
+<li><a href="#s46"><span class="toc-num">46</span>Good for inference endpoints</a></li>
+<li><a href="#s47"><span class="toc-num">47</span>RunPod Cons:</a></li>
+<li><a href="#s48"><span class="toc-num">48</span>Network storage costs add up</a></li>
+<li><a href="#s49"><span class="toc-num">49</span>Support is community-based for lower tiers</a></li>
+<li><a href="#s50"><span class="toc-num">50</span>Vast.ai</a></li>
+<li><a href="#s51"><span class="toc-num">51</span>GPU	VRAM	Price Range</a></li>
+<li><a href="#s52"><span class="toc-num">52</span>RTX 3090	24 GB	$0.20 - $0.50/hr</a></li>
+<li><a href="#s53"><span class="toc-num">53</span>RTX 4090	24 GB	$0.40 - $0.80/hr</a></li>
+<li><a href="#s54"><span class="toc-num">54</span>RTX A6000	48 GB	$0.60 - $1.20/hr</a></li>
+<li><a href="#s55"><span class="toc-num">55</span>Vast.ai Pros:</a></li>
+<li><a href="#s56"><span class="toc-num">56</span>Cheapest GPUs anywhere</a></li>
+<li><a href="#s57"><span class="toc-num">57</span>Massive selection</a></li>
+<li><a href="#s58"><span class="toc-num">58</span>Vast.ai Cons:</a></li>
+<li><a href="#s59"><span class="toc-num">59</span>Reliability is a coin flip</a></li>
+<li><a href="#s60"><span class="toc-num">60</span>Machines can disappear mid-training</a></li>
+<li><a href="#s61"><span class="toc-num">61</span>When to use Vast.ai:</a></li>
+<li><a href="#s62"><span class="toc-num">62</span>Experiments and prototyping</a></li>
+<li><a href="#s63"><span class="toc-num">63</span>When cost matters more than reliability</a></li>
+<li><a href="#s64"><span class="toc-num">64</span>When you can checkpoint frequently</a></li>
+<li><a href="#s65"><span class="toc-num">65</span>Never for production or sensitive data</a></li>
+<li><a href="#s66"><span class="toc-num">66</span>Spot vs On-Demand: The 70% Discount</a></li>
+<li><a href="#s67"><span class="toc-num">67</span>Provider	Discount	Interruption Rate	Best For</a></li>
+<li><a href="#s68"><span class="toc-num">68</span>AWS Spot	Up to 90%	5-10%	Training with checkpointing</a></li>
+<li><a href="#s69"><span class="toc-num">69</span>GCP Preemptible	Up to 80%	10-20%	Fault-tolerant batch jobs</a></li>
+<li><a href="#s70"><span class="toc-num">70</span>Spot Strategy for Training</a></li>
+<li><a href="#s71"><span class="toc-num">71</span>Pseudo-code for spot-aware training</a></li>
+<li><a href="#s72"><span class="toc-num">72</span>Also checkpoint regularly</a></li>
+<li><a href="#s73"><span class="toc-num">73</span>Cost Comparison: Training a 7B Model</a></li>
+<li><a href="#s74"><span class="toc-num">74</span>Hidden Costs</a></li>
+<li><a href="#s75"><span class="toc-num">75</span>Cost	AWS	GCP	Lambda	RunPod</a></li>
+<li><a href="#s76"><span class="toc-num">76</span>AWS storage: $10/month</a></li>
+<li><a href="#s77"><span class="toc-num">77</span>Choosing a Provider: Decision Matrix</a></li>
+<li><a href="#s78"><span class="toc-num">78</span>Practical Takeaways</a></li>
+<li><a href="#s79"><span class="toc-num">79</span>Ep 67: Apple Silicon for AI</a></li>
+<li><a href="#s80"><span class="toc-num">80</span>Ep 69: TPUs vs GPUs</a></li>
+</ul>
+</div>
+  <article class="prose" id="s0">
+<p>You need to train a 7B parameter model. Or run inference at scale. Or fine-tune on your own data.</p>
+<p>Your laptop isn't cutting it. You need GPUs. Real GPUs. The kind that cost more than a car.</p>
+<p>But where do you get them? AWS? GCP? Some random website with "vast" in the name? The prices vary by 10x. The reliability varies even more. And if you pick wrong, you'll spend a month debugging why your training run keeps failing instead of actually training.</p>
+<p>This episode is your field guide to cloud GPU providers. What they cost. What they're good for. And where the hidden traps are.</p>
+<h2 id="s1">The Big Three: AWS, GCP, Azure</h2><div class="section-rule"></div>
+<h2 id="s2">AWS (EC2 + SageMaker)</h2><div class="section-rule"></div>
+<p>The safe choice. The expensive choice. The "nobody ever got fired for choosing AWS" choice.</p>
+<h2 id="s3">Instance Type	GPU	VRAM	On-Demand	Spot</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>g4dn.xlarge</th><th>T4</th><th>16 GB</th><th>$0.526/hr</th><th>~$0.16/hr</th></tr></thead><tbody><tr><td>g5.xlarge</td><td>A10G</td><td>24 GB</td><td>$1.006/hr</td><td>~$0.30/hr</td></tr><tr><td>p3.2xlarge</td><td>V100</td><td>16 GB</td><td>$3.06/hr</td><td>~$0.92/hr</td></tr><tr><td>p4d.24xlarge</td><td>A100 × 8</td><td>320 GB</td><td>$32.77/hr</td><td>~$9.83/hr</td></tr><tr><td>p5.48xlarge</td><td>H100 × 8</td><td>640 GB</td><td>$98.32/hr</td><td>~$29.50/hr</td></tr></tbody></table></div>
+<h2 id="s4">AWS Pros:</h2><div class="section-rule"></div>
+<h2 id="s5">Reliability is top-tier</h2><div class="section-rule"></div>
+<h2 id="s6">SageMaker makes training jobs easy</h2><div class="section-rule"></div>
+<p>Spot instances are actually available (unlike GCP)</p>
+<h2 id="s7">Integration with the rest of AWS ecosystem</h2><div class="section-rule"></div>
+<h2 id="s8">AWS Cons:</h2><div class="section-rule"></div>
+<h2 id="s9">Most expensive option</h2><div class="section-rule"></div>
+<h2 id="s10">GPU availability can be spotty for A100/H100</h2><div class="section-rule"></div>
+<p>Complex pricing (egress, storage, IP addresses all add up)</p>
+<h2 id="s11">Google Cloud Platform (GCP)</h2><div class="section-rule"></div>
+<p>The ML-native choice. TensorFlow was built here. TPUs live here. But their GPU availability is... inconsistent.</p>
+<h2 id="s12">Instance Type	GPU	VRAM	On-Demand	Spot</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>n1-standard-4 + T4</th><th>T4</th><th>16 GB</th><th>$0.35/hr</th><th>~$0.10/hr</th></tr></thead><tbody><tr><td>g2-standard-4</td><td>L4</td><td>24 GB</td><td>$0.70/hr</td><td>~$0.21/hr</td></tr><tr><td>a2-highgpu-1g</td><td>A100</td><td>40 GB</td><td>$3.67/hr</td><td>~$1.10/hr</td></tr><tr><td>a2-ultragpu-1g</td><td>A100 80GB</td><td>80 GB</td><td>$5.02/hr</td><td>~$1.51/hr</td></tr><tr><td>a3-highgpu-8g</td><td>H100 × 8</td><td>640 GB</td><td>~$40/hr</td><td>Rarely available</td></tr></tbody></table></div>
+<h2 id="s13">GCP Pros:</h2><div class="section-rule"></div>
+<p>Best TPU support if you're in that ecosystem</p>
+<h2 id="s14">Good integration with Vertex AI</h2><div class="section-rule"></div>
+<h2 id="s15">Preemptible pricing can be very cheap</h2><div class="section-rule"></div>
+<h2 id="s16">GCP Cons:</h2><div class="section-rule"></div>
+<h2 id="s17">GPU availability is the worst of the big three</h2><div class="section-rule"></div>
+<h2 id="s18">Spot/preemptible instances get reclaimed constantly</h2><div class="section-rule"></div>
+<p>Support can be... Google-y (documentation > humans)</p>
+<h2 id="s19">Azure</h2><div class="section-rule"></div>
+<p>The enterprise choice. The "we already pay for Microsoft" choice. Actually quite good for AI workloads.</p>
+<h2 id="s20">Instance Type	GPU	VRAM	On-Demand	Spot</h2><div class="section-rule"></div>
+<h2 id="s21">NC4as T4 v3	T4	16 GB	$0.526/hr	~$0.08/hr</h2><div class="section-rule"></div>
+<h2 id="s22">NC24ads A100 v4	A100	80 GB	$3.60/hr	~$1.08/hr</h2><div class="section-rule"></div>
+<h2 id="s23">ND96asr A100 v4	A100 × 8	640 GB	$36.29/hr	~$10.89/hr</h2><div class="section-rule"></div>
+<h2 id="s24">ND96isr H100 v5	H100 × 8	640 GB	~$90/hr	~$27/hr</h2><div class="section-rule"></div>
+<h2 id="s25">Azure Pros:</h2><div class="section-rule"></div>
+<p>OpenAI partnership means easy GPT-4 access</p>
+<p>Good availability for A100s</p>
+<h2 id="s26">Spot pricing is aggressive</h2><div class="section-rule"></div>
+<h2 id="s27">Best for Windows/enterprise workflows</h2><div class="section-rule"></div>
+<h2 id="s28">Azure Cons:</h2><div class="section-rule"></div>
+<p>Portal UX is... not great</p>
+<h2 id="s29">Documentation can be fragmented</h2><div class="section-rule"></div>
+<h2 id="s30">Less community content than AWS</h2><div class="section-rule"></div>
+<div class="callout callout-tip"><span class="callout-icon">⚡</span><p></p></div>
+<h2 id="s31">The Challengers: Lambda Labs, RunPod, Vast.ai</h2><div class="section-rule"></div>
+<p>These providers rent GPUs cheaper than the big three. Much cheaper. But with tradeoffs.</p>
+<h2 id="s32">Lambda Labs</h2><div class="section-rule"></div>
+<p>The "researcher-friendly" alternative. Simple pricing, good support, focused on ML workloads.</p>
+<h2 id="s33">GPU	VRAM	Price/hr	Notes</h2><div class="section-rule"></div>
+<h2 id="s34">RTX A6000	48 GB	$0.80	Great for inference</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>A100 40GB</th><th>40 GB</th><th>$1.10</th><th>Training workhorse</th></tr></thead><tbody><tr><td>A100 80GB</td><td>80 GB</td><td>$1.60</td><td>Large model training</td></tr><tr><td>H100 80GB</td><td>80 GB</td><td>$2.40</td><td>Latest and greatest</td></tr><tr><td>H100 × 8</td><td>640 GB</td><td>$19.20</td><td>Multi-node training</td></tr></tbody></table></div>
+<h2 id="s35">Lambda Pros:</h2><div class="section-rule"></div>
+<p>2-3x cheaper than AWS for same GPUs</p>
+<p>Persistent storage (your data stays between sessions)</p>
+<h2 id="s36">Jupyter notebooks built-in</h2><div class="section-rule"></div>
+<p>Good customer support (actual humans)</p>
+<h2 id="s37">Lambda Cons:</h2><div class="section-rule"></div>
+<h2 id="s38">Smaller ecosystem than AWS/GCP</h2><div class="section-rule"></div>
+<h2 id="s39">Occasional availability issues</h2><div class="section-rule"></div>
+<p>Fewer regions (mainly US)</p>
+<h2 id="s40">RunPod</h2><div class="section-rule"></div>
+<p>The "serverless GPU" platform. Pay by the second. Good for bursty workloads.</p>
+<h2 id="s41">GPU	VRAM	Community Cloud	Secure Cloud</h2><div class="section-rule"></div>
+<h2 id="s42">RTX 4090	24 GB	$0.44/hr	$0.69/hr</h2><div class="section-rule"></div>
+<h2 id="s43">RTX A6000	48 GB	$0.80/hr	$1.19/hr</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>A100 40GB</th><th>40 GB</th><th>$1.19/hr</th><th>$1.69/hr</th></tr></thead><tbody><tr><td>A100 80GB</td><td>80 GB</td><td>$1.79/hr</td><td>$2.49/hr</td></tr><tr><td>H100 80GB</td><td>80 GB</td><td>$2.69/hr</td><td>$3.59/hr</td></tr></tbody></table></div>
+<h2 id="s44">RunPod Pros:</h2><div class="section-rule"></div>
+<h2 id="s45">Cheapest option for many GPUs</h2><div class="section-rule"></div>
+<p>Serverless endpoints (scale to zero)</p>
+<p>Community cloud is very cheap (but less reliable)</p>
+<h2 id="s46">Good for inference endpoints</h2><div class="section-rule"></div>
+<h2 id="s47">RunPod Cons:</h2><div class="section-rule"></div>
+<p>Community cloud can be unreliable (random failures)</p>
+<h2 id="s48">Network storage costs add up</h2><div class="section-rule"></div>
+<h2 id="s49">Support is community-based for lower tiers</h2><div class="section-rule"></div>
+<h2 id="s50">Vast.ai</h2><div class="section-rule"></div>
+<p>The "eBay of GPUs." Individuals rent out their personal GPUs. Cheapest option, highest variance.</p>
+<h2 id="s51">GPU	VRAM	Price Range</h2><div class="section-rule"></div>
+<h2 id="s52">RTX 3090	24 GB	$0.20 - $0.50/hr</h2><div class="section-rule"></div>
+<h2 id="s53">RTX 4090	24 GB	$0.40 - $0.80/hr</h2><div class="section-rule"></div>
+<h2 id="s54">RTX A6000	48 GB	$0.60 - $1.20/hr</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>A100 40GB</th><th>40 GB</th><th>$0.80 - $1.50/hr</th></tr></thead><tbody><tr><td>A100 80GB</td><td>80 GB</td><td>$1.20 - $2.50/hr</td></tr></tbody></table></div>
+<h2 id="s55">Vast.ai Pros:</h2><div class="section-rule"></div>
+<h2 id="s56">Cheapest GPUs anywhere</h2><div class="section-rule"></div>
+<h2 id="s57">Massive selection</h2><div class="section-rule"></div>
+<p>Can find deals 5x cheaper than AWS</p>
+<h2 id="s58">Vast.ai Cons:</h2><div class="section-rule"></div>
+<h2 id="s59">Reliability is a coin flip</h2><div class="section-rule"></div>
+<p>No support (you're renting from random people)</p>
+<p>Data security concerns (who owns that machine?)</p>
+<h2 id="s60">Machines can disappear mid-training</h2><div class="section-rule"></div>
+<p>Setup is manual (SSH, configure yourself)</p>
+<h2 id="s61">When to use Vast.ai:</h2><div class="section-rule"></div>
+<h2 id="s62">Experiments and prototyping</h2><div class="section-rule"></div>
+<h2 id="s63">When cost matters more than reliability</h2><div class="section-rule"></div>
+<h2 id="s64">When you can checkpoint frequently</h2><div class="section-rule"></div>
+<h2 id="s65">Never for production or sensitive data</h2><div class="section-rule"></div>
+<p>🔧</p>
+<h2 id="s66">Spot vs On-Demand: The 70% Discount</h2><div class="section-rule"></div>
+<p>Spot instances (AWS) / Preemptible (GCP) / Spot (Azure) are excess capacity sold at discount. The catch: they can be reclaimed with 2 minutes notice.</p>
+<h2 id="s67">Provider	Discount	Interruption Rate	Best For</h2><div class="section-rule"></div>
+<h2 id="s68">AWS Spot	Up to 90%	5-10%	Training with checkpointing</h2><div class="section-rule"></div>
+<h2 id="s69">GCP Preemptible	Up to 80%	10-20%	Fault-tolerant batch jobs</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>Azure Spot</th><th>Up to 90%</th><th>5-10%</th><th>Similar to AWS</th></tr></thead><tbody><tr><td>Lambda Spot</td><td>N/A</td><td>N/A</td><td>Lambda doesn't do spot</td></tr></tbody></table></div>
+<h2 id="s70">Spot Strategy for Training</h2><div class="section-rule"></div>
+<p>python</p>
+<h2 id="s71">Pseudo-code for spot-aware training</h2><div class="section-rule"></div>
+<p>import signal</p>
+<p>import sys</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>checkpoint_path = "/workspace/checkpoint.pt"
+def save_checkpoint():
+torch.save({
+        'epoch': epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+    }, checkpoint_path)
+    print(f"Checkpoint saved to {checkpoint_path}")</code></pre></div>
+</div>
+<p>def handle_sigterm(signum, frame):</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>"""AWS/GCP send SIGTERM before reclaiming spot instance"""
+    print("Spot interruption detected! Saving checkpoint...")
+    save_checkpoint()
+    sys.exit(0)</code></pre></div>
+</div>
+<p>signal.signal(signal.SIGTERM, handle_sigterm)</p>
+<h2 id="s72">Also checkpoint regularly</h2><div class="section-rule"></div>
+<p>for epoch in range(num_epochs):</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>train_epoch()
+    if epoch % 5 == 0:
+        save_checkpoint()</code></pre></div>
+</div>
+<p>Rule of thumb: If your training job can checkpoint and resume, use spot. If it can't, pay for on-demand.</p>
+<p>📊</p>
+<h2 id="s73">Cost Comparison: Training a 7B Model</h2><div class="section-rule"></div>
+<p>Let's say you're fine-tuning Llama 3.1 8B on a custom dataset. You need an A100 80GB.</p>
+<div class="table-wrap"><table><thead><tr><th>Provider</th><th>Price/hr</th><th>1 Week Cost</th><th>1 Month Cost</th></tr></thead><tbody><tr><td>AWS On-Demand</td><td>$5.02</td><td>$843</td><td>$3,614</td></tr><tr><td>AWS Spot</td><td>$1.51</td><td>$254</td><td>$1,087</td></tr><tr><td>GCP On-Demand</td><td>$5.02</td><td>$843</td><td>$3,614</td></tr><tr><td>GCP Spot</td><td>$1.51</td><td>$254</td><td>$1,087</td></tr><tr><td>Lambda</td><td>$1.60</td><td>$269</td><td>$1,152</td></tr><tr><td>RunPod Secure</td><td>$2.49</td><td>$418</td><td>$1,792</td></tr><tr><td>RunPod Community</td><td>$1.79</td><td>$301</td><td>$1,289</td></tr><tr><td>Vast.ai (avg)</td><td>$1.50</td><td>$252</td><td>$1,080</td></tr></tbody></table></div>
+<p>The lesson: Spot instances and alternative providers can cut your training costs by 70%. For a month-long training run, that's the difference between $3,600 and $1,000.</p>
+<h2 id="s74">Hidden Costs</h2><div class="section-rule"></div>
+<p>The hourly GPU price is just the start. Watch out for:</p>
+<h2 id="s75">Cost	AWS	GCP	Lambda	RunPod</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>Egress (data out)</th><th>$0.09/GB</th><th>$0.12/GB</th><th>$0.01/GB</th><th>Varies</th></tr></thead><tbody><tr><td>Storage</td><td>$0.10/GB/mo</td><td>$0.04/GB/mo</td><td>$0.20/GB/mo</td><td>$0.10/GB/mo</td></tr><tr><td>IP address</td><td>$0.005/hr</td><td>$0.004/hr</td><td>Free</td><td>Free</td></tr><tr><td>Load balancer</td><td>$0.022/hr</td><td>$0.025/hr</td><td>N/A</td><td>N/A</td></tr></tbody></table></div>
+<p>Example: Training a model that generates 100GB of checkpoints weekly:</p>
+<h2 id="s76">AWS storage: $10/month</h2><div class="section-rule"></div>
+<p>Downloading those checkpoints: $9 × 4 = $36/month</p>
+<p>Suddenly your "cheap" spot instance has $46 in extra costs</p>
+<div class="callout callout-tip"><span class="callout-icon">💡</span><p></p></div>
+<h2 id="s77">Choosing a Provider: Decision Matrix</h2><div class="section-rule"></div>
+<p>What's your priority?</p>
+<p>│</p>
+<p>├── Reliability is critical (production)</p>
+<p>│   ├── Need managed ML platform → AWS SageMaker or GCP Vertex</p>
+<p>│   └── Just need reliable GPUs → AWS On-Demand or Azure</p>
+<p>│</p>
+<p>├── Cost is critical (research, experiments)</p>
+<p>│   ├── Can handle interruptions → AWS/GCP Spot</p>
+<p>│   ├── Need persistence → Lambda Labs</p>
+<p>│   ├── Need serverless scaling → RunPod</p>
+<p>│   └── Maximum cheap, can tolerate risk → Vast.ai</p>
+<p>│</p>
+<p>├── Training large models (70B+)</p>
+<p>│   └── Need multi-node → AWS p4d/p5 or Lambda 8xH100</p>
+<p>│</p>
+<p>└── Inference at scale</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>├── Steady load → Lambda or RunPod dedicated
+    └── Bursty load → RunPod serverless or AWS SageMaker endpoints</code></pre></div>
+</div>
+<p>🔬</p>
+<h2 id="s78">Practical Takeaways</h2><div class="section-rule"></div>
+<p>Spot instances save 70% — if your workload can handle interruptions, always use spot</p>
+<p>Lambda Labs is the sweet spot — 2-3x cheaper than AWS with better reliability than Vast</p>
+<p>Vast.ai for experiments only — cheapest prices, but don't run production there</p>
+<p>Watch hidden costs — egress and storage can add 20-30% to your bill</p>
+<p>Multi-node training = AWS or Lambda — few providers offer reliable 8xGPU instances</p>
+<p>Start with on-demand, move to spot — prove your code works, then optimize for cost</p>
+<p>🛡️</p>
+<p>What's Next?</p>
+<p>Episode 69: TPUs vs GPUs — Google bet on TPUs. NVIDIA owns GPUs. Which is better for your workload? We'll dive into systolic arrays, XLA compilation, JAX vs PyTorch, and when Google's custom chips actually win.</p>
+<p>← Previous</p>
+<h2 id="s79">Ep 67: Apple Silicon for AI</h2><div class="section-rule"></div>
+<p>Next →</p>
+<h2 id="s80">Ep 69: TPUs vs GPUs</h2><div class="section-rule"></div>
+<p>Next: Episode 69 — TPUs vs GPUs</p>
+<p>NVIDIA GPUs power virtually every AI model you've heard of. So why did Google build its own chip? Here's the TPU story.</p>
+<p>This is part of a 98-episode series covering AI engineering from tokens to production deployment.</p>
+  </article>
+  <div class="ep-nav">
+    <a href="episode-67.html" class="ep-nav-card">
+      <span class="ep-nav-dir">← Previous</span>
+      <span class="ep-nav-title">Ep 67: Apple Silicon for AI: Why Macs Are Legit for Inference</span>
+    </a>
+    <a href="episode-69.html" class="ep-nav-card next">
+      <span class="ep-nav-dir">Next Episode →</span>
+      <span class="ep-nav-title">Ep 69: TPUs vs GPUs: Google's Bet on Custom Silicon</span>
+    </a>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <img class="footer-logo" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+      <div class="footer-tagline">98 Field Manual · Build with AI, not just use it · Free forever</div>
+    </div>
+    <div class="footer-links">
+      <a href="field-manual-index.html">All Episodes</a>
+      <a href="field-manual-index.html#g10">GPU & Hardware</a>
+      <a href="episode-67.html">← Ep 67</a>
+      <a href="episode-69.html">Ep 69 →</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+const prog=document.getElementById('prog');
+window.addEventListener('scroll',()=>{
+  const total=document.documentElement.scrollHeight-window.innerHeight;
+  prog.style.width=Math.min(100,(window.scrollY/total)*100)+'%';
+},{passive:true});
+
+// Build section nav dots from h2s
+const h2s=document.querySelectorAll('.prose h2');
+const sNav=document.getElementById('sectionNav');
+const dots=[];
+h2s.forEach((h,i)=>{
+  const btn=document.createElement('button');
+  btn.className='snav-dot';
+  btn.setAttribute('data-label',h.textContent.trim().substring(0,28));
+  btn.onclick=()=>h.scrollIntoView({behavior:'smooth',block:'start'});
+  sNav.appendChild(btn);
+  dots.push({btn,h});
+});
+
+const dotObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      const idx=dots.findIndex(d=>d.h===e.target);
+      if(idx>-1) dots.forEach((d,i)=>d.btn.classList.toggle('active',i===idx));
+    }
+  });
+},{rootMargin:'-30% 0px -60% 0px'});
+dots.forEach(d=>dotObs.observe(d.h));
+
+// Scroll reveal
+const revObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='translateY(0)';}});
+},{threshold:0.08});
+document.querySelectorAll('.toc,.callout,.table-wrap,.code-block,.ep-nav-card').forEach(el=>{
+  el.style.opacity='0';
+  el.style.transform='translateY(14px)';
+  el.style.transition='opacity 0.55s ease,transform 0.55s ease';
+  revObs.observe(el);
+});
+</script>
+</body>
+</html>

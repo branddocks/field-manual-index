@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ep 94: How Perplexity Works: The Search Engine That Actually Answers</title>
+<meta name="description" content="Google gives you 10 blue links. Perplexity gives you the answer with citations. Here's the architecture behind it.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,300&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0d0d1a;--page:#ffffff;--paper:#f8f9ff;
+  --navy:#124093;--navy-dim:rgba(18,64,147,0.07);--navy-mid:rgba(18,64,147,0.15);
+  --red:#e2190e;--gold:#c8973a;--muted:#6b7280;--rule:#e5e7ef;--code-bg:#0d0d1f;
+  --title:'Roboto',sans-serif;--body:'Poppins',sans-serif;--mono:'DM Mono',monospace;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--page);color:var(--ink);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:#fff}
+::-webkit-scrollbar-thumb{background:var(--navy);border-radius:2px}
+
+/* NAV */
+nav.top{position:sticky;top:0;z-index:200;background:#fff;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(20px,5vw,60px);border-bottom:1px solid var(--rule);box-shadow:0 1px 12px rgba(0,0,0,0.05)}
+.logo-wrap{display:flex;align-items:center;text-decoration:none}
+.logo-img{height:38px;width:auto;object-fit:contain;display:block}
+.nav-right{display:flex;align-items:center;gap:6px}
+.nav-link{font-family:var(--body);font-size:11.5px;font-weight:500;color:var(--muted);text-decoration:none;padding:6px 14px;border-radius:6px;transition:all 0.2s}
+.nav-link:hover{color:var(--navy);background:var(--navy-dim)}
+.nav-cta{background:var(--navy)!important;color:#fff!important}
+.nav-cta:hover{background:#1a52c0!important;color:#fff!important}
+
+/* PROGRESS */
+.progress-bar-fixed{position:fixed;top:60px;left:0;right:0;height:2.5px;background:rgba(18,64,147,0.1);z-index:199}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--navy),#4f7ff7);width:0%;transition:width 0.1s;border-radius:0 2px 2px 0}
+
+/* HERO */
+.hero{background:#fff;position:relative;overflow:hidden;min-height:88vh;display:flex;flex-direction:column;justify-content:center}
+.hero-bg{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.hero-blob-1{position:absolute;top:-120px;right:-120px;width:700px;height:700px;background:radial-gradient(circle at 60% 40%,rgba(18,64,147,0.07) 0%,rgba(18,64,147,0.03) 40%,transparent 70%);border-radius:50%}
+.hero-blob-2{position:absolute;bottom:-80px;left:-80px;width:500px;height:500px;background:radial-gradient(circle,rgba(79,127,247,0.06) 0%,transparent 65%);border-radius:50%}
+.hero-lines{position:absolute;top:0;right:0;width:45%;height:100%;opacity:0.06}
+.hero-lines svg{width:100%;height:100%}
+.hero-tokens{position:absolute;top:0;right:0;width:46%;height:100%;display:flex;align-items:center;justify-content:center}
+.token-float-wrap{position:relative;width:360px;height:360px}
+.tf{position:absolute;font-family:var(--mono);font-size:13px;font-weight:500;padding:8px 16px;border-radius:8px;white-space:nowrap;animation:float-anim 6s ease-in-out infinite;box-shadow:0 4px 20px rgba(0,0,0,0.08)}
+.tf-1{top:20px;left:60px;background:rgba(18,64,147,0.09);color:#124093;border:1px solid rgba(18,64,147,0.18);animation-delay:0s}
+.tf-2{top:70px;right:20px;background:rgba(79,127,247,0.09);color:#2563eb;border:1px solid rgba(79,127,247,0.2);animation-delay:0.8s}
+.tf-3{top:140px;left:20px;background:rgba(16,185,129,0.08);color:#059669;border:1px solid rgba(16,185,129,0.18);animation-delay:1.6s}
+.tf-4{top:170px;right:50px;background:rgba(168,85,247,0.08);color:#7c3aed;border:1px solid rgba(168,85,247,0.18);animation-delay:0.4s}
+.tf-5{bottom:140px;left:80px;background:rgba(234,179,8,0.08);color:#b45309;border:1px solid rgba(234,179,8,0.2);animation-delay:1.2s}
+.tf-6{bottom:90px;right:30px;background:rgba(236,72,153,0.08);color:#db2777;border:1px solid rgba(236,72,153,0.2);animation-delay:2s}
+.tf-7{bottom:30px;left:40px;background:rgba(239,68,68,0.08);color:#dc2626;border:1px solid rgba(239,68,68,0.18);animation-delay:0.6s}
+.tf-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:110px;height:110px;background:var(--navy);border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;box-shadow:0 12px 40px rgba(18,64,147,0.3);animation:pulse-center 3s ease-in-out infinite}
+.tf-center .big{font-family:var(--title);font-size:28px;font-weight:900;color:#fff;line-height:1}
+.tf-center .small{font-family:var(--body);font-size:9px;font-weight:500;color:rgba(255,255,255,0.6);letter-spacing:1.5px;text-transform:uppercase}
+@keyframes float-anim{0%,100%{transform:translateY(0px)}50%{transform:translateY(-10px)}}
+@keyframes pulse-center{0%,100%{box-shadow:0 12px 40px rgba(18,64,147,0.3)}50%{box-shadow:0 12px 60px rgba(18,64,147,0.5)}}
+.hero-content{position:relative;z-index:2;width:54%;padding:clamp(48px,8vw,96px) clamp(24px,5vw,72px) clamp(48px,8vw,96px)}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:5px 14px;background:var(--navy-dim);border:1px solid rgba(18,64,147,0.18);border-radius:100px;margin-bottom:22px;font-family:var(--body);font-size:10px;font-weight:600;color:var(--navy);letter-spacing:1.2px;text-transform:uppercase}
+.hero-eyebrow .dot{width:5px;height:5px;background:var(--navy);border-radius:50%}
+.hero h1{font-family:var(--title);font-size:clamp(28px,4.5vw,52px);font-weight:900;color:var(--ink);line-height:1.08;letter-spacing:-1.2px;margin-bottom:20px}
+.hero h1 .line2{display:block;color:var(--navy)}
+.hero-sub{font-family:var(--body);font-size:clamp(13px,1.6vw,15px);font-weight:300;color:#4b5563;line-height:1.85;max-width:500px;margin-bottom:34px}
+.breadcrumb{display:flex;align-items:center;gap:7px;margin-bottom:28px;font-family:var(--mono);font-size:10px;color:#9ca3af}
+.breadcrumb a{color:inherit;text-decoration:none;transition:color 0.2s}
+.breadcrumb a:hover{color:var(--navy)}
+.breadcrumb .sep{color:#d1d5db}
+.breadcrumb .cur{color:#6b7280}
+.meta-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:14px 20px;background:var(--paper);border:1px solid var(--rule);border-radius:10px;margin-bottom:24px}
+.meta-item{font-family:var(--body);font-size:10.5px;font-weight:500;color:var(--muted);display:flex;align-items:center;gap:5px}
+.tags-row{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-family:var(--body);font-size:10px;font-weight:500;color:var(--navy);background:var(--navy-dim);padding:4px 11px;border-radius:100px;border:1px solid rgba(18,64,147,0.15)}
+@media(max-width:900px){.hero{min-height:auto;padding-bottom:48px}.hero-content{width:100%;padding:48px 24px 36px}.hero-tokens{display:none}.hero-lines{display:none}}
+
+/* SECTION NAV DOTS */
+.section-nav{position:fixed;right:clamp(12px,2vw,24px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:9px;z-index:100}
+.snav-dot{width:7px;height:7px;border-radius:50%;background:#d1d5db;border:none;padding:0;cursor:pointer;transition:all 0.3s;position:relative}
+.snav-dot::after{content:attr(data-label);position:absolute;right:16px;top:50%;transform:translateY(-50%);font-family:var(--body);font-size:9px;font-weight:500;color:var(--ink);background:#fff;padding:3px 9px;border-radius:4px;border:1px solid var(--rule);box-shadow:0 2px 8px rgba(0,0,0,0.06);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.2s}
+.snav-dot:hover::after{opacity:1}
+.snav-dot.active{background:var(--navy);transform:scale(1.5)}
+.snav-dot:hover:not(.active){background:rgba(18,64,147,0.4)}
+@media(max-width:768px){.section-nav{display:none}}
+
+/* LAYOUT */
+.layout{max-width:860px;margin:0 auto;padding:clamp(40px,6vw,68px) clamp(20px,5vw,56px) 80px}
+
+/* TOC */
+.toc{background:var(--paper);border:1px solid var(--rule);border-left:4px solid var(--navy);border-radius:10px;padding:22px 26px;margin-bottom:52px}
+.toc-title{font-family:var(--title);font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
+.toc-list{list-style:none;display:flex;flex-direction:column;gap:3px}
+.toc-list li a{display:flex;align-items:center;gap:12px;text-decoration:none;padding:6px 0;font-family:var(--body);font-size:13px;font-weight:400;color:var(--ink);transition:color 0.2s}
+.toc-list li a:hover{color:var(--navy)}
+.toc-num{font-family:var(--mono);font-size:9px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* PROSE */
+.prose{line-height:1.85}
+.prose h2{font-family:var(--title);font-size:clamp(18px,2.5vw,23px);font-weight:700;color:var(--ink);letter-spacing:-0.4px;margin:52px 0 8px;line-height:1.2;scroll-margin-top:80px;padding-left:18px;position:relative}
+.prose h2::before{content:'';position:absolute;left:0;top:5px;bottom:5px;width:3px;background:var(--navy);border-radius:2px}
+.prose h2:first-child{margin-top:0}
+.prose h3{font-family:var(--title);font-size:14px;font-weight:700;color:var(--ink);margin:26px 0 8px}
+.section-rule{width:36px;height:2px;background:var(--navy);border-radius:2px;margin:8px 0 22px 18px;opacity:0.4}
+.prose p{font-family:var(--body);font-size:clamp(13.5px,1.7vw,15px);line-height:1.88;color:#374151;margin-bottom:16px;font-weight:300}
+.prose p strong{font-weight:600;color:var(--ink)}
+.prose ul,.prose ol{list-style:none;padding:0;margin:4px 0 20px}
+.prose ul li,.prose ol li{font-family:var(--body);font-size:clamp(13.5px,1.7vw,14.5px);line-height:1.8;color:#374151;padding:4px 0 4px 26px;position:relative;font-weight:300}
+.prose ul li::before{content:'';position:absolute;left:5px;top:14px;width:5px;height:5px;background:var(--navy);border-radius:50%;opacity:0.55}
+.prose ol{counter-reset:li}
+.prose ol li{counter-increment:li}
+.prose ol li::before{content:counter(li);position:absolute;left:0;top:5px;font-family:var(--mono);font-size:8px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.ic{font-family:var(--mono);font-size:12.5px;background:var(--navy-dim);color:var(--navy);padding:1.5px 6px;border-radius:4px;border:1px solid rgba(18,64,147,0.15)}
+
+/* CODE */
+.code-block{background:var(--code-bg);border-radius:10px;margin:24px 0;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.12),0 0 0 1px rgba(18,64,147,0.1)}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.02)}
+.code-dots{display:flex;gap:5px}
+.cd{width:10px;height:10px;border-radius:50%}
+.cd-r{background:#ff5f56}.cd-y{background:#ffbd2e}.cd-g{background:#27c93f}
+.code-filename{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,0.25)}
+.code-lang{font-family:var(--mono);font-size:9px;color:rgba(91,140,247,0.6);letter-spacing:1px;text-transform:uppercase}
+.code-body{padding:20px 22px;overflow-x:auto}
+.code-body pre{margin:0}
+.code-body code{font-family:var(--mono);font-size:12.5px;line-height:1.9;color:#c9d4f5}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;margin:24px 0;border-radius:10px;border:1px solid var(--rule);box-shadow:0 2px 12px rgba(0,0,0,0.04)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:var(--ink)}
+thead th{padding:12px 16px;text-align:left;font-family:var(--body);font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,0.45)}
+thead th:first-child{color:#6b9fff}
+tbody tr{border-bottom:1px solid var(--rule);transition:background 0.15s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--paper)}
+tbody td{padding:10px 16px;font-family:var(--body);font-size:13px;color:#374151;font-weight:300;line-height:1.5}
+tbody td:first-child{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--navy)}
+
+/* CALLOUTS */
+.callout{border-radius:9px;padding:16px 20px;margin:24px 0;display:flex;gap:13px;align-items:flex-start}
+.callout-tip{background:rgba(18,64,147,0.05);border:1px solid rgba(18,64,147,0.16);border-left:3px solid var(--navy)}
+.callout-warn{background:rgba(220,38,38,0.04);border:1px solid rgba(220,38,38,0.14);border-left:3px solid #dc2626}
+.callout-note{background:rgba(200,151,58,0.05);border:1px solid rgba(200,151,58,0.2);border-left:3px solid var(--gold)}
+.callout-icon{font-size:16px;flex-shrink:0;margin-top:1px;line-height:1}
+.callout p{font-size:13.5px!important;line-height:1.7!important;color:#374151!important;margin:0!important}
+
+/* EP NAV */
+.ep-nav{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:64px;padding-top:32px;border-top:1px solid var(--rule)}
+@media(max-width:500px){.ep-nav{grid-template-columns:1fr}}
+.ep-nav-card{display:flex;flex-direction:column;text-decoration:none;padding:20px 22px;border:1px solid var(--rule);border-radius:10px;background:var(--paper);transition:all 0.25s;gap:5px}
+.ep-nav-card:hover{border-color:rgba(18,64,147,0.3);background:var(--navy-dim);transform:translateY(-2px);box-shadow:0 6px 20px rgba(18,64,147,0.08)}
+.ep-nav-dir{font-family:var(--body);font-size:9px;font-weight:600;color:var(--navy);letter-spacing:1px;text-transform:uppercase}
+.ep-nav-title{font-family:var(--title);font-size:13px;font-weight:600;color:var(--ink);line-height:1.4}
+.ep-nav-card.next{align-items:flex-end;text-align:right}
+
+/* FOOTER */
+footer{background:var(--ink);padding:44px clamp(20px,5vw,60px);border-top:3px solid var(--navy)}
+.footer-inner{max-width:860px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.footer-logo{height:32px;width:auto;object-fit:contain;filter:brightness(0) invert(1);opacity:0.7}
+.footer-tagline{font-family:var(--body);font-size:11px;color:rgba(255,255,255,0.22);font-style:italic;margin-top:4px;font-weight:300}
+.footer-links{display:flex;gap:20px;flex-wrap:wrap}
+.footer-links a{font-family:var(--body);font-size:11px;font-weight:400;color:rgba(255,255,255,0.3);text-decoration:none;transition:color 0.2s}
+.footer-links a:hover{color:rgba(255,255,255,0.75)}
+
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.hero-content>*{animation:fadeUp 0.65s cubic-bezier(0.22,1,0.36,1) both}
+.hero-content>*:nth-child(1){animation-delay:0.05s}
+.hero-content>*:nth-child(2){animation-delay:0.1s}
+.hero-content>*:nth-child(3){animation-delay:0.15s}
+.hero-content>*:nth-child(4){animation-delay:0.2s}
+.hero-content>*:nth-child(5){animation-delay:0.25s}
+.hero-content>*:nth-child(6){animation-delay:0.3s}
+.hero-content>*:nth-child(7){animation-delay:0.35s}
+@media(max-width:640px){.nav-link:not(.nav-cta){display:none}}
+</style>
+</head>
+<body>
+
+<div class="progress-bar-fixed"><div class="progress-fill" id="prog"></div></div>
+
+<nav class="top">
+  <a href="field-manual-index.html" class="logo-wrap">
+    <img class="logo-img" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+  </a>
+  <div class="nav-right">
+    <a href="field-manual-index.html" class="nav-link">All Episodes</a>
+    <a href="field-manual-index.html#g14" class="nav-link nav-cta">🏗️ Real-World Architectures</a>
+  </div>
+</nav>
+
+<nav class="section-nav" id="sectionNav"></nav>
+
+<header class="hero">
+  <div class="hero-bg">
+    <div class="hero-blob-1"></div>
+    <div class="hero-blob-2"></div>
+    <div class="hero-lines">
+      <svg viewBox="0 0 600 800" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+        <line x1="0" y1="200" x2="600" y2="0" stroke="#124093" stroke-width="1"/>
+        <line x1="0" y1="400" x2="600" y2="200" stroke="#124093" stroke-width="0.6"/>
+        <line x1="0" y1="600" x2="600" y2="400" stroke="#124093" stroke-width="0.4"/>
+        <circle cx="500" cy="150" r="120" stroke="#124093" stroke-width="0.8" fill="none"/>
+        <circle cx="500" cy="150" r="80" stroke="#124093" stroke-width="0.4" fill="none"/>
+        <circle cx="500" cy="150" r="40" stroke="#124093" stroke-width="0.3" fill="none"/>
+        <line x1="300" y1="0" x2="300" y2="800" stroke="#124093" stroke-width="0.4" stroke-dasharray="6,12"/>
+        <rect x="360" y="480" width="160" height="160" stroke="#124093" stroke-width="0.6" fill="none" transform="rotate(15 440 560)"/>
+      </svg>
+    </div>
+  </div>
+  <div class="hero-tokens" aria-hidden="true">
+    <div class="token-float-wrap">
+      <div class="tf tf-1">token</div>
+<div class="tf tf-2">model</div>
+<div class="tf tf-3">layer</div>
+<div class="tf tf-4">vector</div>
+<div class="tf tf-5">embed</div>
+<div class="tf tf-6">weight</div>
+<div class="tf tf-7">param</div>
+      <div class="tf-center">
+        <span class="big">HOW</span>
+        <span class="small">EP 94</span>
+      </div>
+    </div>
+  </div>
+  <div class="hero-content">
+    <nav class="breadcrumb">
+      <a href="field-manual-index.html">Field Manual</a>
+      <span class="sep">›</span>
+      <a href="field-manual-index.html#g14">🏗️ Real-World Architectures</a>
+      <span class="sep">›</span>
+      <span class="cur">Episode 94</span>
+    </nav>
+    <div class="hero-eyebrow"><span class="dot"></span>MODULE 14 &nbsp;·&nbsp; Real-World Architectures</div>
+    <h1>How Perplexity Works: The Search Engine That Actually Answers</h1>
+    <p class="hero-sub">Google gives you 10 blue links. Perplexity gives you the answer with citations. Here's the architecture behind it.</p>
+    <div class="meta-row">
+      <div class="meta-item"><span>📅</span> Mar 2026</div>
+      <div class="meta-item"><span>⏱</span> 10 min read</div>
+      <div class="meta-item"><span>🎯</span> Episode 94 of 98</div>
+    </div>
+    <div class="tags-row"><span class="tag">Perplexity</span><span class="tag">AI Search</span><span class="tag">RAG</span><span class="tag">Architecture</span></div>
+  </div>
+</header>
+
+<main class="layout">
+  <div class="toc">
+  <div class="toc-title">In this episode</div>
+  <ul class="toc-list"><li><a href="#s1"><span class="toc-num">1</span>The Architecture: Search Meets RAG Meets LLM</a></li>
+<li><a href="#s2"><span class="toc-num">2</span>Stage 1: Query Understanding</a></li>
+<li><a href="#s3"><span class="toc-num">3</span>Generated search queries:</a></li>
+<li><a href="#s4"><span class="toc-num">4</span>Stage 2: Web Crawling and Indexing</a></li>
+<li><a href="#s5"><span class="toc-num">5</span>Real-Time Crawling</a></li>
+<li><a href="#s6"><span class="toc-num">6</span>Simplified crawl pipeline</a></li>
+<li><a href="#s7"><span class="toc-num">7</span>The Perplexity Index</a></li>
+<li><a href="#s8"><span class="toc-num">8</span>Billions of web pages pre-crawled and indexed</a></li>
+<li><a href="#s9"><span class="toc-num">9</span>Stage 3: Passage Retrieval and Ranking</a></li>
+<li><a href="#s10"><span class="toc-num">10</span>Passage retrieval pipeline</a></li>
+<li><a href="#s11"><span class="toc-num">11</span>Ranking Factors</a></li>
+<li><a href="#s12"><span class="toc-num">12</span>Relevance score:</a></li>
+<li><a href="#s13"><span class="toc-num">13</span>Stage 4: Grounded Generation</a></li>
+<li><a href="#s14"><span class="toc-num">14</span>System prompt:</a></li>
+<li><a href="#s15"><span class="toc-num">15</span>Sources:</a></li>
+<li><a href="#s16"><span class="toc-num">16</span>The model generates:</a></li>
+<li><a href="#s17"><span class="toc-num">17</span>The Citation Verification Problem</a></li>
+<li><a href="#s18"><span class="toc-num">18</span>Common failure modes:</a></li>
+<li><a href="#s19"><span class="toc-num">19</span>Perplexity addresses this with:</a></li>
+<li><a href="#s20"><span class="toc-num">20</span>Post-generation citation verification</a></li>
+<li><a href="#s21"><span class="toc-num">21</span>Perplexity Pro: The "Deep Research" Mode</a></li>
+<li><a href="#s22"><span class="toc-num">22</span>Final: Generate comprehensive answer with all sources</a></li>
+<li><a href="#s23"><span class="toc-num">23</span>The Technical Stack (Best Guess)</a></li>
+<li><a href="#s24"><span class="toc-num">24</span>Component	Likely Technology</a></li>
+<li><a href="#s25"><span class="toc-num">25</span>The Answer Engine vs Search Engine Debate</a></li>
+<li><a href="#s26"><span class="toc-num">26</span>Perplexity represents a fundamental shift:</a></li>
+<li><a href="#s27"><span class="toc-num">27</span>Google (Search Engine)	Perplexity (Answer Engine)</a></li>
+<li><a href="#s28"><span class="toc-num">28</span>Output	Links to pages	Direct answer with citations</a></li>
+<li><a href="#s29"><span class="toc-num">29</span>Building Your Own Answer Engine</a></li>
+<li><a href="#s30"><span class="toc-num">30</span>Mini answer engine architecture</a></li>
+<li><a href="#s31"><span class="toc-num">31</span>Practical Takeaways</a></li>
+<li><a href="#s32"><span class="toc-num">32</span>Ep 93: How Cursor/Copilot Works</a></li>
+<li><a href="#s33"><span class="toc-num">33</span>Ep 95: How Midjourney Works</a></li>
+<li><a href="#s34"><span class="toc-num">34</span>Next: Episode 95 — How Midjourney Works</a></li>
+</ul>
+</div>
+  <article class="prose" id="s0">
+<p>Google gives you 10 blue links. You click, read, scroll, click back, try another link, piece together the answer yourself.</p>
+<p>Perplexity gives you the answer. With citations. In 3 seconds.</p>
+<p>This might be the most important shift in how humans access information since Google itself. And the architecture behind it — combining real-time web search, RAG at massive scale, and citation-grounded generation — is a masterclass in AI engineering.</p>
+<p>Let's trace how a single query goes from your question to a cited, sourced answer.</p>
+<h2 id="s1">The Architecture: Search Meets RAG Meets LLM</h2><div class="section-rule"></div>
+<p>Your Question: "What's the latest on India's semiconductor fab plans?"</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>│
+    ▼</code></pre></div>
+</div>
+<p>┌─────────────────────────────────────────────────┐</p>
+<p>│  Query Understanding                             │</p>
+<p>│  → Classify: needs search? (yes — current topic) │</p>
+<p>│  → Extract: key entities (India, semiconductor)   │</p>
+<p>│  → Generate: optimized search queries             │</p>
+<p>└───────────────────┬─────────────────────────────┘</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>│
+    ┌───────────────┼───────────────┐
+    ▼               ▼               ▼</code></pre></div>
+</div>
+<p>┌────────┐    ┌────────┐    ┌────────┐</p>
+<p>│ Web    │    │ News   │    │ Index  │</p>
+<p>│ Search │    │ Search │    │ Search │</p>
+<p>│ (Bing) │    │(recent)│    │(cached)│</p>
+<p>└────┬───┘    └───┬────┘    └───┬────┘</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>│            │             │
+     └────────────┼─────────────┘
+                  ▼</code></pre></div>
+</div>
+<p>┌─────────────────────────────────────────────────┐</p>
+<p>│  Retrieval & Ranking                             │</p>
+<p>│  → Fetch top 20-30 pages                         │</p>
+<p>│  → Extract relevant passages                     │</p>
+<p>│  → Rank by relevance + recency + authority       │</p>
+<p>│  → Select top 5-8 sources                        │</p>
+<p>└───────────────────┬─────────────────────────────┘</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>▼</code></pre></div>
+</div>
+<p>┌─────────────────────────────────────────────────┐</p>
+<p>│  Grounded Generation                             │</p>
+<p>│  → LLM generates answer using ONLY retrieved text│</p>
+<p>│  → Every claim tagged with source [1][2][3]      │</p>
+<p>│  → Hallucination guardrails                      │</p>
+<p>└───────────────────┬─────────────────────────────┘</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>▼</code></pre></div>
+</div>
+<p>Your answer (with numbered citations)</p>
+<p>Let's dig into each stage.</p>
+<div class="callout callout-tip"><span class="callout-icon">⚡</span><p></p></div>
+<h2 id="s2">Stage 1: Query Understanding</h2><div class="section-rule"></div>
+<p>Not every question needs web search. Perplexity first classifies the query:</p>
+<p>"What's 2+2?" → No search needed (model knowledge)</p>
+<p>"What's the weather in Mumbai?" → Needs real-time data</p>
+<p>"Latest on India's semiconductor plans?" → Needs web search + news</p>
+<p>"Explain quantum computing" → Could use model knowledge, but search adds freshness</p>
+<p>For queries that need search, Perplexity generates optimized search queries — not your original question, but what would find the best results:</p>
+<p>User query: "What's the latest on India's semiconductor fab plans?"</p>
+<h2 id="s3">Generated search queries:</h2><div class="section-rule"></div>
+<ol><li>"India semiconductor fabrication plant 2024 latest news"</li><li>"India chip manufacturing Tata Micron factory update"</li><li>"India semiconductor policy ISMC fab"</li></ol>
+<p>Multiple queries are generated to maximize coverage. Each targets a different angle of the topic.</p>
+<p>🔧</p>
+<h2 id="s4">Stage 2: Web Crawling and Indexing</h2><div class="section-rule"></div>
+<p>Perplexity maintains its own web index — they don't just rely on Bing's API.</p>
+<h2 id="s5">Real-Time Crawling</h2><div class="section-rule"></div>
+<p>When search results return URLs, Perplexity crawls and extracts content in real-time:</p>
+<p>python</p>
+<h2 id="s6">Simplified crawl pipeline</h2><div class="section-rule"></div>
+<p>async def fetch_and_extract(urls):</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>results = []</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>for url in urls:
+        # Fetch the page
+        html = await fetch(url, timeout=3000)  # 3s timeout, skip slow sites</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># Extract readable content (strip nav, ads, boilerplate)
+        content = extract_article_text(html)  # Similar to Readability.js</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># Extract metadata
+        metadata = {
+            'title': extract_title(html),
+            'date': extract_publish_date(html),
+            'author': extract_author(html),
+            'domain': urlparse(url).netloc,
+            'domain_authority': get_domain_score(url),
+        }</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>results.append({
+            'url': url,
+            'content': content[:10000],  # Cap at ~10K chars
+            'metadata': metadata,
+        })</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>return results</code></pre></div>
+</div>
+<h2 id="s7">The Perplexity Index</h2><div class="section-rule"></div>
+<p>Beyond real-time crawling, Perplexity has built a massive pre-crawled index:</p>
+<h2 id="s8">Billions of web pages pre-crawled and indexed</h2><div class="section-rule"></div>
+<p>Updated continuously — news sources crawled every few minutes</p>
+<p>Domain quality scoring — authoritative sources ranked higher</p>
+<p>Structured extraction — not just text, but tables, lists, dates</p>
+<p>This pre-crawled index is why Perplexity can answer in 3 seconds instead of 30. Most of the crawling is already done.</p>
+<p>📊</p>
+<h2 id="s9">Stage 3: Passage Retrieval and Ranking</h2><div class="section-rule"></div>
+<p>Perplexity doesn't dump entire web pages into the LLM context. It retrieves the specific passages that answer your question.</p>
+<p>python</p>
+<h2 id="s10">Passage retrieval pipeline</h2><div class="section-rule"></div>
+<p>def retrieve_relevant_passages(query, crawled_pages):</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>all_passages = []</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>for page in crawled_pages:
+        # Split page into overlapping passages (~200 words each)
+        passages = chunk_text(page['content'], chunk_size=200, overlap=50)</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>for passage in passages:
+            all_passages.append({
+                'text': passage,
+                'source': page['url'],
+                'title': page['metadata']['title'],
+                'date': page['metadata']['date'],
+            })</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># Embed the query
+    query_embedding = embed(query)</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># Embed all passages and rank by similarity
+    passage_embeddings = embed_batch([p['text'] for p in all_passages])</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>scores = cosine_similarity(query_embedding, passage_embeddings)</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># Rerank with a cross-encoder (more accurate than embedding similarity)
+    reranked = cross_encoder_rerank(query, all_passages, scores)</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># Apply diversity filter (don't pick 5 passages from the same source)
+    diverse_passages = apply_diversity(reranked, max_per_source=2)</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>return diverse_passages[:8]  # Top 8 passages</code></pre></div>
+</div>
+<p>The reranking step is crucial. Embedding similarity is fast but rough. A cross-encoder (a model that takes query + passage as input and outputs a relevance score) is slower but much more accurate. Perplexity uses both: embeddings for fast initial filtering, cross-encoder for precise reranking.</p>
+<h2 id="s11">Ranking Factors</h2><div class="section-rule"></div>
+<h2 id="s12">Relevance score:</h2><div class="section-rule"></div>
+<p>40% - Semantic relevance (does the passage answer the question?)</p>
+<p>25% - Recency (newer = better for current topics)</p>
+<p>20% - Source authority (established media > random blog)</p>
+<p>15% - Passage quality (length, specificity, factual density)</p>
+<h2 id="s13">Stage 4: Grounded Generation</h2><div class="section-rule"></div>
+<p>This is where it all comes together. The LLM generates an answer, but it's grounded in the retrieved passages:</p>
+<h2 id="s14">System prompt:</h2><div class="section-rule"></div>
+<p>"You are a research assistant. Answer the user's question using ONLY</p>
+<p>the provided sources. Cite every claim with [1], [2], etc.</p>
+<p>If the sources don't contain the answer, say so.</p>
+<p>Do NOT use information not present in the sources."</p>
+<h2 id="s15">Sources:</h2><div class="section-rule"></div>
+<p>[1] TechCrunch (Jan 2024): "India approved $15.2 billion in incentives</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>for semiconductor manufacturing. Tata Group plans to build..."</code></pre></div>
+</div>
+<p>[2] Reuters (Feb 2024): "Micron Technology inaugurated its $2.75 billion</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>assembly and test facility in Gujarat..."</code></pre></div>
+</div>
+<p>[3] Economic Times (Mar 2024): "The Indian government is in talks with</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>three more companies for semiconductor fabs..."</code></pre></div>
+</div>
+<p>[4] Semiconductor Today (Jan 2024): "ISMC (a joint venture) announced</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>plans for a 65nm fab in Karnataka..."</code></pre></div>
+</div>
+<p>User: "What's the latest on India's semiconductor fab plans?"</p>
+<h2 id="s16">The model generates:</h2><div class="section-rule"></div>
+<p>India has been aggressively pursuing semiconductor manufacturing.</p>
+<p>The government approved $15.2 billion in incentives [1], attracting</p>
+<p>multiple companies. Micron Technology recently inaugurated a $2.75</p>
+<p>billion assembly facility in Gujarat [2]. The Tata Group is building</p>
+<p>its own fab facility [1], while the government is in active discussions</p>
+<p>with three additional companies [3]. ISMC has announced plans for a</p>
+<p>65nm fabrication plant in Karnataka [4].</p>
+<p>Every claim has a citation. If the model tries to add information not in the sources, the post-processing catches it.</p>
+<div class="callout callout-tip"><span class="callout-icon">💡</span><p></p></div>
+<h2 id="s17">The Citation Verification Problem</h2><div class="section-rule"></div>
+<p>Generating citations is easy. Generating correct citations is hard.</p>
+<h2 id="s18">Common failure modes:</h2><div class="section-rule"></div>
+<ol><li>"Ghost citation" — [3] doesn't actually support the claim</li></ol>
+<p>"India plans to build 10 fabs by 2025 [3]"</p>
+<p>→ Source [3] never mentions "10 fabs" or "2025"</p>
+<ol><li>"Hallucinated synthesis" — combining facts from different sources incorrectly</li></ol>
+<p>"Tata is building a $2.75 billion fab in Karnataka"</p>
+<p>→ Tata is building a fab [1], $2.75B is Micron [2], Karnataka is ISMC [4]</p>
+<ol><li>"Outdated citation" — citing old information when newer exists</li></ol>
+<h2 id="s19">Perplexity addresses this with:</h2><div class="section-rule"></div>
+<p>python</p>
+<h2 id="s20">Post-generation citation verification</h2><div class="section-rule"></div>
+<p>def verify_citations(answer, sources):</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>claims = extract_claims(answer)  # NLP to split into individual claims</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>for claim in claims:
+        cited_source = get_cited_source(claim)
+        source_text = sources[cited_source]['text']</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># Check if the source actually supports the claim
+        entailment_score = nli_model.predict(
+            premise=source_text,
+            hypothesis=claim.text
+        )</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>if entailment_score &lt; 0.7:
+            # Citation doesn't support claim — flag or remove
+            claim.flag_for_review()</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>return verified_answer</code></pre></div>
+</div>
+<p>Natural Language Inference (NLI) models check whether each source actually entails (logically supports) the claim it's cited for.</p>
+<p>🔬</p>
+<h2 id="s21">Perplexity Pro: The "Deep Research" Mode</h2><div class="section-rule"></div>
+<p>Perplexity Pro's research mode is more sophisticated — it runs multiple search-read-think cycles:</p>
+<p>Cycle 1: Initial search</p>
+<p>→ "India semiconductor plans"</p>
+<p>→ Read top results</p>
+<p>→ Identify gaps: "Who are the specific companies? What timelines?"</p>
+<p>Cycle 2: Follow-up search</p>
+<p>→ "Tata semiconductor fab timeline India"</p>
+<p>→ "Micron Gujarat facility progress 2024"</p>
+<p>→ Read, extract new information</p>
+<p>Cycle 3: Deep dive</p>
+<p>→ "India semiconductor policy PLI scheme details"</p>
+<p>→ "ISMC Karnataka 65nm fab latest update"</p>
+<p>→ Synthesize all gathered information</p>
+<h2 id="s22">Final: Generate comprehensive answer with all sources</h2><div class="section-rule"></div>
+<p>This iterative approach — search, read, identify gaps, search again — is essentially agentic RAG (Episode 30 meets Episode 22). The model is acting as a research agent, deciding what to search for next based on what it's already found.</p>
+<p>🛡️</p>
+<h2 id="s23">The Technical Stack (Best Guess)</h2><div class="section-rule"></div>
+<p>Perplexity hasn't published their full architecture, but from their papers, blog posts, and hiring patterns:</p>
+<h2 id="s24">Component	Likely Technology</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>Search API</th><th>Bing API + custom index</th></tr></thead><tbody><tr><td>Web crawling</td><td>Custom crawler (like Common Crawl, but real-time)</td></tr><tr><td>Content extraction</td><td>Custom (similar to Readability/Trafilatura)</td></tr><tr><td>Embedding model</td><td>Custom fine-tuned (likely based on BGE or E5)</td></tr><tr><td>Reranker</td><td>Cross-encoder (likely fine-tuned)</td></tr><tr><td>Generation model</td><td>Mix: GPT-4o, Claude, custom fine-tuned models</td></tr><tr><td>Citation model</td><td>NLI + custom verification model</td></tr><tr><td>Inference</td><td>Custom serving stack</td></tr><tr><td>Infrastructure</td><td>AWS + custom GPU clusters</td></tr></tbody></table></div>
+<p>📦</p>
+<h2 id="s25">The Answer Engine vs Search Engine Debate</h2><div class="section-rule"></div>
+<h2 id="s26">Perplexity represents a fundamental shift:</h2><div class="section-rule"></div>
+<h2 id="s27">Google (Search Engine)	Perplexity (Answer Engine)</h2><div class="section-rule"></div>
+<h2 id="s28">Output	Links to pages	Direct answer with citations</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>User work</th><th>Click, read, synthesize</th><th>Read the answer</th></tr></thead><tbody><tr><td>Freshness</td><td>Excellent (massive crawl)</td><td>Good (smaller crawl)</td></tr><tr><td>Revenue model</td><td>Ads ($200B+/year)</td><td>Subscription ($20/mo)</td></tr><tr><td>Accuracy</td><td>User verifies</td><td>Must be accurate (or trust is lost)</td></tr><tr><td>Publisher impact</td><td>Sends traffic</td><td>Absorbs traffic (controversial)</td></tr></tbody></table></div>
+<p>The publisher problem is real. If Perplexity answers your question so well that you never click through to the source, what incentive do publishers have to create content? This is an unsolved tension.</p>
+<p>🚀</p>
+<h2 id="s29">Building Your Own Answer Engine</h2><div class="section-rule"></div>
+<p>Want to build a Perplexity-like system for your domain? Here's the stack:</p>
+<p>python</p>
+<h2 id="s30">Mini answer engine architecture</h2><div class="section-rule"></div>
+<p>class AnswerEngine:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>def __init__(self):
+        self.search = SearchAPI()       # Bing, Google, or custom
+        self.crawler = WebCrawler()     # Fetch and extract
+        self.embedder = EmbeddingModel() # BGE-large or similar
+        self.reranker = CrossEncoder()   # ms-marco-MiniLM
+        self.llm = LLM()               # GPT-4o, Claude, etc.</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>def answer(self, query):
+        # 1. Generate search queries
+        search_queries = self.llm.generate_search_queries(query)</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># 2. Search and crawl
+        urls = self.search.search(search_queries)
+        pages = self.crawler.crawl(urls)</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># 3. Chunk and retrieve
+        passages = self.chunk_and_embed(pages)
+        relevant = self.reranker.rerank(query, passages, top_k=8)</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># 4. Generate grounded answer
+        answer = self.llm.generate(
+            system="Answer using ONLY the provided sources. Cite with [1][2]...",
+            sources=relevant,
+            query=query
+        )</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># 5. Verify citations
+        verified = self.verify_citations(answer, relevant)</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>return verified</code></pre></div>
+</div>
+<p>🔄</p>
+<h2 id="s31">Practical Takeaways</h2><div class="section-rule"></div>
+<p>Perplexity is RAG at web scale — the same pattern from Episode 22, but with live web search as the retrieval source</p>
+<p>Query optimization matters — transforming user questions into effective search queries is a crucial step</p>
+<p>Reranking > embedding similarity — cross-encoders are slower but dramatically more accurate</p>
+<p>Citation verification is its own pipeline — generating citations is easy, verifying them is hard</p>
+<p>Iterative search (agentic RAG) beats single-shot — search, read, identify gaps, search again</p>
+<p>The answer engine model changes the web's economics — if users don't click through, publishers lose traffic</p>
+<p>🏗️</p>
+<p>What's Next?</p>
+<p>Episode 95: How Midjourney Works — From text to photorealistic images. We'll trace the diffusion pipeline: text encoding, noise prediction, iterative denoising, and upscaling. Plus how Midjourney trains for aesthetics — making images that look good, not just accurate.</p>
+<p>← Previous</p>
+<h2 id="s32">Ep 93: How Cursor/Copilot Works</h2><div class="section-rule"></div>
+<p>Next →</p>
+<h2 id="s33">Ep 95: How Midjourney Works</h2><div class="section-rule"></div>
+<h2 id="s34">Next: Episode 95 — How Midjourney Works</h2><div class="section-rule"></div>
+<p>You type 'a cyberpunk street in Mumbai, neon lights, rain, 8k' and get art that belongs in a gallery. Here's how.</p>
+<p>This is part of a 98-episode series covering AI engineering from tokens to production deployment.</p>
+  </article>
+  <div class="ep-nav">
+    <a href="episode-93.html" class="ep-nav-card">
+      <span class="ep-nav-dir">← Previous</span>
+      <span class="ep-nav-title">Ep 93: How Cursor/Copilot Works: AI Coding Assistants Under th…</span>
+    </a>
+    <a href="episode-95.html" class="ep-nav-card next">
+      <span class="ep-nav-dir">Next Episode →</span>
+      <span class="ep-nav-title">Ep 95: How Midjourney Works: From Text to Stunning Images</span>
+    </a>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <img class="footer-logo" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+      <div class="footer-tagline">98 Field Manual · Build with AI, not just use it · Free forever</div>
+    </div>
+    <div class="footer-links">
+      <a href="field-manual-index.html">All Episodes</a>
+      <a href="field-manual-index.html#g14">Real-World Architectures</a>
+      <a href="episode-93.html">← Ep 93</a>
+      <a href="episode-95.html">Ep 95 →</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+const prog=document.getElementById('prog');
+window.addEventListener('scroll',()=>{
+  const total=document.documentElement.scrollHeight-window.innerHeight;
+  prog.style.width=Math.min(100,(window.scrollY/total)*100)+'%';
+},{passive:true});
+
+// Build section nav dots from h2s
+const h2s=document.querySelectorAll('.prose h2');
+const sNav=document.getElementById('sectionNav');
+const dots=[];
+h2s.forEach((h,i)=>{
+  const btn=document.createElement('button');
+  btn.className='snav-dot';
+  btn.setAttribute('data-label',h.textContent.trim().substring(0,28));
+  btn.onclick=()=>h.scrollIntoView({behavior:'smooth',block:'start'});
+  sNav.appendChild(btn);
+  dots.push({btn,h});
+});
+
+const dotObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      const idx=dots.findIndex(d=>d.h===e.target);
+      if(idx>-1) dots.forEach((d,i)=>d.btn.classList.toggle('active',i===idx));
+    }
+  });
+},{rootMargin:'-30% 0px -60% 0px'});
+dots.forEach(d=>dotObs.observe(d.h));
+
+// Scroll reveal
+const revObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='translateY(0)';}});
+},{threshold:0.08});
+document.querySelectorAll('.toc,.callout,.table-wrap,.code-block,.ep-nav-card').forEach(el=>{
+  el.style.opacity='0';
+  el.style.transform='translateY(14px)';
+  el.style.transition='opacity 0.55s ease,transform 0.55s ease';
+  revObs.observe(el);
+});
+</script>
+</body>
+</html>

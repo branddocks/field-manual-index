@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ep 17: HNSW: The Algorithm That Makes Vector Search Feel Instant</title>
+<meta name="description" content="10 million embeddings. One search query. You need the 10 most similar vectors — in under 50 milliseconds.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,300&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0d0d1a;--page:#ffffff;--paper:#f8f9ff;
+  --navy:#124093;--navy-dim:rgba(18,64,147,0.07);--navy-mid:rgba(18,64,147,0.15);
+  --red:#e2190e;--gold:#c8973a;--muted:#6b7280;--rule:#e5e7ef;--code-bg:#0d0d1f;
+  --title:'Roboto',sans-serif;--body:'Poppins',sans-serif;--mono:'DM Mono',monospace;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--page);color:var(--ink);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:#fff}
+::-webkit-scrollbar-thumb{background:var(--navy);border-radius:2px}
+
+/* NAV */
+nav.top{position:sticky;top:0;z-index:200;background:#fff;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(20px,5vw,60px);border-bottom:1px solid var(--rule);box-shadow:0 1px 12px rgba(0,0,0,0.05)}
+.logo-wrap{display:flex;align-items:center;text-decoration:none}
+.logo-img{height:38px;width:auto;object-fit:contain;display:block}
+.nav-right{display:flex;align-items:center;gap:6px}
+.nav-link{font-family:var(--body);font-size:11.5px;font-weight:500;color:var(--muted);text-decoration:none;padding:6px 14px;border-radius:6px;transition:all 0.2s}
+.nav-link:hover{color:var(--navy);background:var(--navy-dim)}
+.nav-cta{background:var(--navy)!important;color:#fff!important}
+.nav-cta:hover{background:#1a52c0!important;color:#fff!important}
+
+/* PROGRESS */
+.progress-bar-fixed{position:fixed;top:60px;left:0;right:0;height:2.5px;background:rgba(18,64,147,0.1);z-index:199}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--navy),#4f7ff7);width:0%;transition:width 0.1s;border-radius:0 2px 2px 0}
+
+/* HERO */
+.hero{background:#fff;position:relative;overflow:hidden;min-height:88vh;display:flex;flex-direction:column;justify-content:center}
+.hero-bg{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.hero-blob-1{position:absolute;top:-120px;right:-120px;width:700px;height:700px;background:radial-gradient(circle at 60% 40%,rgba(18,64,147,0.07) 0%,rgba(18,64,147,0.03) 40%,transparent 70%);border-radius:50%}
+.hero-blob-2{position:absolute;bottom:-80px;left:-80px;width:500px;height:500px;background:radial-gradient(circle,rgba(79,127,247,0.06) 0%,transparent 65%);border-radius:50%}
+.hero-lines{position:absolute;top:0;right:0;width:45%;height:100%;opacity:0.06}
+.hero-lines svg{width:100%;height:100%}
+.hero-tokens{position:absolute;top:0;right:0;width:46%;height:100%;display:flex;align-items:center;justify-content:center}
+.token-float-wrap{position:relative;width:360px;height:360px}
+.tf{position:absolute;font-family:var(--mono);font-size:13px;font-weight:500;padding:8px 16px;border-radius:8px;white-space:nowrap;animation:float-anim 6s ease-in-out infinite;box-shadow:0 4px 20px rgba(0,0,0,0.08)}
+.tf-1{top:20px;left:60px;background:rgba(18,64,147,0.09);color:#124093;border:1px solid rgba(18,64,147,0.18);animation-delay:0s}
+.tf-2{top:70px;right:20px;background:rgba(79,127,247,0.09);color:#2563eb;border:1px solid rgba(79,127,247,0.2);animation-delay:0.8s}
+.tf-3{top:140px;left:20px;background:rgba(16,185,129,0.08);color:#059669;border:1px solid rgba(16,185,129,0.18);animation-delay:1.6s}
+.tf-4{top:170px;right:50px;background:rgba(168,85,247,0.08);color:#7c3aed;border:1px solid rgba(168,85,247,0.18);animation-delay:0.4s}
+.tf-5{bottom:140px;left:80px;background:rgba(234,179,8,0.08);color:#b45309;border:1px solid rgba(234,179,8,0.2);animation-delay:1.2s}
+.tf-6{bottom:90px;right:30px;background:rgba(236,72,153,0.08);color:#db2777;border:1px solid rgba(236,72,153,0.2);animation-delay:2s}
+.tf-7{bottom:30px;left:40px;background:rgba(239,68,68,0.08);color:#dc2626;border:1px solid rgba(239,68,68,0.18);animation-delay:0.6s}
+.tf-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:110px;height:110px;background:var(--navy);border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;box-shadow:0 12px 40px rgba(18,64,147,0.3);animation:pulse-center 3s ease-in-out infinite}
+.tf-center .big{font-family:var(--title);font-size:28px;font-weight:900;color:#fff;line-height:1}
+.tf-center .small{font-family:var(--body);font-size:9px;font-weight:500;color:rgba(255,255,255,0.6);letter-spacing:1.5px;text-transform:uppercase}
+@keyframes float-anim{0%,100%{transform:translateY(0px)}50%{transform:translateY(-10px)}}
+@keyframes pulse-center{0%,100%{box-shadow:0 12px 40px rgba(18,64,147,0.3)}50%{box-shadow:0 12px 60px rgba(18,64,147,0.5)}}
+.hero-content{position:relative;z-index:2;width:54%;padding:clamp(48px,8vw,96px) clamp(24px,5vw,72px) clamp(48px,8vw,96px)}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:5px 14px;background:var(--navy-dim);border:1px solid rgba(18,64,147,0.18);border-radius:100px;margin-bottom:22px;font-family:var(--body);font-size:10px;font-weight:600;color:var(--navy);letter-spacing:1.2px;text-transform:uppercase}
+.hero-eyebrow .dot{width:5px;height:5px;background:var(--navy);border-radius:50%}
+.hero h1{font-family:var(--title);font-size:clamp(28px,4.5vw,52px);font-weight:900;color:var(--ink);line-height:1.08;letter-spacing:-1.2px;margin-bottom:20px}
+.hero h1 .line2{display:block;color:var(--navy)}
+.hero-sub{font-family:var(--body);font-size:clamp(13px,1.6vw,15px);font-weight:300;color:#4b5563;line-height:1.85;max-width:500px;margin-bottom:34px}
+.breadcrumb{display:flex;align-items:center;gap:7px;margin-bottom:28px;font-family:var(--mono);font-size:10px;color:#9ca3af}
+.breadcrumb a{color:inherit;text-decoration:none;transition:color 0.2s}
+.breadcrumb a:hover{color:var(--navy)}
+.breadcrumb .sep{color:#d1d5db}
+.breadcrumb .cur{color:#6b7280}
+.meta-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:14px 20px;background:var(--paper);border:1px solid var(--rule);border-radius:10px;margin-bottom:24px}
+.meta-item{font-family:var(--body);font-size:10.5px;font-weight:500;color:var(--muted);display:flex;align-items:center;gap:5px}
+.tags-row{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-family:var(--body);font-size:10px;font-weight:500;color:var(--navy);background:var(--navy-dim);padding:4px 11px;border-radius:100px;border:1px solid rgba(18,64,147,0.15)}
+@media(max-width:900px){.hero{min-height:auto;padding-bottom:48px}.hero-content{width:100%;padding:48px 24px 36px}.hero-tokens{display:none}.hero-lines{display:none}}
+
+/* SECTION NAV DOTS */
+.section-nav{position:fixed;right:clamp(12px,2vw,24px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:9px;z-index:100}
+.snav-dot{width:7px;height:7px;border-radius:50%;background:#d1d5db;border:none;padding:0;cursor:pointer;transition:all 0.3s;position:relative}
+.snav-dot::after{content:attr(data-label);position:absolute;right:16px;top:50%;transform:translateY(-50%);font-family:var(--body);font-size:9px;font-weight:500;color:var(--ink);background:#fff;padding:3px 9px;border-radius:4px;border:1px solid var(--rule);box-shadow:0 2px 8px rgba(0,0,0,0.06);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.2s}
+.snav-dot:hover::after{opacity:1}
+.snav-dot.active{background:var(--navy);transform:scale(1.5)}
+.snav-dot:hover:not(.active){background:rgba(18,64,147,0.4)}
+@media(max-width:768px){.section-nav{display:none}}
+
+/* LAYOUT */
+.layout{max-width:860px;margin:0 auto;padding:clamp(40px,6vw,68px) clamp(20px,5vw,56px) 80px}
+
+/* TOC */
+.toc{background:var(--paper);border:1px solid var(--rule);border-left:4px solid var(--navy);border-radius:10px;padding:22px 26px;margin-bottom:52px}
+.toc-title{font-family:var(--title);font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
+.toc-list{list-style:none;display:flex;flex-direction:column;gap:3px}
+.toc-list li a{display:flex;align-items:center;gap:12px;text-decoration:none;padding:6px 0;font-family:var(--body);font-size:13px;font-weight:400;color:var(--ink);transition:color 0.2s}
+.toc-list li a:hover{color:var(--navy)}
+.toc-num{font-family:var(--mono);font-size:9px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* PROSE */
+.prose{line-height:1.85}
+.prose h2{font-family:var(--title);font-size:clamp(18px,2.5vw,23px);font-weight:700;color:var(--ink);letter-spacing:-0.4px;margin:52px 0 8px;line-height:1.2;scroll-margin-top:80px;padding-left:18px;position:relative}
+.prose h2::before{content:'';position:absolute;left:0;top:5px;bottom:5px;width:3px;background:var(--navy);border-radius:2px}
+.prose h2:first-child{margin-top:0}
+.prose h3{font-family:var(--title);font-size:14px;font-weight:700;color:var(--ink);margin:26px 0 8px}
+.section-rule{width:36px;height:2px;background:var(--navy);border-radius:2px;margin:8px 0 22px 18px;opacity:0.4}
+.prose p{font-family:var(--body);font-size:clamp(13.5px,1.7vw,15px);line-height:1.88;color:#374151;margin-bottom:16px;font-weight:300}
+.prose p strong{font-weight:600;color:var(--ink)}
+.prose ul,.prose ol{list-style:none;padding:0;margin:4px 0 20px}
+.prose ul li,.prose ol li{font-family:var(--body);font-size:clamp(13.5px,1.7vw,14.5px);line-height:1.8;color:#374151;padding:4px 0 4px 26px;position:relative;font-weight:300}
+.prose ul li::before{content:'';position:absolute;left:5px;top:14px;width:5px;height:5px;background:var(--navy);border-radius:50%;opacity:0.55}
+.prose ol{counter-reset:li}
+.prose ol li{counter-increment:li}
+.prose ol li::before{content:counter(li);position:absolute;left:0;top:5px;font-family:var(--mono);font-size:8px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.ic{font-family:var(--mono);font-size:12.5px;background:var(--navy-dim);color:var(--navy);padding:1.5px 6px;border-radius:4px;border:1px solid rgba(18,64,147,0.15)}
+
+/* CODE */
+.code-block{background:var(--code-bg);border-radius:10px;margin:24px 0;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.12),0 0 0 1px rgba(18,64,147,0.1)}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.02)}
+.code-dots{display:flex;gap:5px}
+.cd{width:10px;height:10px;border-radius:50%}
+.cd-r{background:#ff5f56}.cd-y{background:#ffbd2e}.cd-g{background:#27c93f}
+.code-filename{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,0.25)}
+.code-lang{font-family:var(--mono);font-size:9px;color:rgba(91,140,247,0.6);letter-spacing:1px;text-transform:uppercase}
+.code-body{padding:20px 22px;overflow-x:auto}
+.code-body pre{margin:0}
+.code-body code{font-family:var(--mono);font-size:12.5px;line-height:1.9;color:#c9d4f5}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;margin:24px 0;border-radius:10px;border:1px solid var(--rule);box-shadow:0 2px 12px rgba(0,0,0,0.04)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:var(--ink)}
+thead th{padding:12px 16px;text-align:left;font-family:var(--body);font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,0.45)}
+thead th:first-child{color:#6b9fff}
+tbody tr{border-bottom:1px solid var(--rule);transition:background 0.15s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--paper)}
+tbody td{padding:10px 16px;font-family:var(--body);font-size:13px;color:#374151;font-weight:300;line-height:1.5}
+tbody td:first-child{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--navy)}
+
+/* CALLOUTS */
+.callout{border-radius:9px;padding:16px 20px;margin:24px 0;display:flex;gap:13px;align-items:flex-start}
+.callout-tip{background:rgba(18,64,147,0.05);border:1px solid rgba(18,64,147,0.16);border-left:3px solid var(--navy)}
+.callout-warn{background:rgba(220,38,38,0.04);border:1px solid rgba(220,38,38,0.14);border-left:3px solid #dc2626}
+.callout-note{background:rgba(200,151,58,0.05);border:1px solid rgba(200,151,58,0.2);border-left:3px solid var(--gold)}
+.callout-icon{font-size:16px;flex-shrink:0;margin-top:1px;line-height:1}
+.callout p{font-size:13.5px!important;line-height:1.7!important;color:#374151!important;margin:0!important}
+
+/* EP NAV */
+.ep-nav{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:64px;padding-top:32px;border-top:1px solid var(--rule)}
+@media(max-width:500px){.ep-nav{grid-template-columns:1fr}}
+.ep-nav-card{display:flex;flex-direction:column;text-decoration:none;padding:20px 22px;border:1px solid var(--rule);border-radius:10px;background:var(--paper);transition:all 0.25s;gap:5px}
+.ep-nav-card:hover{border-color:rgba(18,64,147,0.3);background:var(--navy-dim);transform:translateY(-2px);box-shadow:0 6px 20px rgba(18,64,147,0.08)}
+.ep-nav-dir{font-family:var(--body);font-size:9px;font-weight:600;color:var(--navy);letter-spacing:1px;text-transform:uppercase}
+.ep-nav-title{font-family:var(--title);font-size:13px;font-weight:600;color:var(--ink);line-height:1.4}
+.ep-nav-card.next{align-items:flex-end;text-align:right}
+
+/* FOOTER */
+footer{background:var(--ink);padding:44px clamp(20px,5vw,60px);border-top:3px solid var(--navy)}
+.footer-inner{max-width:860px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.footer-logo{height:32px;width:auto;object-fit:contain;filter:brightness(0) invert(1);opacity:0.7}
+.footer-tagline{font-family:var(--body);font-size:11px;color:rgba(255,255,255,0.22);font-style:italic;margin-top:4px;font-weight:300}
+.footer-links{display:flex;gap:20px;flex-wrap:wrap}
+.footer-links a{font-family:var(--body);font-size:11px;font-weight:400;color:rgba(255,255,255,0.3);text-decoration:none;transition:color 0.2s}
+.footer-links a:hover{color:rgba(255,255,255,0.75)}
+
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.hero-content>*{animation:fadeUp 0.65s cubic-bezier(0.22,1,0.36,1) both}
+.hero-content>*:nth-child(1){animation-delay:0.05s}
+.hero-content>*:nth-child(2){animation-delay:0.1s}
+.hero-content>*:nth-child(3){animation-delay:0.15s}
+.hero-content>*:nth-child(4){animation-delay:0.2s}
+.hero-content>*:nth-child(5){animation-delay:0.25s}
+.hero-content>*:nth-child(6){animation-delay:0.3s}
+.hero-content>*:nth-child(7){animation-delay:0.35s}
+@media(max-width:640px){.nav-link:not(.nav-cta){display:none}}
+</style>
+</head>
+<body>
+
+<div class="progress-bar-fixed"><div class="progress-fill" id="prog"></div></div>
+
+<nav class="top">
+  <a href="field-manual-index.html" class="logo-wrap">
+    <img class="logo-img" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+  </a>
+  <div class="nav-right">
+    <a href="field-manual-index.html" class="nav-link">All Episodes</a>
+    <a href="field-manual-index.html#g3" class="nav-link nav-cta">🔍 Embeddings & Vector Search</a>
+  </div>
+</nav>
+
+<nav class="section-nav" id="sectionNav"></nav>
+
+<header class="hero">
+  <div class="hero-bg">
+    <div class="hero-blob-1"></div>
+    <div class="hero-blob-2"></div>
+    <div class="hero-lines">
+      <svg viewBox="0 0 600 800" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+        <line x1="0" y1="200" x2="600" y2="0" stroke="#124093" stroke-width="1"/>
+        <line x1="0" y1="400" x2="600" y2="200" stroke="#124093" stroke-width="0.6"/>
+        <line x1="0" y1="600" x2="600" y2="400" stroke="#124093" stroke-width="0.4"/>
+        <circle cx="500" cy="150" r="120" stroke="#124093" stroke-width="0.8" fill="none"/>
+        <circle cx="500" cy="150" r="80" stroke="#124093" stroke-width="0.4" fill="none"/>
+        <circle cx="500" cy="150" r="40" stroke="#124093" stroke-width="0.3" fill="none"/>
+        <line x1="300" y1="0" x2="300" y2="800" stroke="#124093" stroke-width="0.4" stroke-dasharray="6,12"/>
+        <rect x="360" y="480" width="160" height="160" stroke="#124093" stroke-width="0.6" fill="none" transform="rotate(15 440 560)"/>
+      </svg>
+    </div>
+  </div>
+  <div class="hero-tokens" aria-hidden="true">
+    <div class="token-float-wrap">
+      <div class="tf tf-1">token</div>
+<div class="tf tf-2">model</div>
+<div class="tf tf-3">layer</div>
+<div class="tf tf-4">vector</div>
+<div class="tf tf-5">embed</div>
+<div class="tf tf-6">weight</div>
+<div class="tf tf-7">param</div>
+      <div class="tf-center">
+        <span class="big">HNSW</span>
+        <span class="small">EP 17</span>
+      </div>
+    </div>
+  </div>
+  <div class="hero-content">
+    <nav class="breadcrumb">
+      <a href="field-manual-index.html">Field Manual</a>
+      <span class="sep">›</span>
+      <a href="field-manual-index.html#g3">🔍 Embeddings & Vector Search</a>
+      <span class="sep">›</span>
+      <span class="cur">Episode 17</span>
+    </nav>
+    <div class="hero-eyebrow"><span class="dot"></span>MODULE 3 &nbsp;·&nbsp; Embeddings & Vector Search</div>
+    <h1>HNSW: The Algorithm That Makes Vector Search Feel Instant</h1>
+    <p class="hero-sub">10 million embeddings. One search query. You need the 10 most similar vectors — in under 50 milliseconds.</p>
+    <div class="meta-row">
+      <div class="meta-item"><span>📅</span> Mar 2026</div>
+      <div class="meta-item"><span>⏱</span> 10 min read</div>
+      <div class="meta-item"><span>🎯</span> Episode 17 of 98</div>
+    </div>
+    <div class="tags-row"><span class="tag">HNSW</span><span class="tag">ANN</span><span class="tag">Vector Search</span><span class="tag">Algorithms</span></div>
+  </div>
+</header>
+
+<main class="layout">
+  <div class="toc">
+  <div class="toc-title">In this episode</div>
+  <ul class="toc-list"><li><a href="#s1"><span class="toc-num">1</span>The Small World Idea</a></li>
+<li><a href="#s2"><span class="toc-num">2</span>The Navigation Problem</a></li>
+<li><a href="#s3"><span class="toc-num">3</span>How HNSW Works: The Layers</a></li>
+<li><a href="#s4"><span class="toc-num">4</span>The Rules</a></li>
+<li><a href="#s5"><span class="toc-num">5</span>The Search Algorithm</a></li>
+<li><a href="#s6"><span class="toc-num">6</span>When a query comes in:</a></li>
+<li><a href="#s7"><span class="toc-num">7</span>Why This Is Fast</a></li>
+<li><a href="#s8"><span class="toc-num">8</span>Building the Index</a></li>
+<li><a href="#s9"><span class="toc-num">9</span>For each new vector:</a></li>
+<li><a href="#s10"><span class="toc-num">10</span>The Key Parameters</a></li>
+<li><a href="#s11"><span class="toc-num">11</span>Parameter	What It Controls	Typical Value	Trade-off</a></li>
+<li><a href="#s12"><span class="toc-num">12</span>Approximate vs Exact: The Trade-off</a></li>
+<li><a href="#s13"><span class="toc-num">13</span>HNSW (ef=50):    95% recall,   5ms latency</a></li>
+<li><a href="#s14"><span class="toc-num">14</span>HNSW (ef=200):   99% recall,  15ms latency</a></li>
+<li><a href="#s15"><span class="toc-num">15</span>HNSW (ef=500):   99.9% recall, 40ms latency</a></li>
+<li><a href="#s16"><span class="toc-num">16</span>HNSW vs Other ANN Algorithms</a></li>
+<li><a href="#s17"><span class="toc-num">17</span>HNSW isn't the only game in town:</a></li>
+<li><a href="#s18"><span class="toc-num">18</span>Algorithm	How It Works	Strengths	Weaknesses</a></li>
+<li><a href="#s19"><span class="toc-num">19</span>HNSW wins for most use cases because:</a></li>
+<li><a href="#s20"><span class="toc-num">20</span>Best recall-to-speed ratio</a></li>
+<li><a href="#s21"><span class="toc-num">21</span>Supports dynamic inserts and deletes</a></li>
+<li><a href="#s22"><span class="toc-num">22</span>Every major vector DB implements it</a></li>
+<li><a href="#s23"><span class="toc-num">23</span>Total:          ~32.5 GB RAM</a></li>
+<li><a href="#s24"><span class="toc-num">24</span>How Vector Databases Use HNSW</a></li>
+<li><a href="#s25"><span class="toc-num">25</span>Every major vector DB puts its own spin on HNSW:</a></li>
+<li><a href="#s26"><span class="toc-num">26</span>Pinecone:  Modified HNSW (proprietary)</a></li>
+<li><a href="#s27"><span class="toc-num">27</span>Weaviate:  Custom HNSW with dynamic ef</a></li>
+<li><a href="#s28"><span class="toc-num">28</span>Try It Yourself</a></li>
+<li><a href="#s29"><span class="toc-num">29</span>Build a mini HNSW index with Python:</a></li>
+<li><a href="#s30"><span class="toc-num">30</span>Generate 10,000 random 768-dim vectors</a></li>
+<li><a href="#s31"><span class="toc-num">31</span>Build the index</a></li>
+<li><a href="#s32"><span class="toc-num">32</span>Set search parameters</a></li>
+<li><a href="#s33"><span class="toc-num">33</span>Query</a></li>
+<li><a href="#s34"><span class="toc-num">34</span>Indexes 10,000 vectors in ~0.5s</a></li>
+<li><a href="#s35"><span class="toc-num">35</span>Queries in ~0.1ms</a></li>
+<li><a href="#s36"><span class="toc-num">36</span>Practical Takeaways</a></li>
+<li><a href="#s37"><span class="toc-num">37</span>Ep 16: Vector Similarity</a></li>
+<li><a href="#s38"><span class="toc-num">38</span>Ep 18: Vector Databases</a></li>
+<li><a href="#s39"><span class="toc-num">39</span>Next: Episode 18 — Vector Databases</a></li>
+</ul>
+</div>
+  <article class="prose" id="s0">
+<p>You have 10 million document embeddings. A user searches "how to deploy ML models on Kubernetes." You need to find the 10 most similar vectors — in under 50 milliseconds.</p>
+<p>Brute force? Compare the query against all 10 million vectors. That's 10 million cosine similarity calculations. At 768 dimensions each. Every single query.</p>
+<p>It works for 10,000 vectors. At 10 million, you're waiting seconds. At a billion, forget it.</p>
+<p>You need approximate nearest neighbor (ANN) search. And the algorithm that dominates the field right now is HNSW — Hierarchical Navigable Small World. It's what powers Qdrant, Pinecone, Weaviate, pgvector, and basically every serious vector database.</p>
+<h2 id="s1">The Small World Idea</h2><div class="section-rule"></div>
+<p>Before HNSW, let's understand the insight it's built on: small world networks.</p>
+<p>You've heard of "six degrees of separation" — any two people on Earth are connected through at most six friendships. That's a small world property.</p>
+<p>The key insight: in a small world network, you can reach any node from any other node in very few hops — even though each node only has a few connections.</p>
+<p>HNSW builds this kind of network for vectors. Each vector is a node. Edges connect similar vectors. To find the nearest neighbor to a query, you don't check all vectors — you navigate the graph, hopping from node to node, getting closer with each hop.</p>
+<div class="callout callout-tip"><span class="callout-icon">⚡</span><p></p></div>
+<h2 id="s2">The Navigation Problem</h2><div class="section-rule"></div>
+<p>Imagine you're in Mumbai and need to reach a specific gully in Bangalore. Two strategies:</p>
+<p>Strategy 1: Check every gully in India. Correct but impossibly slow.</p>
+<p>Strategy 2: Navigate.</p>
+<p>Take a flight to Bangalore (long-distance jump)</p>
+<p>Take a cab to the neighborhood (medium-distance)</p>
+<p>Walk through the lanes to the exact gully (short-distance)</p>
+<p>Each step narrows your search. You never check every location — you use the structure of the network to zoom in efficiently.</p>
+<p>HNSW does exactly this, but with vectors and graph layers.</p>
+<p>🔧</p>
+<h2 id="s3">How HNSW Works: The Layers</h2><div class="section-rule"></div>
+<p>HNSW builds a multi-layer graph where each layer has different density:</p>
+<p>Layer 2 (sparse):    A ——————————— F ——————————— K</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Express highways — few nodes, long connections</code></pre></div>
+</div>
+<p>Layer 1 (medium):    A —— C —— F —— H —— K —— M</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>State roads — more nodes, medium connections</code></pre></div>
+</div>
+<p>Layer 0 (dense):     A B C D E F G H I J K L M N</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Gully lanes — all nodes, short connections</code></pre></div>
+</div>
+<h2 id="s4">The Rules</h2><div class="section-rule"></div>
+<p>Every vector exists in Layer 0 (the bottom, densest layer)</p>
+<p>Fewer vectors exist in higher layers — each layer has roughly 1/M of the layer below</p>
+<p>Connections in higher layers span longer distances — like express highways</p>
+<p>Connections in lower layers are short-range — local neighborhood links</p>
+<h2 id="s5">The Search Algorithm</h2><div class="section-rule"></div>
+<h2 id="s6">When a query comes in:</h2><div class="section-rule"></div>
+<ol><li>Start at the TOP layer (Layer 2)</li></ol>
+<p>→ Find the closest node using the sparse, long-distance connections</p>
+<p>→ "Take the express highway to the right region"</p>
+<ol><li>Drop to Layer 1</li></ol>
+<p>→ Starting from the entry point found above</p>
+<p>→ Navigate the medium-density graph, getting closer</p>
+<p>→ "Take state roads to the right neighborhood"</p>
+<ol><li>Drop to Layer 0</li></ol>
+<p>→ Starting from the entry point found above</p>
+<p>→ Navigate the dense graph, finding the exact nearest neighbors</p>
+<p>→ "Walk through the lanes to the right doorstep"</p>
+<p>At each layer, the algorithm does a greedy search: look at all neighbors of the current node, jump to the one closest to the query, repeat until no neighbor is closer than the current node.</p>
+<h2 id="s7">Why This Is Fast</h2><div class="section-rule"></div>
+<p>Instead of checking 10 million vectors, you check maybe:</p>
+<p>Layer 2: 5-10 nodes</p>
+<p>Layer 1: 20-50 nodes</p>
+<p>Layer 0: 100-300 nodes</p>
+<p>Total comparisons: ~200-400 out of 10 million. That's why it's fast. O(log n) instead of O(n).</p>
+<p>📊</p>
+<h2 id="s8">Building the Index</h2><div class="section-rule"></div>
+<p>The index is built by inserting vectors one at a time:</p>
+<h2 id="s9">For each new vector:</h2><div class="section-rule"></div>
+<ol><li>Randomly assign it to a layer level</li></ol>
+<p>(most get Layer 0, few get Layer 1, fewer get Layer 2)</p>
+<ol><li>Starting from the top layer, find its nearest neighbors</li><li>Create bidirectional edges to those neighbors</li><li>Repeat for each layer the vector exists in</li></ol>
+<p>The random layer assignment follows an exponential distribution — probability decreases exponentially with layer height. This naturally creates the sparse-to-dense hierarchy.</p>
+<h2 id="s10">The Key Parameters</h2><div class="section-rule"></div>
+<h2 id="s11">Parameter	What It Controls	Typical Value	Trade-off</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>M</th><th>Max connections per node</th><th>16-64</th><th>Higher = better recall, more memory</th></tr></thead><tbody><tr><td>ef_construction</td><td>Beam width during build</td><td>200-500</td><td>Higher = better index, slower build</td></tr><tr><td>ef_search</td><td>Beam width during query</td><td>50-200</td><td>Higher = better recall, slower query</td></tr></tbody></table></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>M = 16 means each vector connects to at most 16 neighbors per layer. More connections = higher recall but more memory.</code></pre></div>
+</div>
+<p>ef_construction controls how many candidates you consider when inserting a new vector. Higher = better quality connections but slower indexing.</p>
+<p>ef_search controls how many candidates you explore during a query. This is the knob you turn at runtime to trade speed for accuracy.</p>
+<h2 id="s12">Approximate vs Exact: The Trade-off</h2><div class="section-rule"></div>
+<p>HNSW is an approximate algorithm. It doesn't guarantee finding the absolute nearest neighbor — it finds one that's very close, very fast.</p>
+<p>Exact search:    100% recall, 500ms latency</p>
+<h2 id="s13">HNSW (ef=50):    95% recall,   5ms latency</h2><div class="section-rule"></div>
+<h2 id="s14">HNSW (ef=200):   99% recall,  15ms latency</h2><div class="section-rule"></div>
+<h2 id="s15">HNSW (ef=500):   99.9% recall, 40ms latency</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Recall = what percentage of the true top-K nearest neighbors did we actually find?
+For most applications, 95-99% recall is indistinguishable from perfect. The user won't notice if result #8 should have been result #7. But they'll absolutely notice if search takes 500ms instead of 5ms.</code></pre></div>
+</div>
+<div class="callout callout-tip"><span class="callout-icon">💡</span><p></p></div>
+<h2 id="s16">HNSW vs Other ANN Algorithms</h2><div class="section-rule"></div>
+<h2 id="s17">HNSW isn't the only game in town:</h2><div class="section-rule"></div>
+<h2 id="s18">Algorithm	How It Works	Strengths	Weaknesses</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>HNSW</th><th>Multi-layer graph</th><th>Best recall/speed, no training needed</th><th>High memory usage</th></tr></thead><tbody><tr><td>IVF (Inverted File)</td><td>Cluster vectors, search nearest clusters</td><td>Lower memory</td><td>Needs training, lower recall</td></tr><tr><td>PQ (Product Quantization)</td><td>Compress vectors, search compressed</td><td>Very low memory</td><td>Lower accuracy</td></tr><tr><td>ScaNN</td><td>Learned quantization + tree</td><td>Google's solution, very fast</td><td>Complex, Google-specific</td></tr><tr><td>DiskANN</td><td>HNSW variant on SSD</td><td>Works with disk, huge scale</td><td>Higher latency</td></tr></tbody></table></div>
+<h2 id="s19">HNSW wins for most use cases because:</h2><div class="section-rule"></div>
+<p>No training phase — add vectors and go</p>
+<h2 id="s20">Best recall-to-speed ratio</h2><div class="section-rule"></div>
+<h2 id="s21">Supports dynamic inserts and deletes</h2><div class="section-rule"></div>
+<h2 id="s22">Every major vector DB implements it</h2><div class="section-rule"></div>
+<p>The catch? Memory. HNSW needs the entire graph in RAM. For 10 million 768-dim vectors with M=16:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Vector storage: 10M × 768 × 4 bytes = ~30 GB
+Graph edges:    10M × 16 × 2 layers × 8 bytes = ~2.5 GB</code></pre></div>
+</div>
+<h2 id="s23">Total:          ~32.5 GB RAM</h2><div class="section-rule"></div>
+<p>That's a lot. For billion-scale search, you need either very beefy machines or disk-based alternatives like DiskANN.</p>
+<p>🔬</p>
+<h2 id="s24">How Vector Databases Use HNSW</h2><div class="section-rule"></div>
+<h2 id="s25">Every major vector DB puts its own spin on HNSW:</h2><div class="section-rule"></div>
+<p>Qdrant:    HNSW + scalar/product quantization + on-disk option</p>
+<h2 id="s26">Pinecone:  Modified HNSW (proprietary)</h2><div class="section-rule"></div>
+<h2 id="s27">Weaviate:  Custom HNSW with dynamic ef</h2><div class="section-rule"></div>
+<p>Chroma:    HNSW via hnswlib (open source)</p>
+<p>pgvector:  HNSW + IVFFlat in PostgreSQL</p>
+<p>Milvus:    HNSW + IVF + DiskANN options</p>
+<p>The core algorithm is the same. The differences are in memory management, quantization, filtering, and distributed operation.</p>
+<p>🛡️</p>
+<h2 id="s28">Try It Yourself</h2><div class="section-rule"></div>
+<h2 id="s29">Build a mini HNSW index with Python:</h2><div class="section-rule"></div>
+<p>python</p>
+<p>import hnswlib</p>
+<p>import numpy as np</p>
+<h2 id="s30">Generate 10,000 random 768-dim vectors</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>dim = 768
+num_elements = 10000
+data = np.random.randn(num_elements, dim).astype('float32')</code></pre></div>
+</div>
+<h2 id="s31">Build the index</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>index = hnswlib.Index(space='cosine', dim=dim)</code></pre></div>
+</div>
+<p>index.init_index(max_elements=num_elements, ef_construction=200, M=16)</p>
+<p>index.add_items(data, list(range(num_elements)))</p>
+<h2 id="s32">Set search parameters</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>index.set_ef(50)  # Higher = better recall, slower</code></pre></div>
+</div>
+<h2 id="s33">Query</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>query = np.random.randn(1, dim).astype('float32')</code></pre></div>
+</div>
+<p>labels, distances = index.knn_query(query, k=10)</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>print(f"10 nearest neighbors: {labels[0]}")
+print(f"Distances: {distances[0]}")</code></pre></div>
+</div>
+<p>bash</p>
+<p>pip install hnswlib numpy</p>
+<p>python hnsw_demo.py</p>
+<h2 id="s34">Indexes 10,000 vectors in ~0.5s</h2><div class="section-rule"></div>
+<h2 id="s35">Queries in ~0.1ms</h2><div class="section-rule"></div>
+<p>📦</p>
+<h2 id="s36">Practical Takeaways</h2><div class="section-rule"></div>
+<p>HNSW is THE algorithm for vector search — used by every major vector database</p>
+<p>It works like navigating a city — start with highways (sparse upper layers), end with gully lanes (dense bottom layer)</p>
+<p>It's approximate, not exact — but 99% recall at 10x speed is a great trade-off</p>
+<p>ef_search is your runtime knob — tune it for your speed vs accuracy needs</p>
+<p>Memory is the bottleneck — the entire graph needs to fit in RAM (or use disk-based variants)</p>
+<p>No training required — unlike IVF, you just add vectors and start searching</p>
+<p>🚀</p>
+<p>What's Next?</p>
+<p>Episode 18: Vector Databases — HNSW is just the search algorithm. A real vector database adds storage, filtering, metadata, replication, and APIs on top. Qdrant, Pinecone, Weaviate, Chroma — what's inside them, and how do you choose?</p>
+<p>← Previous</p>
+<h2 id="s37">Ep 16: Vector Similarity</h2><div class="section-rule"></div>
+<p>Next →</p>
+<h2 id="s38">Ep 18: Vector Databases</h2><div class="section-rule"></div>
+<h2 id="s39">Next: Episode 18 — Vector Databases</h2><div class="section-rule"></div>
+<p>You can't dump 50 million vectors into a Python list and call it a day. You need a vector database.</p>
+<p>This is part of a 98-episode series covering AI engineering from tokens to production deployment.</p>
+  </article>
+  <div class="ep-nav">
+    <a href="episode-16.html" class="ep-nav-card">
+      <span class="ep-nav-dir">← Previous</span>
+      <span class="ep-nav-title">Ep 16: Vector Similarity: How Machines Measure "Closeness" of …</span>
+    </a>
+    <a href="episode-18.html" class="ep-nav-card next">
+      <span class="ep-nav-dir">Next Episode →</span>
+      <span class="ep-nav-title">Ep 18: Vector Databases: Where Embeddings Live and How They Wo…</span>
+    </a>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <img class="footer-logo" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+      <div class="footer-tagline">98 Field Manual · Build with AI, not just use it · Free forever</div>
+    </div>
+    <div class="footer-links">
+      <a href="field-manual-index.html">All Episodes</a>
+      <a href="field-manual-index.html#g3">Embeddings & Vector Search</a>
+      <a href="episode-16.html">← Ep 16</a>
+      <a href="episode-18.html">Ep 18 →</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+const prog=document.getElementById('prog');
+window.addEventListener('scroll',()=>{
+  const total=document.documentElement.scrollHeight-window.innerHeight;
+  prog.style.width=Math.min(100,(window.scrollY/total)*100)+'%';
+},{passive:true});
+
+// Build section nav dots from h2s
+const h2s=document.querySelectorAll('.prose h2');
+const sNav=document.getElementById('sectionNav');
+const dots=[];
+h2s.forEach((h,i)=>{
+  const btn=document.createElement('button');
+  btn.className='snav-dot';
+  btn.setAttribute('data-label',h.textContent.trim().substring(0,28));
+  btn.onclick=()=>h.scrollIntoView({behavior:'smooth',block:'start'});
+  sNav.appendChild(btn);
+  dots.push({btn,h});
+});
+
+const dotObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      const idx=dots.findIndex(d=>d.h===e.target);
+      if(idx>-1) dots.forEach((d,i)=>d.btn.classList.toggle('active',i===idx));
+    }
+  });
+},{rootMargin:'-30% 0px -60% 0px'});
+dots.forEach(d=>dotObs.observe(d.h));
+
+// Scroll reveal
+const revObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='translateY(0)';}});
+},{threshold:0.08});
+document.querySelectorAll('.toc,.callout,.table-wrap,.code-block,.ep-nav-card').forEach(el=>{
+  el.style.opacity='0';
+  el.style.transform='translateY(14px)';
+  el.style.transition='opacity 0.55s ease,transform 0.55s ease';
+  revObs.observe(el);
+});
+</script>
+</body>
+</html>

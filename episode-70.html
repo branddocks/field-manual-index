@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ep 70: The AI Chip War: Everyone Wants a Piece of NVIDIA's Empire</title>
+<meta name="description" content="NVIDIA is worth more than $3 trillion. More than Apple. More than any company in history. Everyone wants to dethrone them.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,300&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0d0d1a;--page:#ffffff;--paper:#f8f9ff;
+  --navy:#124093;--navy-dim:rgba(18,64,147,0.07);--navy-mid:rgba(18,64,147,0.15);
+  --red:#e2190e;--gold:#c8973a;--muted:#6b7280;--rule:#e5e7ef;--code-bg:#0d0d1f;
+  --title:'Roboto',sans-serif;--body:'Poppins',sans-serif;--mono:'DM Mono',monospace;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--page);color:var(--ink);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:#fff}
+::-webkit-scrollbar-thumb{background:var(--navy);border-radius:2px}
+
+/* NAV */
+nav.top{position:sticky;top:0;z-index:200;background:#fff;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(20px,5vw,60px);border-bottom:1px solid var(--rule);box-shadow:0 1px 12px rgba(0,0,0,0.05)}
+.logo-wrap{display:flex;align-items:center;text-decoration:none}
+.logo-img{height:38px;width:auto;object-fit:contain;display:block}
+.nav-right{display:flex;align-items:center;gap:6px}
+.nav-link{font-family:var(--body);font-size:11.5px;font-weight:500;color:var(--muted);text-decoration:none;padding:6px 14px;border-radius:6px;transition:all 0.2s}
+.nav-link:hover{color:var(--navy);background:var(--navy-dim)}
+.nav-cta{background:var(--navy)!important;color:#fff!important}
+.nav-cta:hover{background:#1a52c0!important;color:#fff!important}
+
+/* PROGRESS */
+.progress-bar-fixed{position:fixed;top:60px;left:0;right:0;height:2.5px;background:rgba(18,64,147,0.1);z-index:199}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--navy),#4f7ff7);width:0%;transition:width 0.1s;border-radius:0 2px 2px 0}
+
+/* HERO */
+.hero{background:#fff;position:relative;overflow:hidden;min-height:88vh;display:flex;flex-direction:column;justify-content:center}
+.hero-bg{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.hero-blob-1{position:absolute;top:-120px;right:-120px;width:700px;height:700px;background:radial-gradient(circle at 60% 40%,rgba(18,64,147,0.07) 0%,rgba(18,64,147,0.03) 40%,transparent 70%);border-radius:50%}
+.hero-blob-2{position:absolute;bottom:-80px;left:-80px;width:500px;height:500px;background:radial-gradient(circle,rgba(79,127,247,0.06) 0%,transparent 65%);border-radius:50%}
+.hero-lines{position:absolute;top:0;right:0;width:45%;height:100%;opacity:0.06}
+.hero-lines svg{width:100%;height:100%}
+.hero-tokens{position:absolute;top:0;right:0;width:46%;height:100%;display:flex;align-items:center;justify-content:center}
+.token-float-wrap{position:relative;width:360px;height:360px}
+.tf{position:absolute;font-family:var(--mono);font-size:13px;font-weight:500;padding:8px 16px;border-radius:8px;white-space:nowrap;animation:float-anim 6s ease-in-out infinite;box-shadow:0 4px 20px rgba(0,0,0,0.08)}
+.tf-1{top:20px;left:60px;background:rgba(18,64,147,0.09);color:#124093;border:1px solid rgba(18,64,147,0.18);animation-delay:0s}
+.tf-2{top:70px;right:20px;background:rgba(79,127,247,0.09);color:#2563eb;border:1px solid rgba(79,127,247,0.2);animation-delay:0.8s}
+.tf-3{top:140px;left:20px;background:rgba(16,185,129,0.08);color:#059669;border:1px solid rgba(16,185,129,0.18);animation-delay:1.6s}
+.tf-4{top:170px;right:50px;background:rgba(168,85,247,0.08);color:#7c3aed;border:1px solid rgba(168,85,247,0.18);animation-delay:0.4s}
+.tf-5{bottom:140px;left:80px;background:rgba(234,179,8,0.08);color:#b45309;border:1px solid rgba(234,179,8,0.2);animation-delay:1.2s}
+.tf-6{bottom:90px;right:30px;background:rgba(236,72,153,0.08);color:#db2777;border:1px solid rgba(236,72,153,0.2);animation-delay:2s}
+.tf-7{bottom:30px;left:40px;background:rgba(239,68,68,0.08);color:#dc2626;border:1px solid rgba(239,68,68,0.18);animation-delay:0.6s}
+.tf-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:110px;height:110px;background:var(--navy);border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;box-shadow:0 12px 40px rgba(18,64,147,0.3);animation:pulse-center 3s ease-in-out infinite}
+.tf-center .big{font-family:var(--title);font-size:28px;font-weight:900;color:#fff;line-height:1}
+.tf-center .small{font-family:var(--body);font-size:9px;font-weight:500;color:rgba(255,255,255,0.6);letter-spacing:1.5px;text-transform:uppercase}
+@keyframes float-anim{0%,100%{transform:translateY(0px)}50%{transform:translateY(-10px)}}
+@keyframes pulse-center{0%,100%{box-shadow:0 12px 40px rgba(18,64,147,0.3)}50%{box-shadow:0 12px 60px rgba(18,64,147,0.5)}}
+.hero-content{position:relative;z-index:2;width:54%;padding:clamp(48px,8vw,96px) clamp(24px,5vw,72px) clamp(48px,8vw,96px)}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:5px 14px;background:var(--navy-dim);border:1px solid rgba(18,64,147,0.18);border-radius:100px;margin-bottom:22px;font-family:var(--body);font-size:10px;font-weight:600;color:var(--navy);letter-spacing:1.2px;text-transform:uppercase}
+.hero-eyebrow .dot{width:5px;height:5px;background:var(--navy);border-radius:50%}
+.hero h1{font-family:var(--title);font-size:clamp(28px,4.5vw,52px);font-weight:900;color:var(--ink);line-height:1.08;letter-spacing:-1.2px;margin-bottom:20px}
+.hero h1 .line2{display:block;color:var(--navy)}
+.hero-sub{font-family:var(--body);font-size:clamp(13px,1.6vw,15px);font-weight:300;color:#4b5563;line-height:1.85;max-width:500px;margin-bottom:34px}
+.breadcrumb{display:flex;align-items:center;gap:7px;margin-bottom:28px;font-family:var(--mono);font-size:10px;color:#9ca3af}
+.breadcrumb a{color:inherit;text-decoration:none;transition:color 0.2s}
+.breadcrumb a:hover{color:var(--navy)}
+.breadcrumb .sep{color:#d1d5db}
+.breadcrumb .cur{color:#6b7280}
+.meta-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:14px 20px;background:var(--paper);border:1px solid var(--rule);border-radius:10px;margin-bottom:24px}
+.meta-item{font-family:var(--body);font-size:10.5px;font-weight:500;color:var(--muted);display:flex;align-items:center;gap:5px}
+.tags-row{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-family:var(--body);font-size:10px;font-weight:500;color:var(--navy);background:var(--navy-dim);padding:4px 11px;border-radius:100px;border:1px solid rgba(18,64,147,0.15)}
+@media(max-width:900px){.hero{min-height:auto;padding-bottom:48px}.hero-content{width:100%;padding:48px 24px 36px}.hero-tokens{display:none}.hero-lines{display:none}}
+
+/* SECTION NAV DOTS */
+.section-nav{position:fixed;right:clamp(12px,2vw,24px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:9px;z-index:100}
+.snav-dot{width:7px;height:7px;border-radius:50%;background:#d1d5db;border:none;padding:0;cursor:pointer;transition:all 0.3s;position:relative}
+.snav-dot::after{content:attr(data-label);position:absolute;right:16px;top:50%;transform:translateY(-50%);font-family:var(--body);font-size:9px;font-weight:500;color:var(--ink);background:#fff;padding:3px 9px;border-radius:4px;border:1px solid var(--rule);box-shadow:0 2px 8px rgba(0,0,0,0.06);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.2s}
+.snav-dot:hover::after{opacity:1}
+.snav-dot.active{background:var(--navy);transform:scale(1.5)}
+.snav-dot:hover:not(.active){background:rgba(18,64,147,0.4)}
+@media(max-width:768px){.section-nav{display:none}}
+
+/* LAYOUT */
+.layout{max-width:860px;margin:0 auto;padding:clamp(40px,6vw,68px) clamp(20px,5vw,56px) 80px}
+
+/* TOC */
+.toc{background:var(--paper);border:1px solid var(--rule);border-left:4px solid var(--navy);border-radius:10px;padding:22px 26px;margin-bottom:52px}
+.toc-title{font-family:var(--title);font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
+.toc-list{list-style:none;display:flex;flex-direction:column;gap:3px}
+.toc-list li a{display:flex;align-items:center;gap:12px;text-decoration:none;padding:6px 0;font-family:var(--body);font-size:13px;font-weight:400;color:var(--ink);transition:color 0.2s}
+.toc-list li a:hover{color:var(--navy)}
+.toc-num{font-family:var(--mono);font-size:9px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* PROSE */
+.prose{line-height:1.85}
+.prose h2{font-family:var(--title);font-size:clamp(18px,2.5vw,23px);font-weight:700;color:var(--ink);letter-spacing:-0.4px;margin:52px 0 8px;line-height:1.2;scroll-margin-top:80px;padding-left:18px;position:relative}
+.prose h2::before{content:'';position:absolute;left:0;top:5px;bottom:5px;width:3px;background:var(--navy);border-radius:2px}
+.prose h2:first-child{margin-top:0}
+.prose h3{font-family:var(--title);font-size:14px;font-weight:700;color:var(--ink);margin:26px 0 8px}
+.section-rule{width:36px;height:2px;background:var(--navy);border-radius:2px;margin:8px 0 22px 18px;opacity:0.4}
+.prose p{font-family:var(--body);font-size:clamp(13.5px,1.7vw,15px);line-height:1.88;color:#374151;margin-bottom:16px;font-weight:300}
+.prose p strong{font-weight:600;color:var(--ink)}
+.prose ul,.prose ol{list-style:none;padding:0;margin:4px 0 20px}
+.prose ul li,.prose ol li{font-family:var(--body);font-size:clamp(13.5px,1.7vw,14.5px);line-height:1.8;color:#374151;padding:4px 0 4px 26px;position:relative;font-weight:300}
+.prose ul li::before{content:'';position:absolute;left:5px;top:14px;width:5px;height:5px;background:var(--navy);border-radius:50%;opacity:0.55}
+.prose ol{counter-reset:li}
+.prose ol li{counter-increment:li}
+.prose ol li::before{content:counter(li);position:absolute;left:0;top:5px;font-family:var(--mono);font-size:8px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.ic{font-family:var(--mono);font-size:12.5px;background:var(--navy-dim);color:var(--navy);padding:1.5px 6px;border-radius:4px;border:1px solid rgba(18,64,147,0.15)}
+
+/* CODE */
+.code-block{background:var(--code-bg);border-radius:10px;margin:24px 0;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.12),0 0 0 1px rgba(18,64,147,0.1)}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.02)}
+.code-dots{display:flex;gap:5px}
+.cd{width:10px;height:10px;border-radius:50%}
+.cd-r{background:#ff5f56}.cd-y{background:#ffbd2e}.cd-g{background:#27c93f}
+.code-filename{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,0.25)}
+.code-lang{font-family:var(--mono);font-size:9px;color:rgba(91,140,247,0.6);letter-spacing:1px;text-transform:uppercase}
+.code-body{padding:20px 22px;overflow-x:auto}
+.code-body pre{margin:0}
+.code-body code{font-family:var(--mono);font-size:12.5px;line-height:1.9;color:#c9d4f5}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;margin:24px 0;border-radius:10px;border:1px solid var(--rule);box-shadow:0 2px 12px rgba(0,0,0,0.04)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:var(--ink)}
+thead th{padding:12px 16px;text-align:left;font-family:var(--body);font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,0.45)}
+thead th:first-child{color:#6b9fff}
+tbody tr{border-bottom:1px solid var(--rule);transition:background 0.15s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--paper)}
+tbody td{padding:10px 16px;font-family:var(--body);font-size:13px;color:#374151;font-weight:300;line-height:1.5}
+tbody td:first-child{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--navy)}
+
+/* CALLOUTS */
+.callout{border-radius:9px;padding:16px 20px;margin:24px 0;display:flex;gap:13px;align-items:flex-start}
+.callout-tip{background:rgba(18,64,147,0.05);border:1px solid rgba(18,64,147,0.16);border-left:3px solid var(--navy)}
+.callout-warn{background:rgba(220,38,38,0.04);border:1px solid rgba(220,38,38,0.14);border-left:3px solid #dc2626}
+.callout-note{background:rgba(200,151,58,0.05);border:1px solid rgba(200,151,58,0.2);border-left:3px solid var(--gold)}
+.callout-icon{font-size:16px;flex-shrink:0;margin-top:1px;line-height:1}
+.callout p{font-size:13.5px!important;line-height:1.7!important;color:#374151!important;margin:0!important}
+
+/* EP NAV */
+.ep-nav{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:64px;padding-top:32px;border-top:1px solid var(--rule)}
+@media(max-width:500px){.ep-nav{grid-template-columns:1fr}}
+.ep-nav-card{display:flex;flex-direction:column;text-decoration:none;padding:20px 22px;border:1px solid var(--rule);border-radius:10px;background:var(--paper);transition:all 0.25s;gap:5px}
+.ep-nav-card:hover{border-color:rgba(18,64,147,0.3);background:var(--navy-dim);transform:translateY(-2px);box-shadow:0 6px 20px rgba(18,64,147,0.08)}
+.ep-nav-dir{font-family:var(--body);font-size:9px;font-weight:600;color:var(--navy);letter-spacing:1px;text-transform:uppercase}
+.ep-nav-title{font-family:var(--title);font-size:13px;font-weight:600;color:var(--ink);line-height:1.4}
+.ep-nav-card.next{align-items:flex-end;text-align:right}
+
+/* FOOTER */
+footer{background:var(--ink);padding:44px clamp(20px,5vw,60px);border-top:3px solid var(--navy)}
+.footer-inner{max-width:860px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.footer-logo{height:32px;width:auto;object-fit:contain;filter:brightness(0) invert(1);opacity:0.7}
+.footer-tagline{font-family:var(--body);font-size:11px;color:rgba(255,255,255,0.22);font-style:italic;margin-top:4px;font-weight:300}
+.footer-links{display:flex;gap:20px;flex-wrap:wrap}
+.footer-links a{font-family:var(--body);font-size:11px;font-weight:400;color:rgba(255,255,255,0.3);text-decoration:none;transition:color 0.2s}
+.footer-links a:hover{color:rgba(255,255,255,0.75)}
+
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.hero-content>*{animation:fadeUp 0.65s cubic-bezier(0.22,1,0.36,1) both}
+.hero-content>*:nth-child(1){animation-delay:0.05s}
+.hero-content>*:nth-child(2){animation-delay:0.1s}
+.hero-content>*:nth-child(3){animation-delay:0.15s}
+.hero-content>*:nth-child(4){animation-delay:0.2s}
+.hero-content>*:nth-child(5){animation-delay:0.25s}
+.hero-content>*:nth-child(6){animation-delay:0.3s}
+.hero-content>*:nth-child(7){animation-delay:0.35s}
+@media(max-width:640px){.nav-link:not(.nav-cta){display:none}}
+</style>
+</head>
+<body>
+
+<div class="progress-bar-fixed"><div class="progress-fill" id="prog"></div></div>
+
+<nav class="top">
+  <a href="field-manual-index.html" class="logo-wrap">
+    <img class="logo-img" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+  </a>
+  <div class="nav-right">
+    <a href="field-manual-index.html" class="nav-link">All Episodes</a>
+    <a href="field-manual-index.html#g10" class="nav-link nav-cta">💻 GPU & Hardware</a>
+  </div>
+</nav>
+
+<nav class="section-nav" id="sectionNav"></nav>
+
+<header class="hero">
+  <div class="hero-bg">
+    <div class="hero-blob-1"></div>
+    <div class="hero-blob-2"></div>
+    <div class="hero-lines">
+      <svg viewBox="0 0 600 800" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+        <line x1="0" y1="200" x2="600" y2="0" stroke="#124093" stroke-width="1"/>
+        <line x1="0" y1="400" x2="600" y2="200" stroke="#124093" stroke-width="0.6"/>
+        <line x1="0" y1="600" x2="600" y2="400" stroke="#124093" stroke-width="0.4"/>
+        <circle cx="500" cy="150" r="120" stroke="#124093" stroke-width="0.8" fill="none"/>
+        <circle cx="500" cy="150" r="80" stroke="#124093" stroke-width="0.4" fill="none"/>
+        <circle cx="500" cy="150" r="40" stroke="#124093" stroke-width="0.3" fill="none"/>
+        <line x1="300" y1="0" x2="300" y2="800" stroke="#124093" stroke-width="0.4" stroke-dasharray="6,12"/>
+        <rect x="360" y="480" width="160" height="160" stroke="#124093" stroke-width="0.6" fill="none" transform="rotate(15 440 560)"/>
+      </svg>
+    </div>
+  </div>
+  <div class="hero-tokens" aria-hidden="true">
+    <div class="token-float-wrap">
+      <div class="tf tf-1">token</div>
+<div class="tf tf-2">model</div>
+<div class="tf tf-3">layer</div>
+<div class="tf tf-4">vector</div>
+<div class="tf tf-5">embed</div>
+<div class="tf tf-6">weight</div>
+<div class="tf tf-7">param</div>
+      <div class="tf-center">
+        <span class="big">THE</span>
+        <span class="small">EP 70</span>
+      </div>
+    </div>
+  </div>
+  <div class="hero-content">
+    <nav class="breadcrumb">
+      <a href="field-manual-index.html">Field Manual</a>
+      <span class="sep">›</span>
+      <a href="field-manual-index.html#g10">💻 GPU & Hardware</a>
+      <span class="sep">›</span>
+      <span class="cur">Episode 70</span>
+    </nav>
+    <div class="hero-eyebrow"><span class="dot"></span>MODULE 10 &nbsp;·&nbsp; GPU & Hardware</div>
+    <h1>The AI Chip War: Everyone Wants a Piece of NVIDIA's Empire</h1>
+    <p class="hero-sub">NVIDIA is worth more than $3 trillion. More than Apple. More than any company in history. Everyone wants to dethrone them.</p>
+    <div class="meta-row">
+      <div class="meta-item"><span>📅</span> Mar 2026</div>
+      <div class="meta-item"><span>⏱</span> 10 min read</div>
+      <div class="meta-item"><span>🎯</span> Episode 70 of 98</div>
+    </div>
+    <div class="tags-row"><span class="tag">AI Chips</span><span class="tag">NVIDIA</span><span class="tag">Competition</span><span class="tag">Industry</span></div>
+  </div>
+</header>
+
+<main class="layout">
+  <div class="toc">
+  <div class="toc-title">In this episode</div>
+  <ul class="toc-list"><li><a href="#s1"><span class="toc-num">1</span>The Incumbent: NVIDIA</a></li>
+<li><a href="#s2"><span class="toc-num">2</span>The H100</a></li>
+<li><a href="#s3"><span class="toc-num">3</span>The current king of AI training:</a></li>
+<li><a href="#s4"><span class="toc-num">4</span>The H200</a></li>
+<li><a href="#s5"><span class="toc-num">5</span>NVLink 5 — 1.8 TB/s chip-to-chip</a></li>
+<li><a href="#s6"><span class="toc-num">6</span>DGX GB200 — 36 Grace CPUs + 72 Blackwell GPUs</a></li>
+<li><a href="#s7"><span class="toc-num">7</span>NVL72 — liquid-cooled rack with 72 GPUs</a></li>
+<li><a href="#s8"><span class="toc-num">8</span>The Challenger: AMD MI300X</a></li>
+<li><a href="#s9"><span class="toc-num">9</span>The Specs</a></li>
+<li><a href="#s10"><span class="toc-num">10</span>Spec	MI300X	H100</a></li>
+<li><a href="#s11"><span class="toc-num">11</span>Memory	192 GB HBM3	80 GB HBM3</a></li>
+<li><a href="#s12"><span class="toc-num">12</span>Memory Bandwidth	5.3 TB/s	3.35 TB/s</a></li>
+<li><a href="#s13"><span class="toc-num">13</span>The Software Problem</a></li>
+<li><a href="#s14"><span class="toc-num">14</span>Some models need tweaks to run</a></li>
+<li><a href="#s15"><span class="toc-num">15</span>The ecosystem is smaller</a></li>
+<li><a href="#s16"><span class="toc-num">16</span>When MI300X Wins</a></li>
+<li><a href="#s17"><span class="toc-num">17</span>When H100 Still Wins</a></li>
+<li><a href="#s18"><span class="toc-num">18</span>The Cloud Giants: Google, Amazon, Microsoft</a></li>
+<li><a href="#s19"><span class="toc-num">19</span>Best for: Large-scale training on Google Cloud</a></li>
+<li><a href="#s20"><span class="toc-num">20</span>Best with: JAX, TensorFlow</a></li>
+<li><a href="#s21"><span class="toc-num">21</span>Amazon Trainium & Inferentia</a></li>
+<li><a href="#s22"><span class="toc-num">22</span>Integrated with SageMaker</a></li>
+<li><a href="#s23"><span class="toc-num">23</span>Microsoft Maia</a></li>
+<li><a href="#s24"><span class="toc-num">24</span>Liquid-cooled racks</a></li>
+<li><a href="#s25"><span class="toc-num">25</span>The Intel Underdog: Gaudi</a></li>
+<li><a href="#s26"><span class="toc-num">26</span>128 GB HBM2e</a></li>
+<li><a href="#s27"><span class="toc-num">27</span>The Networking Advantage</a></li>
+<li><a href="#s28"><span class="toc-num">28</span>The Reality</a></li>
+<li><a href="#s29"><span class="toc-num">29</span>Smaller ecosystem than CUDA or ROCm</a></li>
+<li><a href="#s30"><span class="toc-num">30</span>Fewer optimizations</a></li>
+<li><a href="#s31"><span class="toc-num">31</span>The Startups: Groq, Cerebras, SambaNova</a></li>
+<li><a href="#s32"><span class="toc-num">32</span>Groq LPU</a></li>
+<li><a href="#s33"><span class="toc-num">33</span>How Groq Is Different</a></li>
+<li><a href="#s34"><span class="toc-num">34</span>Traditional GPU/TPU:</a></li>
+<li><a href="#s35"><span class="toc-num">35</span>Bottleneck: Moving weights from memory to compute</a></li>
+<li><a href="#s36"><span class="toc-num">36</span>Groq LPU:</a></li>
+<li><a href="#s37"><span class="toc-num">37</span>Model	Groq LPU	H100	A100</a></li>
+<li><a href="#s38"><span class="toc-num">38</span>The Catch</a></li>
+<li><a href="#s39"><span class="toc-num">39</span>GPT-4 ❌ (way too big)</a></li>
+<li><a href="#s40"><span class="toc-num">40</span>When to Use Groq</a></li>
+<li><a href="#s41"><span class="toc-num">41</span>When latency matters more than cost</a></li>
+<li><a href="#s42"><span class="toc-num">42</span>When you can fit your model in SRAM</a></li>
+<li><a href="#s43"><span class="toc-num">43</span>Cerebras</a></li>
+<li><a href="#s44"><span class="toc-num">44</span>WSE-3: 4 trillion transistors</a></li>
+<li><a href="#s45"><span class="toc-num">45</span>SambaNova</a></li>
+<li><a href="#s46"><span class="toc-num">46</span>The Battlefield Map</a></li>
+<li><a href="#s47"><span class="toc-num">47</span>Vendor	Chip	Strengths	Weaknesses	Best For</a></li>
+<li><a href="#s48"><span class="toc-num">48</span>Short Answer: Nobody Yet</a></li>
+<li><a href="#s49"><span class="toc-num">49</span>NVIDIA's moat isn't just hardware. It's:</a></li>
+<li><a href="#s50"><span class="toc-num">50</span>CUDA — 15 years of software investment</a></li>
+<li><a href="#s51"><span class="toc-num">51</span>Keep the price advantage</a></li>
+<li><a href="#s52"><span class="toc-num">52</span>Long Term (5+ years): The Cloud Giants</a></li>
+<li><a href="#s53"><span class="toc-num">53</span>The Wildcard: Inference-Optimized Chips</a></li>
+<li><a href="#s54"><span class="toc-num">54</span>More open-source models</a></li>
+<li><a href="#s55"><span class="toc-num">55</span>More on-premise inference</a></li>
+<li><a href="#s56"><span class="toc-num">56</span>Latency-critical applications</a></li>
+<li><a href="#s57"><span class="toc-num">57</span>What This Means for You</a></li>
+<li><a href="#s58"><span class="toc-num">58</span>If You're Training Models</a></li>
+<li><a href="#s59"><span class="toc-num">59</span>If You're Running Inference</a></li>
+<li><a href="#s60"><span class="toc-num">60</span>Cost sensitive: AMD or cloud TPUs</a></li>
+<li><a href="#s61"><span class="toc-num">61</span>If You're Buying Hardware</a></li>
+<li><a href="#s62"><span class="toc-num">62</span>The landscape in 2024:</a></li>
+<li><a href="#s63"><span class="toc-num">63</span>NVIDIA: Safe, expensive, available (with lead times)</a></li>
+<li><a href="#s64"><span class="toc-num">64</span>AMD: Cheaper, riskier, improving fast</a></li>
+<li><a href="#s65"><span class="toc-num">65</span>The Bigger Picture</a></li>
+<li><a href="#s66"><span class="toc-num">66</span>Practical Takeaways</a></li>
+<li><a href="#s67"><span class="toc-num">67</span>Ep 69: TPUs vs GPUs</a></li>
+<li><a href="#s68"><span class="toc-num">68</span>Ep 71: BPE Tokenizer</a></li>
+<li><a href="#s69"><span class="toc-num">69</span>Next: Episode 71 — BPE Tokenizer</a></li>
+</ul>
+</div>
+  <article class="prose" id="s0">
+<p>NVIDIA is worth more than $3 trillion. More than Apple. More than any company in history.</p>
+<p>All because they sell the picks and shovels for the AI gold rush. Every major AI model — GPT-4, Claude, Gemini, Llama — was trained on NVIDIA GPUs.</p>
+<p>But here's the thing: nobody likes a monopoly. Not Google. Not Amazon. Not Microsoft. Not AMD. Not even the US government, who are worried about Taiwan (where NVIDIA's chips are made) being a single point of failure.</p>
+<p>So everyone is building AI chips. Google has TPUs. Amazon has Trainium. AMD has MI300X. Intel has Gaudi. Startups like Groq and Cerebras are trying completely different architectures.</p>
+<p>The AI chip war is the most important hardware battle since the CPU wars of the 1990s. And it's happening right now.</p>
+<h2 id="s1">The Incumbent: NVIDIA</h2><div class="section-rule"></div>
+<h2 id="s2">The H100</h2><div class="section-rule"></div>
+<h2 id="s3">The current king of AI training:</h2><div class="section-rule"></div>
+<p>80GB HBM3 memory</p>
+<p>3.35 TB/s memory bandwidth</p>
+<p>67 TFLOPS FP64989 TFLOPS FP8</p>
+<p>$25,000-40,000 per card (if you can get them)</p>
+<p>The H100 isn't just fast. It's the default. Every framework, every model, every optimization targets CUDA first. That ecosystem lock-in is NVIDIA's real moat.</p>
+<h2 id="s4">The H200</h2><div class="section-rule"></div>
+<p>Announced late 2023, shipping 2024:</p>
+<p>141GB HBM3e memory (76% more than H100)</p>
+<p>4.8 TB/s memory bandwidth</p>
+<p>Same compute as H100, but more memory = bigger models</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Blackwell (B100/B200)</code></pre></div>
+</div>
+<p>Coming 2024-2025:</p>
+<p>208 billion transistors (2 chips in one package)</p>
+<p>192GB HBM3e memory</p>
+<p>8 TB/s memory bandwidth</p>
+<p>20 petaFLOPS FP8 (2.5x H100)</p>
+<h2 id="s5">NVLink 5 — 1.8 TB/s chip-to-chip</h2><div class="section-rule"></div>
+<p>NVIDIA isn't standing still. They're also building entire systems:</p>
+<h2 id="s6">DGX GB200 — 36 Grace CPUs + 72 Blackwell GPUs</h2><div class="section-rule"></div>
+<h2 id="s7">NVL72 — liquid-cooled rack with 72 GPUs</h2><div class="section-rule"></div>
+<div class="callout callout-tip"><span class="callout-icon">⚡</span><p></p></div>
+<h2 id="s8">The Challenger: AMD MI300X</h2><div class="section-rule"></div>
+<p>AMD has been the perennial #2 in GPUs. Their Radeon cards compete with NVIDIA's GeForce for gamers. But in AI? They've been an afterthought.</p>
+<p>Until MI300X.</p>
+<h2 id="s9">The Specs</h2><div class="section-rule"></div>
+<h2 id="s10">Spec	MI300X	H100</h2><div class="section-rule"></div>
+<h2 id="s11">Memory	192 GB HBM3	80 GB HBM3</h2><div class="section-rule"></div>
+<h2 id="s12">Memory Bandwidth	5.3 TB/s	3.35 TB/s</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>Compute (FP16)</th><th>1.3 PFLOPS</th><th>989 TFLOPS</th></tr></thead><tbody><tr><td>Transistors</td><td>153 billion</td><td>80 billion</td></tr><tr><td>Price</td><td>~$15,000</td><td>~$30,000</td></tr></tbody></table></div>
+<p>On paper, MI300X beats H100 on memory and price. 192GB means you can fit bigger models on fewer cards.</p>
+<h2 id="s13">The Software Problem</h2><div class="section-rule"></div>
+<p>But specs aren't everything. The software stack matters more:</p>
+<p>NVIDIA: CUDA → cuDNN → TensorRT → Triton</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>↓
+        15 years of optimization
+        Every framework works
+        Every model is optimized</code></pre></div>
+</div>
+<p>AMD: ROCm → MIOpen → ?</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>↓
+      Getting better fast
+      Still catching up
+      "It works on NVIDIA" is the default</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>ROCm (AMD's CUDA competitor) has improved dramatically. PyTorch has native ROCm support. But you still hit edge cases:</code></pre></div>
+</div>
+<p>Some operations don't have optimized kernels</p>
+<h2 id="s14">Some models need tweaks to run</h2><div class="section-rule"></div>
+<h2 id="s15">The ecosystem is smaller</h2><div class="section-rule"></div>
+<h2 id="s16">When MI300X Wins</h2><div class="section-rule"></div>
+<p>Memory-bound workloads — 192GB fits bigger models</p>
+<p>Price-sensitive buyers — 2x the memory for half the price</p>
+<p>Open source models — Llama, Mistral work great</p>
+<p>Training from scratch — if you control the whole stack</p>
+<h2 id="s17">When H100 Still Wins</h2><div class="section-rule"></div>
+<p>Proprietary models — if OpenAI trained on CUDA, inference on CUDA is safest</p>
+<p>Cutting-edge research — new papers target CUDA</p>
+<p>Ecosystem compatibility — if it works on NVIDIA, it works</p>
+<p>🔧</p>
+<h2 id="s18">The Cloud Giants: Google, Amazon, Microsoft</h2><div class="section-rule"></div>
+<p>Google TPU (Episode 69)</p>
+<p>We covered this in detail, but the summary:</p>
+<h2 id="s19">Best for: Large-scale training on Google Cloud</h2><div class="section-rule"></div>
+<h2 id="s20">Best with: JAX, TensorFlow</h2><div class="section-rule"></div>
+<p>Avoid if: You need flexibility, multi-cloud, or PyTorch is your religion</p>
+<p>Google's advantage: they control the whole stack. Gemini was trained on TPUs, and it works.</p>
+<h2 id="s21">Amazon Trainium & Inferentia</h2><div class="section-rule"></div>
+<p>Amazon doesn't want to pay NVIDIA either. So they built their own:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Trainium (training):</code></pre></div>
+</div>
+<p>Trn1 — 2021, decent but not competitive</p>
+<p>Trn2 — 2024, much improved</p>
+<p>Claim: 30-40% better price/performance than comparable GPUs</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Inferentia (inference):</code></pre></div>
+</div>
+<p>Inf2 — optimized for model serving</p>
+<p>Low latency, high throughput</p>
+<h2 id="s22">Integrated with SageMaker</h2><div class="section-rule"></div>
+<p>The pitch: "Use AWS, use our chips, save money."</p>
+<p>The reality: Works well for standard models. Custom architectures? Good luck.</p>
+<h2 id="s23">Microsoft Maia</h2><div class="section-rule"></div>
+<p>Microsoft's entry, announced late 2023:</p>
+<p>Maia 100 — 5nm chip, 105 billion transistors</p>
+<p>Designed for OpenAI workloads (no coincidence)</p>
+<h2 id="s24">Liquid-cooled racks</h2><div class="section-rule"></div>
+<p>Microsoft's strategy: "We power OpenAI. We know what AI workloads need. We'll build exactly that."</p>
+<p>Status: Early. Very early. But with OpenAI as a customer, they have a path.</p>
+<p>📊</p>
+<h2 id="s25">The Intel Underdog: Gaudi</h2><div class="section-rule"></div>
+<p>Intel watched the GPU revolution from the sidelines. They're trying to catch up with Gaudi:</p>
+<p>Gaudi 2</p>
+<p>96 GB HBM2e memory</p>
+<p>Built-in 24x 100GbE networking (unique feature)</p>
+<p>~$15,000</p>
+<p>Gaudi 3 (2024)</p>
+<h2 id="s26">128 GB HBM2e</h2><div class="section-rule"></div>
+<p>2x Gaudi 2 performance</p>
+<p>Claim: 50% better price/performance than H100</p>
+<h2 id="s27">The Networking Advantage</h2><div class="section-rule"></div>
+<p>Gaudi's unique feature: built-in Ethernet. Every chip has 24x 100GbE ports. No InfiniBand needed.</p>
+<p>NVIDIA cluster: GPUs → NVLink → InfiniBand switches → expensive</p>
+<p>Gaudi cluster:   Gaudis → built-in Ethernet → simpler, cheaper</p>
+<p>For large clusters, this matters. Networking is often the bottleneck and cost driver.</p>
+<h2 id="s28">The Reality</h2><div class="section-rule"></div>
+<p>Intel's software (PyTorch Habana) works for standard models. But:</p>
+<h2 id="s29">Smaller ecosystem than CUDA or ROCm</h2><div class="section-rule"></div>
+<h2 id="s30">Fewer optimizations</h2><div class="section-rule"></div>
+<p>"Works on NVIDIA" is still the default assumption</p>
+<p>Intel's bet: enterprises buying hardware will choose price/performance over ecosystem. It's a reasonable bet, but execution matters.</p>
+<h2 id="s31">The Startups: Groq, Cerebras, SambaNova</h2><div class="section-rule"></div>
+<p>While the giants fight with GPUs, some startups are asking: "What if we designed chips specifically for inference?"</p>
+<h2 id="s32">Groq LPU</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Groq (not Elon's Grok) makes the LPU — Language Processing Unit.</code></pre></div>
+</div>
+<p>The insight: inference isn't training. You don't need massive parallelism. You need low latency.</p>
+<h2 id="s33">How Groq Is Different</h2><div class="section-rule"></div>
+<h2 id="s34">Traditional GPU/TPU:</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Memory (HBM) ←→ Compute
+↑</code></pre></div>
+</div>
+<h2 id="s35">Bottleneck: Moving weights from memory to compute</h2><div class="section-rule"></div>
+<h2 id="s36">Groq LPU:</h2><div class="section-rule"></div>
+<p>Weights stay in on-chip SRAM (tens of megabytes, not gigabytes)</p>
+<p>No HBM. No memory bottleneck.</p>
+<p>The result: insane token generation speed.</p>
+<h2 id="s37">Model	Groq LPU	H100	A100</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>Llama 2 70B</th><th>800+ tokens/sec</th><th>~100 tok/s</th><th>~50 tok/s</th></tr></thead><tbody><tr><td>Mixtral 8x7B</td><td>500+ tokens/sec</td><td>~80 tok/s</td><td>~40 tok/s</td></tr></tbody></table></div>
+<p>10x faster than H100 for inference.</p>
+<h2 id="s38">The Catch</h2><div class="section-rule"></div>
+<p>Groq only works for models that fit in SRAM. That's:</p>
+<p>Llama 3.1 8B ✅</p>
+<p>Llama 3.1 70B ✅ (barely, on large systems)</p>
+<h2 id="s39">GPT-4 ❌ (way too big)</h2><div class="section-rule"></div>
+<p>Claude ❌ (way too big)</p>
+<p>Groq is for open-source models you can run yourself. It's useless for API-only models.</p>
+<p>Also: Groq chips are expensive, power-hungry, and only available through Groq's cloud (not for purchase).</p>
+<h2 id="s40">When to Use Groq</h2><div class="section-rule"></div>
+<p>Real-time applications (chatbots, voice agents)</p>
+<p>Open-source models (Llama, Mistral)</p>
+<h2 id="s41">When latency matters more than cost</h2><div class="section-rule"></div>
+<h2 id="s42">When you can fit your model in SRAM</h2><div class="section-rule"></div>
+<h2 id="s43">Cerebras</h2><div class="section-rule"></div>
+<p>Cerebras makes the Wafer Scale Engine — a chip the size of a dinner plate.</p>
+<h2 id="s44">WSE-3: 4 trillion transistors</h2><div class="section-rule"></div>
+<p>900,000 AI cores</p>
+<p>44 GB on-chip SRAM</p>
+<p>21 petabytes/s memory bandwidth</p>
+<p>Instead of connecting many small chips, Cerebras makes one giant chip. No chip-to-chip communication overhead.</p>
+<p>Use case: Training massive models on a single device. Or inference with zero latency from memory access.</p>
+<p>Reality: Extremely niche. Extremely expensive. But for specific workloads, unmatched.</p>
+<h2 id="s45">SambaNova</h2><div class="section-rule"></div>
+<p>SambaNova takes a different approach: reconfigurable dataflow.</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Instead of fixed-function AI accelerators, their chips reconfigure themselves for each model. The hardware adapts to the software.</code></pre></div>
+</div>
+<p>Claim: Better efficiency for both training and inference.</p>
+<p>Reality: Interesting technology, but limited adoption outside specific enterprise customers.</p>
+<div class="callout callout-tip"><span class="callout-icon">💡</span><p></p></div>
+<h2 id="s46">The Battlefield Map</h2><div class="section-rule"></div>
+<h2 id="s47">Vendor	Chip	Strengths	Weaknesses	Best For</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>NVIDIA</th><th>H100/H200/Blackwell</th><th>Ecosystem, software, everything works</th><th>Expensive, supply constrained</th><th>Everyone (default choice)</th></tr></thead><tbody><tr><td>AMD</td><td>MI300X</td><td>Memory, price</td><td>Software ecosystem</td><td>Memory-bound workloads, cost-sensitive</td></tr><tr><td>Google</td><td>TPU v5</td><td>Scale, efficiency, JAX integration</td><td>Flexibility, cloud-only</td><td>Large-scale training on GCP</td></tr><tr><td>Amazon</td><td>Trainium2</td><td>Price, AWS integration</td><td>Immature software</td><td>AWS-native workloads</td></tr><tr><td>Intel</td><td>Gaudi 3</td><td>Networking, price</td><td>Ecosystem, mindshare</td><td>Ethernet-based clusters</td></tr><tr><td>Groq</td><td>LPU</td><td>Inference speed, latency</td><td>Model size limits, availability</td><td>Real-time inference, open models</td></tr><tr><td>Cerebras</td><td>WSE-3</td><td>Massive on-chip memory</td><td>Cost, availability, niche</td><td>Research, specific large models</td></tr></tbody></table></div>
+<p>🔬</p>
+<p>Who Can Actually Challenge NVIDIA?</p>
+<h2 id="s48">Short Answer: Nobody Yet</h2><div class="section-rule"></div>
+<h2 id="s49">NVIDIA's moat isn't just hardware. It's:</h2><div class="section-rule"></div>
+<h2 id="s50">CUDA — 15 years of software investment</h2><div class="section-rule"></div>
+<p>Ecosystem — every tool, every framework, every model</p>
+<p>Mindshare — "AI = NVIDIA" in most people's heads</p>
+<p>Integration — NVIDIA doesn't just sell chips, they sell systems (DGX, networking, software)</p>
+<p>Medium Term (2-3 years): AMD Has a Shot</p>
+<p>AMD's MI300X is competitive on hardware. ROCm is getting better. If they can:</p>
+<p>Match 90% of CUDA's functionality</p>
+<p>Get PyTorch to "just work" on ROCm</p>
+<h2 id="s51">Keep the price advantage</h2><div class="section-rule"></div>
+<p>They could take 20-30% market share. Not dominance, but a real alternative.</p>
+<h2 id="s52">Long Term (5+ years): The Cloud Giants</h2><div class="section-rule"></div>
+<p>Google, Amazon, and Microsoft have the resources and the motivation. They're already building custom chips for their own workloads. Eventually, they might make them available more broadly.</p>
+<p>But they're also NVIDIA's biggest customers. It's a delicate balance.</p>
+<h2 id="s53">The Wildcard: Inference-Optimized Chips</h2><div class="section-rule"></div>
+<p>Groq proved that specialized inference chips can be 10x faster. If the market shifts toward:</p>
+<h2 id="s54">More open-source models</h2><div class="section-rule"></div>
+<h2 id="s55">More on-premise inference</h2><div class="section-rule"></div>
+<h2 id="s56">Latency-critical applications</h2><div class="section-rule"></div>
+<p>Then inference-specialized chips could carve out a significant niche.</p>
+<p>🛡️</p>
+<h2 id="s57">What This Means for You</h2><div class="section-rule"></div>
+<h2 id="s58">If You're Training Models</h2><div class="section-rule"></div>
+<p>Default: NVIDIA H100/H200 — everything works</p>
+<p>Budget constrained: AMD MI300X — 2x memory, lower price</p>
+<p>On Google Cloud: TPU v5 — if you're in JAX/TensorFlow</p>
+<h2 id="s59">If You're Running Inference</h2><div class="section-rule"></div>
+<p>Default: NVIDIA — ecosystem, reliability</p>
+<p>Latency critical: Groq — if your model fits</p>
+<h2 id="s60">Cost sensitive: AMD or cloud TPUs</h2><div class="section-rule"></div>
+<p>At scale: Consider custom silicon (Trainium, Inferentia) if you're locked into a cloud</p>
+<h2 id="s61">If You're Buying Hardware</h2><div class="section-rule"></div>
+<h2 id="s62">The landscape in 2024:</h2><div class="section-rule"></div>
+<h2 id="s63">NVIDIA: Safe, expensive, available (with lead times)</h2><div class="section-rule"></div>
+<h2 id="s64">AMD: Cheaper, riskier, improving fast</h2><div class="section-rule"></div>
+<p>Intel: Cheapest, riskiest, wait for Gaudi 3 reviews</p>
+<p>Everyone else: Cloud-only, specialized use cases</p>
+<p>📦</p>
+<h2 id="s65">The Bigger Picture</h2><div class="section-rule"></div>
+<p>The AI chip war isn't just about speed. It's about:</p>
+<p>Geopolitics: Taiwan makes most advanced chips. The US, China, and Europe all want domestic production.</p>
+<p>Energy: AI data centers use more power than some countries. Efficient chips matter for the grid.</p>
+<p>Democratization: If only NVIDIA can make good AI chips, they control AI's future. Competition matters.</p>
+<p>Innovation: Monopolies get lazy. The chip war drives everyone to innovate faster.</p>
+<p>🚀</p>
+<h2 id="s66">Practical Takeaways</h2><div class="section-rule"></div>
+<p>NVIDIA is still the safe default — ecosystem matters more than raw specs</p>
+<p>AMD MI300X is a real alternative — especially for memory-bound workloads</p>
+<p>Cloud TPUs work if you're all-in on Google — but don't expect flexibility</p>
+<p>Groq is magic for latency — but only for models that fit in SRAM</p>
+<p>The landscape is changing fast — what's true today may not be true in 6 months</p>
+<p>Don't bet your company on unproven hardware — unless you have resources to handle the risk</p>
+<p>🔄</p>
+<p>What's Next?</p>
+<p>Episode 71: Tokenizers Deep Dive — We've covered chips, training, and inference. Now let's go back to fundamentals. How do text tokenizers actually work? What's the difference between BPE, WordPiece, and SentencePiece? And why does "tokenization is all you need" have some truth to it?</p>
+<p>← Previous</p>
+<h2 id="s67">Ep 69: TPUs vs GPUs</h2><div class="section-rule"></div>
+<p>Next →</p>
+<h2 id="s68">Ep 71: BPE Tokenizer</h2><div class="section-rule"></div>
+<h2 id="s69">Next: Episode 71 — BPE Tokenizer</h2><div class="section-rule"></div>
+<p>You type 'unhappiness' into ChatGPT. The model doesn't see a word. It sees ['un', 'happ', 'iness']. Here's how BPE works.</p>
+<p>This is part of a 98-episode series covering AI engineering from tokens to production deployment.</p>
+  </article>
+  <div class="ep-nav">
+    <a href="episode-69.html" class="ep-nav-card">
+      <span class="ep-nav-dir">← Previous</span>
+      <span class="ep-nav-title">Ep 69: TPUs vs GPUs: Google's Bet on Custom Silicon</span>
+    </a>
+    <a href="episode-71.html" class="ep-nav-card next">
+      <span class="ep-nav-dir">Next Episode →</span>
+      <span class="ep-nav-title">Ep 71: BPE Tokenizer: How AI Builds Its Vocabulary From Scratc…</span>
+    </a>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <img class="footer-logo" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+      <div class="footer-tagline">98 Field Manual · Build with AI, not just use it · Free forever</div>
+    </div>
+    <div class="footer-links">
+      <a href="field-manual-index.html">All Episodes</a>
+      <a href="field-manual-index.html#g10">GPU & Hardware</a>
+      <a href="episode-69.html">← Ep 69</a>
+      <a href="episode-71.html">Ep 71 →</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+const prog=document.getElementById('prog');
+window.addEventListener('scroll',()=>{
+  const total=document.documentElement.scrollHeight-window.innerHeight;
+  prog.style.width=Math.min(100,(window.scrollY/total)*100)+'%';
+},{passive:true});
+
+// Build section nav dots from h2s
+const h2s=document.querySelectorAll('.prose h2');
+const sNav=document.getElementById('sectionNav');
+const dots=[];
+h2s.forEach((h,i)=>{
+  const btn=document.createElement('button');
+  btn.className='snav-dot';
+  btn.setAttribute('data-label',h.textContent.trim().substring(0,28));
+  btn.onclick=()=>h.scrollIntoView({behavior:'smooth',block:'start'});
+  sNav.appendChild(btn);
+  dots.push({btn,h});
+});
+
+const dotObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      const idx=dots.findIndex(d=>d.h===e.target);
+      if(idx>-1) dots.forEach((d,i)=>d.btn.classList.toggle('active',i===idx));
+    }
+  });
+},{rootMargin:'-30% 0px -60% 0px'});
+dots.forEach(d=>dotObs.observe(d.h));
+
+// Scroll reveal
+const revObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='translateY(0)';}});
+},{threshold:0.08});
+document.querySelectorAll('.toc,.callout,.table-wrap,.code-block,.ep-nav-card').forEach(el=>{
+  el.style.opacity='0';
+  el.style.transform='translateY(14px)';
+  el.style.transition='opacity 0.55s ease,transform 0.55s ease';
+  revObs.observe(el);
+});
+</script>
+</body>
+</html>

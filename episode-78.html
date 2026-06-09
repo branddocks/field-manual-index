@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ep 78: MCP (Model Context Protocol): The USB-C of AI Tool Integration</title>
+<meta name="description" content="Every AI assistant needs tools. Every tool has a different API. MCP is the universal standard that connects them all.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,300&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0d0d1a;--page:#ffffff;--paper:#f8f9ff;
+  --navy:#124093;--navy-dim:rgba(18,64,147,0.07);--navy-mid:rgba(18,64,147,0.15);
+  --red:#e2190e;--gold:#c8973a;--muted:#6b7280;--rule:#e5e7ef;--code-bg:#0d0d1f;
+  --title:'Roboto',sans-serif;--body:'Poppins',sans-serif;--mono:'DM Mono',monospace;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--page);color:var(--ink);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:#fff}
+::-webkit-scrollbar-thumb{background:var(--navy);border-radius:2px}
+
+/* NAV */
+nav.top{position:sticky;top:0;z-index:200;background:#fff;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(20px,5vw,60px);border-bottom:1px solid var(--rule);box-shadow:0 1px 12px rgba(0,0,0,0.05)}
+.logo-wrap{display:flex;align-items:center;text-decoration:none}
+.logo-img{height:38px;width:auto;object-fit:contain;display:block}
+.nav-right{display:flex;align-items:center;gap:6px}
+.nav-link{font-family:var(--body);font-size:11.5px;font-weight:500;color:var(--muted);text-decoration:none;padding:6px 14px;border-radius:6px;transition:all 0.2s}
+.nav-link:hover{color:var(--navy);background:var(--navy-dim)}
+.nav-cta{background:var(--navy)!important;color:#fff!important}
+.nav-cta:hover{background:#1a52c0!important;color:#fff!important}
+
+/* PROGRESS */
+.progress-bar-fixed{position:fixed;top:60px;left:0;right:0;height:2.5px;background:rgba(18,64,147,0.1);z-index:199}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--navy),#4f7ff7);width:0%;transition:width 0.1s;border-radius:0 2px 2px 0}
+
+/* HERO */
+.hero{background:#fff;position:relative;overflow:hidden;min-height:88vh;display:flex;flex-direction:column;justify-content:center}
+.hero-bg{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.hero-blob-1{position:absolute;top:-120px;right:-120px;width:700px;height:700px;background:radial-gradient(circle at 60% 40%,rgba(18,64,147,0.07) 0%,rgba(18,64,147,0.03) 40%,transparent 70%);border-radius:50%}
+.hero-blob-2{position:absolute;bottom:-80px;left:-80px;width:500px;height:500px;background:radial-gradient(circle,rgba(79,127,247,0.06) 0%,transparent 65%);border-radius:50%}
+.hero-lines{position:absolute;top:0;right:0;width:45%;height:100%;opacity:0.06}
+.hero-lines svg{width:100%;height:100%}
+.hero-tokens{position:absolute;top:0;right:0;width:46%;height:100%;display:flex;align-items:center;justify-content:center}
+.token-float-wrap{position:relative;width:360px;height:360px}
+.tf{position:absolute;font-family:var(--mono);font-size:13px;font-weight:500;padding:8px 16px;border-radius:8px;white-space:nowrap;animation:float-anim 6s ease-in-out infinite;box-shadow:0 4px 20px rgba(0,0,0,0.08)}
+.tf-1{top:20px;left:60px;background:rgba(18,64,147,0.09);color:#124093;border:1px solid rgba(18,64,147,0.18);animation-delay:0s}
+.tf-2{top:70px;right:20px;background:rgba(79,127,247,0.09);color:#2563eb;border:1px solid rgba(79,127,247,0.2);animation-delay:0.8s}
+.tf-3{top:140px;left:20px;background:rgba(16,185,129,0.08);color:#059669;border:1px solid rgba(16,185,129,0.18);animation-delay:1.6s}
+.tf-4{top:170px;right:50px;background:rgba(168,85,247,0.08);color:#7c3aed;border:1px solid rgba(168,85,247,0.18);animation-delay:0.4s}
+.tf-5{bottom:140px;left:80px;background:rgba(234,179,8,0.08);color:#b45309;border:1px solid rgba(234,179,8,0.2);animation-delay:1.2s}
+.tf-6{bottom:90px;right:30px;background:rgba(236,72,153,0.08);color:#db2777;border:1px solid rgba(236,72,153,0.2);animation-delay:2s}
+.tf-7{bottom:30px;left:40px;background:rgba(239,68,68,0.08);color:#dc2626;border:1px solid rgba(239,68,68,0.18);animation-delay:0.6s}
+.tf-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:110px;height:110px;background:var(--navy);border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;box-shadow:0 12px 40px rgba(18,64,147,0.3);animation:pulse-center 3s ease-in-out infinite}
+.tf-center .big{font-family:var(--title);font-size:28px;font-weight:900;color:#fff;line-height:1}
+.tf-center .small{font-family:var(--body);font-size:9px;font-weight:500;color:rgba(255,255,255,0.6);letter-spacing:1.5px;text-transform:uppercase}
+@keyframes float-anim{0%,100%{transform:translateY(0px)}50%{transform:translateY(-10px)}}
+@keyframes pulse-center{0%,100%{box-shadow:0 12px 40px rgba(18,64,147,0.3)}50%{box-shadow:0 12px 60px rgba(18,64,147,0.5)}}
+.hero-content{position:relative;z-index:2;width:54%;padding:clamp(48px,8vw,96px) clamp(24px,5vw,72px) clamp(48px,8vw,96px)}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:5px 14px;background:var(--navy-dim);border:1px solid rgba(18,64,147,0.18);border-radius:100px;margin-bottom:22px;font-family:var(--body);font-size:10px;font-weight:600;color:var(--navy);letter-spacing:1.2px;text-transform:uppercase}
+.hero-eyebrow .dot{width:5px;height:5px;background:var(--navy);border-radius:50%}
+.hero h1{font-family:var(--title);font-size:clamp(28px,4.5vw,52px);font-weight:900;color:var(--ink);line-height:1.08;letter-spacing:-1.2px;margin-bottom:20px}
+.hero h1 .line2{display:block;color:var(--navy)}
+.hero-sub{font-family:var(--body);font-size:clamp(13px,1.6vw,15px);font-weight:300;color:#4b5563;line-height:1.85;max-width:500px;margin-bottom:34px}
+.breadcrumb{display:flex;align-items:center;gap:7px;margin-bottom:28px;font-family:var(--mono);font-size:10px;color:#9ca3af}
+.breadcrumb a{color:inherit;text-decoration:none;transition:color 0.2s}
+.breadcrumb a:hover{color:var(--navy)}
+.breadcrumb .sep{color:#d1d5db}
+.breadcrumb .cur{color:#6b7280}
+.meta-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:14px 20px;background:var(--paper);border:1px solid var(--rule);border-radius:10px;margin-bottom:24px}
+.meta-item{font-family:var(--body);font-size:10.5px;font-weight:500;color:var(--muted);display:flex;align-items:center;gap:5px}
+.tags-row{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-family:var(--body);font-size:10px;font-weight:500;color:var(--navy);background:var(--navy-dim);padding:4px 11px;border-radius:100px;border:1px solid rgba(18,64,147,0.15)}
+@media(max-width:900px){.hero{min-height:auto;padding-bottom:48px}.hero-content{width:100%;padding:48px 24px 36px}.hero-tokens{display:none}.hero-lines{display:none}}
+
+/* SECTION NAV DOTS */
+.section-nav{position:fixed;right:clamp(12px,2vw,24px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:9px;z-index:100}
+.snav-dot{width:7px;height:7px;border-radius:50%;background:#d1d5db;border:none;padding:0;cursor:pointer;transition:all 0.3s;position:relative}
+.snav-dot::after{content:attr(data-label);position:absolute;right:16px;top:50%;transform:translateY(-50%);font-family:var(--body);font-size:9px;font-weight:500;color:var(--ink);background:#fff;padding:3px 9px;border-radius:4px;border:1px solid var(--rule);box-shadow:0 2px 8px rgba(0,0,0,0.06);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.2s}
+.snav-dot:hover::after{opacity:1}
+.snav-dot.active{background:var(--navy);transform:scale(1.5)}
+.snav-dot:hover:not(.active){background:rgba(18,64,147,0.4)}
+@media(max-width:768px){.section-nav{display:none}}
+
+/* LAYOUT */
+.layout{max-width:860px;margin:0 auto;padding:clamp(40px,6vw,68px) clamp(20px,5vw,56px) 80px}
+
+/* TOC */
+.toc{background:var(--paper);border:1px solid var(--rule);border-left:4px solid var(--navy);border-radius:10px;padding:22px 26px;margin-bottom:52px}
+.toc-title{font-family:var(--title);font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
+.toc-list{list-style:none;display:flex;flex-direction:column;gap:3px}
+.toc-list li a{display:flex;align-items:center;gap:12px;text-decoration:none;padding:6px 0;font-family:var(--body);font-size:13px;font-weight:400;color:var(--ink);transition:color 0.2s}
+.toc-list li a:hover{color:var(--navy)}
+.toc-num{font-family:var(--mono);font-size:9px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* PROSE */
+.prose{line-height:1.85}
+.prose h2{font-family:var(--title);font-size:clamp(18px,2.5vw,23px);font-weight:700;color:var(--ink);letter-spacing:-0.4px;margin:52px 0 8px;line-height:1.2;scroll-margin-top:80px;padding-left:18px;position:relative}
+.prose h2::before{content:'';position:absolute;left:0;top:5px;bottom:5px;width:3px;background:var(--navy);border-radius:2px}
+.prose h2:first-child{margin-top:0}
+.prose h3{font-family:var(--title);font-size:14px;font-weight:700;color:var(--ink);margin:26px 0 8px}
+.section-rule{width:36px;height:2px;background:var(--navy);border-radius:2px;margin:8px 0 22px 18px;opacity:0.4}
+.prose p{font-family:var(--body);font-size:clamp(13.5px,1.7vw,15px);line-height:1.88;color:#374151;margin-bottom:16px;font-weight:300}
+.prose p strong{font-weight:600;color:var(--ink)}
+.prose ul,.prose ol{list-style:none;padding:0;margin:4px 0 20px}
+.prose ul li,.prose ol li{font-family:var(--body);font-size:clamp(13.5px,1.7vw,14.5px);line-height:1.8;color:#374151;padding:4px 0 4px 26px;position:relative;font-weight:300}
+.prose ul li::before{content:'';position:absolute;left:5px;top:14px;width:5px;height:5px;background:var(--navy);border-radius:50%;opacity:0.55}
+.prose ol{counter-reset:li}
+.prose ol li{counter-increment:li}
+.prose ol li::before{content:counter(li);position:absolute;left:0;top:5px;font-family:var(--mono);font-size:8px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.ic{font-family:var(--mono);font-size:12.5px;background:var(--navy-dim);color:var(--navy);padding:1.5px 6px;border-radius:4px;border:1px solid rgba(18,64,147,0.15)}
+
+/* CODE */
+.code-block{background:var(--code-bg);border-radius:10px;margin:24px 0;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.12),0 0 0 1px rgba(18,64,147,0.1)}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.02)}
+.code-dots{display:flex;gap:5px}
+.cd{width:10px;height:10px;border-radius:50%}
+.cd-r{background:#ff5f56}.cd-y{background:#ffbd2e}.cd-g{background:#27c93f}
+.code-filename{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,0.25)}
+.code-lang{font-family:var(--mono);font-size:9px;color:rgba(91,140,247,0.6);letter-spacing:1px;text-transform:uppercase}
+.code-body{padding:20px 22px;overflow-x:auto}
+.code-body pre{margin:0}
+.code-body code{font-family:var(--mono);font-size:12.5px;line-height:1.9;color:#c9d4f5}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;margin:24px 0;border-radius:10px;border:1px solid var(--rule);box-shadow:0 2px 12px rgba(0,0,0,0.04)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:var(--ink)}
+thead th{padding:12px 16px;text-align:left;font-family:var(--body);font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,0.45)}
+thead th:first-child{color:#6b9fff}
+tbody tr{border-bottom:1px solid var(--rule);transition:background 0.15s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--paper)}
+tbody td{padding:10px 16px;font-family:var(--body);font-size:13px;color:#374151;font-weight:300;line-height:1.5}
+tbody td:first-child{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--navy)}
+
+/* CALLOUTS */
+.callout{border-radius:9px;padding:16px 20px;margin:24px 0;display:flex;gap:13px;align-items:flex-start}
+.callout-tip{background:rgba(18,64,147,0.05);border:1px solid rgba(18,64,147,0.16);border-left:3px solid var(--navy)}
+.callout-warn{background:rgba(220,38,38,0.04);border:1px solid rgba(220,38,38,0.14);border-left:3px solid #dc2626}
+.callout-note{background:rgba(200,151,58,0.05);border:1px solid rgba(200,151,58,0.2);border-left:3px solid var(--gold)}
+.callout-icon{font-size:16px;flex-shrink:0;margin-top:1px;line-height:1}
+.callout p{font-size:13.5px!important;line-height:1.7!important;color:#374151!important;margin:0!important}
+
+/* EP NAV */
+.ep-nav{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:64px;padding-top:32px;border-top:1px solid var(--rule)}
+@media(max-width:500px){.ep-nav{grid-template-columns:1fr}}
+.ep-nav-card{display:flex;flex-direction:column;text-decoration:none;padding:20px 22px;border:1px solid var(--rule);border-radius:10px;background:var(--paper);transition:all 0.25s;gap:5px}
+.ep-nav-card:hover{border-color:rgba(18,64,147,0.3);background:var(--navy-dim);transform:translateY(-2px);box-shadow:0 6px 20px rgba(18,64,147,0.08)}
+.ep-nav-dir{font-family:var(--body);font-size:9px;font-weight:600;color:var(--navy);letter-spacing:1px;text-transform:uppercase}
+.ep-nav-title{font-family:var(--title);font-size:13px;font-weight:600;color:var(--ink);line-height:1.4}
+.ep-nav-card.next{align-items:flex-end;text-align:right}
+
+/* FOOTER */
+footer{background:var(--ink);padding:44px clamp(20px,5vw,60px);border-top:3px solid var(--navy)}
+.footer-inner{max-width:860px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.footer-logo{height:32px;width:auto;object-fit:contain;filter:brightness(0) invert(1);opacity:0.7}
+.footer-tagline{font-family:var(--body);font-size:11px;color:rgba(255,255,255,0.22);font-style:italic;margin-top:4px;font-weight:300}
+.footer-links{display:flex;gap:20px;flex-wrap:wrap}
+.footer-links a{font-family:var(--body);font-size:11px;font-weight:400;color:rgba(255,255,255,0.3);text-decoration:none;transition:color 0.2s}
+.footer-links a:hover{color:rgba(255,255,255,0.75)}
+
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.hero-content>*{animation:fadeUp 0.65s cubic-bezier(0.22,1,0.36,1) both}
+.hero-content>*:nth-child(1){animation-delay:0.05s}
+.hero-content>*:nth-child(2){animation-delay:0.1s}
+.hero-content>*:nth-child(3){animation-delay:0.15s}
+.hero-content>*:nth-child(4){animation-delay:0.2s}
+.hero-content>*:nth-child(5){animation-delay:0.25s}
+.hero-content>*:nth-child(6){animation-delay:0.3s}
+.hero-content>*:nth-child(7){animation-delay:0.35s}
+@media(max-width:640px){.nav-link:not(.nav-cta){display:none}}
+</style>
+</head>
+<body>
+
+<div class="progress-bar-fixed"><div class="progress-fill" id="prog"></div></div>
+
+<nav class="top">
+  <a href="field-manual-index.html" class="logo-wrap">
+    <img class="logo-img" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+  </a>
+  <div class="nav-right">
+    <a href="field-manual-index.html" class="nav-link">All Episodes</a>
+    <a href="field-manual-index.html#g12" class="nav-link nav-cta">📡 Protocols & Standards</a>
+  </div>
+</nav>
+
+<nav class="section-nav" id="sectionNav"></nav>
+
+<header class="hero">
+  <div class="hero-bg">
+    <div class="hero-blob-1"></div>
+    <div class="hero-blob-2"></div>
+    <div class="hero-lines">
+      <svg viewBox="0 0 600 800" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+        <line x1="0" y1="200" x2="600" y2="0" stroke="#124093" stroke-width="1"/>
+        <line x1="0" y1="400" x2="600" y2="200" stroke="#124093" stroke-width="0.6"/>
+        <line x1="0" y1="600" x2="600" y2="400" stroke="#124093" stroke-width="0.4"/>
+        <circle cx="500" cy="150" r="120" stroke="#124093" stroke-width="0.8" fill="none"/>
+        <circle cx="500" cy="150" r="80" stroke="#124093" stroke-width="0.4" fill="none"/>
+        <circle cx="500" cy="150" r="40" stroke="#124093" stroke-width="0.3" fill="none"/>
+        <line x1="300" y1="0" x2="300" y2="800" stroke="#124093" stroke-width="0.4" stroke-dasharray="6,12"/>
+        <rect x="360" y="480" width="160" height="160" stroke="#124093" stroke-width="0.6" fill="none" transform="rotate(15 440 560)"/>
+      </svg>
+    </div>
+  </div>
+  <div class="hero-tokens" aria-hidden="true">
+    <div class="token-float-wrap">
+      <div class="tf tf-1">token</div>
+<div class="tf tf-2">model</div>
+<div class="tf tf-3">layer</div>
+<div class="tf tf-4">vector</div>
+<div class="tf tf-5">embed</div>
+<div class="tf tf-6">weight</div>
+<div class="tf tf-7">param</div>
+      <div class="tf-center">
+        <span class="big">MCP</span>
+        <span class="small">EP 78</span>
+      </div>
+    </div>
+  </div>
+  <div class="hero-content">
+    <nav class="breadcrumb">
+      <a href="field-manual-index.html">Field Manual</a>
+      <span class="sep">›</span>
+      <a href="field-manual-index.html#g12">📡 Protocols & Standards</a>
+      <span class="sep">›</span>
+      <span class="cur">Episode 78</span>
+    </nav>
+    <div class="hero-eyebrow"><span class="dot"></span>MODULE 12 &nbsp;·&nbsp; Protocols & Standards</div>
+    <h1>MCP (Model Context Protocol): The USB-C of AI Tool Integration</h1>
+    <p class="hero-sub">Every AI assistant needs tools. Every tool has a different API. MCP is the universal standard that connects them all.</p>
+    <div class="meta-row">
+      <div class="meta-item"><span>📅</span> Mar 2026</div>
+      <div class="meta-item"><span>⏱</span> 10 min read</div>
+      <div class="meta-item"><span>🎯</span> Episode 78 of 98</div>
+    </div>
+    <div class="tags-row"><span class="tag">MCP</span><span class="tag">Protocol</span><span class="tag">Tool Integration</span><span class="tag">Standards</span></div>
+  </div>
+</header>
+
+<main class="layout">
+  <div class="toc">
+  <div class="toc-title">In this episode</div>
+  <ul class="toc-list"><li><a href="#s1"><span class="toc-num">1</span>The Problem MCP Solves</a></li>
+<li><a href="#s2"><span class="toc-num">2</span>With MCP:</a></li>
+<li><a href="#s3"><span class="toc-num">3</span>MCP Architecture: Three Primitives</a></li>
+<li><a href="#s4"><span class="toc-num">4</span>Resources can be:</a></li>
+<li><a href="#s5"><span class="toc-num">5</span>Files on disk</a></li>
+<li><a href="#s6"><span class="toc-num">6</span>Database rows</a></li>
+<li><a href="#s7"><span class="toc-num">7</span>API responses</a></li>
+<li><a href="#s8"><span class="toc-num">8</span>Live data feeds</a></li>
+<li><a href="#s9"><span class="toc-num">9</span>Screenshots</a></li>
+<li><a href="#s10"><span class="toc-num">10</span>How MCP Communication Works</a></li>
+<li><a href="#s11"><span class="toc-num">11</span>MCP uses JSON-RPC 2.0 over two transport types:</a></li>
+<li><a href="#s12"><span class="toc-num">12</span>Transport: stdio</a></li>
+<li><a href="#s13"><span class="toc-num">13</span>Transport: SSE (Server-Sent Events) / Streamable HTTP</a></li>
+<li><a href="#s14"><span class="toc-num">14</span>The Protocol Flow</a></li>
+<li><a href="#s15"><span class="toc-num">15</span>Building an MCP Server</a></li>
+<li><a href="#s16"><span class="toc-num">16</span>mcp_database_server.py</a></li>
+<li><a href="#s17"><span class="toc-num">17</span>Run with stdio transport</a></li>
+<li><a href="#s18"><span class="toc-num">18</span>Connecting to Claude Desktop</a></li>
+<li><a href="#s19"><span class="toc-num">19</span>Building an MCP Client</a></li>
+<li><a href="#s20"><span class="toc-num">20</span>MCP Ecosystem: What's Already Built</a></li>
+<li><a href="#s21"><span class="toc-num">21</span>Category	MCP Servers	What They Do</a></li>
+<li><a href="#s22"><span class="toc-num">22</span>Files	Filesystem, Google Drive, Dropbox	Read/write files</a></li>
+<li><a href="#s23"><span class="toc-num">23</span>Install official MCP servers via npx</a></li>
+<li><a href="#s24"><span class="toc-num">24</span>MCP vs Direct Function Calling</a></li>
+<li><a href="#s25"><span class="toc-num">25</span>Feature	Direct Function Calling	MCP</a></li>
+<li><a href="#s26"><span class="toc-num">26</span>Standard	Per-provider (OpenAI, Anthropic, etc.)	Universal</a></li>
+<li><a href="#s27"><span class="toc-num">27</span>Security: Human in the Loop</a></li>
+<li><a href="#s28"><span class="toc-num">28</span>MCP is designed with security in mind:</a></li>
+<li><a href="#s29"><span class="toc-num">29</span>MCP flow:</a></li>
+<li><a href="#s30"><span class="toc-num">30</span>Try It Yourself</a></li>
+<li><a href="#s31"><span class="toc-num">31</span>Quick start: MCP with Claude Desktop</a></li>
+<li><a href="#s32"><span class="toc-num">32</span>1. Install an MCP server</a></li>
+<li><a href="#s33"><span class="toc-num">33</span>2. Add to Claude Desktop config</a></li>
+<li><a href="#s34"><span class="toc-num">34</span>~/Library/Application Support/Claude/claude_desktop_config.json</a></li>
+<li><a href="#s35"><span class="toc-num">35</span>3. Restart Claude Desktop</a></li>
+<li><a href="#s36"><span class="toc-num">36</span>4. Ask Claude: "What files are in my projects directory?"</a></li>
+<li><a href="#s37"><span class="toc-num">37</span>Claude will use the filesystem MCP server to list files</a></li>
+<li><a href="#s38"><span class="toc-num">38</span>Practical Takeaways</a></li>
+<li><a href="#s39"><span class="toc-num">39</span>Ep 77: RoPE & Position Encoding</a></li>
+<li><a href="#s40"><span class="toc-num">40</span>Ep 79: OpenAI Function Calling Spec</a></li>
+</ul>
+</div>
+  <article class="prose" id="s0">
+<p>Every AI assistant needs tools. ChatGPT needs to search the web. Claude needs to read your files. Your custom agent needs to query your database, call APIs, send emails.</p>
+<p>But every tool integration is custom. OpenAI has one format. Anthropic has another. LangChain has five. Your framework has its own. You write glue code for each tool, for each model, for each framework.</p>
+<p>It's the smartphone charger problem — everyone had their own cable until USB-C showed up.</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>MCP (Model Context Protocol) is Anthropic's answer. One open standard for connecting AI models to tools and data. Any tool. Any model. Any framework. Plug and play.</code></pre></div>
+</div>
+<h2 id="s1">The Problem MCP Solves</h2><div class="section-rule"></div>
+<p>Before MCP, connecting an AI to your tools looked like this:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Your Agent → Custom OpenAI function definition → Your API</code></pre></div>
+</div>
+<p>Your Agent → Different LangChain tool wrapper → Same API</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Your Agent → Another CrewAI tool class → Same API</code></pre></div>
+</div>
+<p>3 integrations for 1 API. Multiply by 50 tools. Multiply by 5 frameworks.</p>
+<p>= 250 custom integrations. All doing the same thing.</p>
+<h2 id="s2">With MCP:</h2><div class="section-rule"></div>
+<p>Your Agent → MCP Client → MCP Server (your tool)</p>
+<p>Any MCP client talks to any MCP server.</p>
+<p>Write the server once. Every client works.</p>
+<p>It's the difference between N×M integrations and N+M.</p>
+<div class="callout callout-tip"><span class="callout-icon">⚡</span><p></p></div>
+<h2 id="s3">MCP Architecture: Three Primitives</h2><div class="section-rule"></div>
+<p>MCP defines three ways for a model to interact with the outside world:</p>
+<ol><li>Tools — Actions the Model Can Take</li></ol>
+<p>Tools are functions the model can call. This is what you're used to from function calling, but standardized:</p>
+<p>json</p>
+<p>{</p>
+<p>"name": "query_database",</p>
+<p>"description": "Run a SQL query against the production database",</p>
+<p>"inputSchema": {</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>"type": "object",
+    "properties": {
+      "query": {
+        "type": "string",
+        "description": "SQL SELECT query to execute"
+      }
+    },
+    "required": ["query"]</code></pre></div>
+</div>
+<p>}</p>
+<p>}</p>
+<p>The model decides when to call tools. The user (or client) approves the call. The server executes it and returns results.</p>
+<ol><li>Resources — Data the Model Can Read</li></ol>
+<p>Resources are like a filesystem for the model. They provide context without the model needing to "do" anything:</p>
+<p>json</p>
+<p>{</p>
+<p>"uri": "file:///project/README.md",</p>
+<p>"name": "Project README",</p>
+<p>"mimeType": "text/markdown",</p>
+<p>"description": "Main documentation for the project"</p>
+<p>}</p>
+<h2 id="s4">Resources can be:</h2><div class="section-rule"></div>
+<h2 id="s5">Files on disk</h2><div class="section-rule"></div>
+<h2 id="s6">Database rows</h2><div class="section-rule"></div>
+<h2 id="s7">API responses</h2><div class="section-rule"></div>
+<h2 id="s8">Live data feeds</h2><div class="section-rule"></div>
+<h2 id="s9">Screenshots</h2><div class="section-rule"></div>
+<p>The key difference from tools: resources are read-only context, tools are actions. The model doesn't "call" a resource — it reads it.</p>
+<ol><li>Prompts — Reusable Templates</li></ol>
+<p>Prompts are pre-built interaction patterns that users can invoke:</p>
+<p>json</p>
+<p>{</p>
+<p>"name": "code-review",</p>
+<p>"description": "Review code for bugs, style, and best practices",</p>
+<p>"arguments": [</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>{
+      "name": "language",
+      "description": "Programming language",
+      "required": true
+    },
+    {
+      "name": "code",
+      "description": "Code to review",
+      "required": true
+    }</code></pre></div>
+</div>
+<p>]</p>
+<p>}</p>
+<p>When invoked, the prompt returns a structured message sequence that guides the model's behavior.</p>
+<p>🔧</p>
+<h2 id="s10">How MCP Communication Works</h2><div class="section-rule"></div>
+<h2 id="s11">MCP uses JSON-RPC 2.0 over two transport types:</h2><div class="section-rule"></div>
+<h2 id="s12">Transport: stdio</h2><div class="section-rule"></div>
+<p>For local tools — the MCP server runs as a child process:</p>
+<p>┌─────────┐  stdin/stdout  ┌─────────────┐</p>
+<p>│ MCP     │ ←────────────→ │ MCP Server  │</p>
+<p>│ Client  │  (JSON-RPC)    │ (your tool) │</p>
+<p>│ (Claude │                │             │</p>
+<p>│  Desktop)                │ e.g., file  │</p>
+<p>└─────────┘                │ system tool │</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>└─────────────┘</code></pre></div>
+</div>
+<h2 id="s13">Transport: SSE (Server-Sent Events) / Streamable HTTP</h2><div class="section-rule"></div>
+<p>For remote tools — the MCP server runs on a network:</p>
+<p>┌─────────┐    HTTP/SSE     ┌─────────────┐</p>
+<p>│ MCP     │ ←─────────────→ │ MCP Server  │</p>
+<p>│ Client  │   (JSON-RPC)    │ (remote)    │</p>
+<p>│         │                 │             │</p>
+<p>│         │                 │ e.g., GitHub│</p>
+<p>│         │                 │ API server  │</p>
+<p>└─────────┘                 └─────────────┘</p>
+<h2 id="s14">The Protocol Flow</h2><div class="section-rule"></div>
+<ol><li>Client → Server:  initialize (negotiate capabilities)</li><li>Server → Client:  initialized (confirm)</li><li>Client → Server:  tools/list (what tools do you have?)</li><li>Server → Client:  [list of tools with schemas]</li><li>Client → Server:  resources/list (what data can I read?)</li><li>Server → Client:  [list of resources with URIs]</li></ol>
+<p>--- User starts chatting ---</p>
+<ol><li>Model decides to use a tool</li><li>Client → Server:  tools/call { name: "query_database", arguments: {...} }</li><li>Server → Client:  { result: [...rows...] }</li><li>Model incorporates result into response</li></ol>
+<p>📊</p>
+<h2 id="s15">Building an MCP Server</h2><div class="section-rule"></div>
+<p>Here's a complete MCP server in Python that provides database tools:</p>
+<p>python</p>
+<h2 id="s16">mcp_database_server.py</h2><div class="section-rule"></div>
+<p>from mcp.server import Server</p>
+<p>from mcp.types import Tool, TextContent</p>
+<p>import sqlite3</p>
+<p>import json</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>server = Server("database-tools")</code></pre></div>
+</div>
+<p>@server.list_tools()</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>async def list_tools():
+return [
+        Tool(
+            name="query",
+            description="Run a read-only SQL query",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "sql": {
+                        "type": "string",
+                        "description": "SQL SELECT query"
+                    }
+                },
+                "required": ["sql"]
+            }
+        ),
+        Tool(
+            name="tables",
+            description="List all tables in the database",
+            inputSchema={
+                "type": "object",
+                "properties": {}
+            }
+        )
+    ]</code></pre></div>
+</div>
+<p>@server.call_tool()</p>
+<p>async def call_tool(name: str, arguments: dict):</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>db = sqlite3.connect("app.db")</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>if name == "query":
+        sql = arguments["sql"]
+        if not sql.strip().upper().startswith("SELECT"):
+            return [TextContent(type="text", text="Error: Only SELECT queries allowed")]</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>cursor = db.execute(sql)
+        columns = [desc[0] for desc in cursor.description]
+        rows = cursor.fetchall()
+        result = [dict(zip(columns, row)) for row in rows]
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>elif name == "tables":
+        cursor = db.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        )
+        tables = [row[0] for row in cursor.fetchall()]
+        return [TextContent(type="text", text=json.dumps(tables))]</code></pre></div>
+</div>
+<h2 id="s17">Run with stdio transport</h2><div class="section-rule"></div>
+<p>if __name__ == "__main__":</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>import asyncio
+    from mcp.server.stdio import stdio_server</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>asyncio.run(stdio_server(server))</code></pre></div>
+</div>
+<h2 id="s18">Connecting to Claude Desktop</h2><div class="section-rule"></div>
+<p>Add to your Claude Desktop config (claude_desktop_config.json):</p>
+<p>json</p>
+<p>{</p>
+<p>"mcpServers": {</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>"database": {
+      "command": "python",
+      "args": ["mcp_database_server.py"],
+      "env": {
+        "DATABASE_PATH": "/path/to/app.db"
+      }
+    }</code></pre></div>
+</div>
+<p>}</p>
+<p>}</p>
+<p>Now Claude can query your database. It sees the tools, knows the schema, and asks for permission before running queries.</p>
+<h2 id="s19">Building an MCP Client</h2><div class="section-rule"></div>
+<p>If you're building your own agent and want to consume MCP tools:</p>
+<p>python</p>
+<p>from mcp import ClientSession, StdioServerParameters</p>
+<p>from mcp.client.stdio import stdio_client</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>async def main():
+# Connect to an MCP server
+    server_params = StdioServerParameters(
+        command="python",
+        args=["mcp_database_server.py"]
+    )
+async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            # Initialize
+            await session.initialize()
+# Discover tools
+            tools = await session.list_tools()
+            print(f"Available tools: {[t.name for t in tools.tools]}")
+# Call a tool
+            result = await session.call_tool(
+                "query",
+                arguments={"sql": "SELECT * FROM users LIMIT 5"}
+            )
+            print(f"Result: {result.content[0].text}")</code></pre></div>
+</div>
+<div class="callout callout-tip"><span class="callout-icon">💡</span><p></p></div>
+<h2 id="s20">MCP Ecosystem: What's Already Built</h2><div class="section-rule"></div>
+<p>The MCP ecosystem is growing fast. Here's what exists:</p>
+<h2 id="s21">Category	MCP Servers	What They Do</h2><div class="section-rule"></div>
+<h2 id="s22">Files	Filesystem, Google Drive, Dropbox	Read/write files</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>Code</th><th>GitHub, GitLab, Linear</th><th>Issues, PRs, code search</th></tr></thead><tbody><tr><td>Data</td><td>PostgreSQL, SQLite, BigQuery</td><td>Database queries</td></tr><tr><td>Web</td><td>Brave Search, Puppeteer, Fetch</td><td>Web search and scraping</td></tr><tr><td>Comms</td><td>Slack, Gmail, Discord</td><td>Messages and email</td></tr><tr><td>Cloud</td><td>AWS, GCP, Kubernetes</td><td>Infrastructure management</td></tr><tr><td>Memory</td><td>Qdrant, Pinecone</td><td>Vector store operations</td></tr><tr><td>Dev</td><td>Docker, Sentry, Datadog</td><td>DevOps and monitoring</td></tr></tbody></table></div>
+<p>bash</p>
+<h2 id="s23">Install official MCP servers via npx</h2><div class="section-rule"></div>
+<p>npx -y @modelcontextprotocol/server-filesystem /path/to/dir</p>
+<p>npx -y @modelcontextprotocol/server-github</p>
+<p>npx -y @modelcontextprotocol/server-postgres postgresql://...</p>
+<p>🔬</p>
+<h2 id="s24">MCP vs Direct Function Calling</h2><div class="section-rule"></div>
+<p>You might ask: why not just use OpenAI function calling directly?</p>
+<h2 id="s25">Feature	Direct Function Calling	MCP</h2><div class="section-rule"></div>
+<h2 id="s26">Standard	Per-provider (OpenAI, Anthropic, etc.)	Universal</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>Discovery</th><th>Hard-coded in prompt</th><th>Dynamic (tools/list)</th></tr></thead><tbody><tr><td>Transport</td><td>HTTP only</td><td>stdio, HTTP, SSE</td></tr><tr><td>Resources</td><td>No concept</td><td>First-class primitive</td></tr><tr><td>Prompts</td><td>No concept</td><td>First-class primitive</td></tr><tr><td>Ecosystem</td><td>Build everything yourself</td><td>Growing library of servers</td></tr><tr><td>Server reuse</td><td>One-off implementations</td><td>Write once, use everywhere</td></tr></tbody></table></div>
+<p>MCP doesn't replace function calling — it standardizes it. An MCP client translates MCP tools into whatever function calling format the underlying model uses (OpenAI, Anthropic, etc.).</p>
+<p>🛡️</p>
+<h2 id="s27">Security: Human in the Loop</h2><div class="section-rule"></div>
+<h2 id="s28">MCP is designed with security in mind:</h2><div class="section-rule"></div>
+<p>Tool approval: The client (not the server) decides whether to execute a tool call. Claude Desktop shows you the tool call and waits for approval.</p>
+<p>Resource boundaries: Servers declare what resources they expose. The client controls access.</p>
+<p>Transport isolation: stdio servers run as sandboxed child processes.</p>
+<p>No arbitrary code: The protocol is JSON-RPC — data only, no executable payloads.</p>
+<p>User: "Delete all records from the users table"</p>
+<p>Claude: "I'll need to run a SQL query to do that."</p>
+<h2 id="s29">MCP flow:</h2><div class="section-rule"></div>
+<ol><li>Claude generates: tools/call("query", {sql: "DELETE FROM users"})</li><li>Client shows user: "Claude wants to run: DELETE FROM users"</li><li>User clicks: "Deny" ← Human stays in control</li></ol>
+<p>📦</p>
+<h2 id="s30">Try It Yourself</h2><div class="section-rule"></div>
+<p>bash</p>
+<h2 id="s31">Quick start: MCP with Claude Desktop</h2><div class="section-rule"></div>
+<h2 id="s32">1. Install an MCP server</h2><div class="section-rule"></div>
+<p>npm install -g @modelcontextprotocol/server-filesystem</p>
+<h2 id="s33">2. Add to Claude Desktop config</h2><div class="section-rule"></div>
+<h2 id="s34">~/Library/Application Support/Claude/claude_desktop_config.json</h2><div class="section-rule"></div>
+<p>cat << 'EOF' > claude_desktop_config.json</p>
+<p>{</p>
+<p>"mcpServers": {</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>"filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/you/projects"
+      ]
+    }</code></pre></div>
+</div>
+<p>}</p>
+<p>}</p>
+<p>EOF</p>
+<h2 id="s35">3. Restart Claude Desktop</h2><div class="section-rule"></div>
+<h2 id="s36">4. Ask Claude: "What files are in my projects directory?"</h2><div class="section-rule"></div>
+<h2 id="s37">Claude will use the filesystem MCP server to list files</h2><div class="section-rule"></div>
+<p>🚀</p>
+<h2 id="s38">Practical Takeaways</h2><div class="section-rule"></div>
+<p>MCP standardizes how AI connects to tools — one protocol, any model, any framework</p>
+<p>Three primitives: Tools (actions), Resources (data), Prompts (templates) — covers all integration patterns</p>
+<p>JSON-RPC over stdio or HTTP — local tools as child processes, remote tools over the network</p>
+<p>Write a server once, every client works — no more N×M integration problem</p>
+<p>Human-in-the-loop by default — the client approves tool calls, not the model</p>
+<p>The ecosystem is real — GitHub, Slack, PostgreSQL, filesystem servers already exist</p>
+<p>🔄</p>
+<p>What's Next?</p>
+<p>Episode 79: OpenAI Function Calling Spec — MCP is the protocol. But what does the actual function calling look like at the API level? OpenAI's spec — JSON schemas, tool_choice, parallel tool calls — is the most widely implemented interface. We'll dissect every parameter.</p>
+<p>← Previous</p>
+<h2 id="s39">Ep 77: RoPE & Position Encoding</h2><div class="section-rule"></div>
+<p>Next →</p>
+<h2 id="s40">Ep 79: OpenAI Function Calling Spec</h2><div class="section-rule"></div>
+<p>Next: Episode 79 — OpenAI Function Calling Spec</p>
+<p>The model can write essays and solve math, but it can't check the weather. Function calling bridges that gap.</p>
+<p>This is part of a 98-episode series covering AI engineering from tokens to production deployment.</p>
+  </article>
+  <div class="ep-nav">
+    <a href="episode-77.html" class="ep-nav-card">
+      <span class="ep-nav-dir">← Previous</span>
+      <span class="ep-nav-title">Ep 77: RoPE & Position Encoding: How AI Knows Word Order</span>
+    </a>
+    <a href="episode-79.html" class="ep-nav-card next">
+      <span class="ep-nav-dir">Next Episode →</span>
+      <span class="ep-nav-title">Ep 79: OpenAI Function Calling Spec: Making AI Actually Do Thi…</span>
+    </a>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <img class="footer-logo" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+      <div class="footer-tagline">98 Field Manual · Build with AI, not just use it · Free forever</div>
+    </div>
+    <div class="footer-links">
+      <a href="field-manual-index.html">All Episodes</a>
+      <a href="field-manual-index.html#g12">Protocols & Standards</a>
+      <a href="episode-77.html">← Ep 77</a>
+      <a href="episode-79.html">Ep 79 →</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+const prog=document.getElementById('prog');
+window.addEventListener('scroll',()=>{
+  const total=document.documentElement.scrollHeight-window.innerHeight;
+  prog.style.width=Math.min(100,(window.scrollY/total)*100)+'%';
+},{passive:true});
+
+// Build section nav dots from h2s
+const h2s=document.querySelectorAll('.prose h2');
+const sNav=document.getElementById('sectionNav');
+const dots=[];
+h2s.forEach((h,i)=>{
+  const btn=document.createElement('button');
+  btn.className='snav-dot';
+  btn.setAttribute('data-label',h.textContent.trim().substring(0,28));
+  btn.onclick=()=>h.scrollIntoView({behavior:'smooth',block:'start'});
+  sNav.appendChild(btn);
+  dots.push({btn,h});
+});
+
+const dotObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      const idx=dots.findIndex(d=>d.h===e.target);
+      if(idx>-1) dots.forEach((d,i)=>d.btn.classList.toggle('active',i===idx));
+    }
+  });
+},{rootMargin:'-30% 0px -60% 0px'});
+dots.forEach(d=>dotObs.observe(d.h));
+
+// Scroll reveal
+const revObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='translateY(0)';}});
+},{threshold:0.08});
+document.querySelectorAll('.toc,.callout,.table-wrap,.code-block,.ep-nav-card').forEach(el=>{
+  el.style.opacity='0';
+  el.style.transform='translateY(14px)';
+  el.style.transition='opacity 0.55s ease,transform 0.55s ease';
+  revObs.observe(el);
+});
+</script>
+</body>
+</html>

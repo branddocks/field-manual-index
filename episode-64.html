@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ep 64: GPU Architecture Basics: Why GPUs Are AI's Engine</title>
+<meta name="description" content="Your CPU has 8 cores. Maybe 16. A single NVIDIA H100 has 16,896 CUDA cores and 528 Tensor Cores. Here's why that matters.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,300&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0d0d1a;--page:#ffffff;--paper:#f8f9ff;
+  --navy:#124093;--navy-dim:rgba(18,64,147,0.07);--navy-mid:rgba(18,64,147,0.15);
+  --red:#e2190e;--gold:#c8973a;--muted:#6b7280;--rule:#e5e7ef;--code-bg:#0d0d1f;
+  --title:'Roboto',sans-serif;--body:'Poppins',sans-serif;--mono:'DM Mono',monospace;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--page);color:var(--ink);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:#fff}
+::-webkit-scrollbar-thumb{background:var(--navy);border-radius:2px}
+
+/* NAV */
+nav.top{position:sticky;top:0;z-index:200;background:#fff;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(20px,5vw,60px);border-bottom:1px solid var(--rule);box-shadow:0 1px 12px rgba(0,0,0,0.05)}
+.logo-wrap{display:flex;align-items:center;text-decoration:none}
+.logo-img{height:38px;width:auto;object-fit:contain;display:block}
+.nav-right{display:flex;align-items:center;gap:6px}
+.nav-link{font-family:var(--body);font-size:11.5px;font-weight:500;color:var(--muted);text-decoration:none;padding:6px 14px;border-radius:6px;transition:all 0.2s}
+.nav-link:hover{color:var(--navy);background:var(--navy-dim)}
+.nav-cta{background:var(--navy)!important;color:#fff!important}
+.nav-cta:hover{background:#1a52c0!important;color:#fff!important}
+
+/* PROGRESS */
+.progress-bar-fixed{position:fixed;top:60px;left:0;right:0;height:2.5px;background:rgba(18,64,147,0.1);z-index:199}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--navy),#4f7ff7);width:0%;transition:width 0.1s;border-radius:0 2px 2px 0}
+
+/* HERO */
+.hero{background:#fff;position:relative;overflow:hidden;min-height:88vh;display:flex;flex-direction:column;justify-content:center}
+.hero-bg{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.hero-blob-1{position:absolute;top:-120px;right:-120px;width:700px;height:700px;background:radial-gradient(circle at 60% 40%,rgba(18,64,147,0.07) 0%,rgba(18,64,147,0.03) 40%,transparent 70%);border-radius:50%}
+.hero-blob-2{position:absolute;bottom:-80px;left:-80px;width:500px;height:500px;background:radial-gradient(circle,rgba(79,127,247,0.06) 0%,transparent 65%);border-radius:50%}
+.hero-lines{position:absolute;top:0;right:0;width:45%;height:100%;opacity:0.06}
+.hero-lines svg{width:100%;height:100%}
+.hero-tokens{position:absolute;top:0;right:0;width:46%;height:100%;display:flex;align-items:center;justify-content:center}
+.token-float-wrap{position:relative;width:360px;height:360px}
+.tf{position:absolute;font-family:var(--mono);font-size:13px;font-weight:500;padding:8px 16px;border-radius:8px;white-space:nowrap;animation:float-anim 6s ease-in-out infinite;box-shadow:0 4px 20px rgba(0,0,0,0.08)}
+.tf-1{top:20px;left:60px;background:rgba(18,64,147,0.09);color:#124093;border:1px solid rgba(18,64,147,0.18);animation-delay:0s}
+.tf-2{top:70px;right:20px;background:rgba(79,127,247,0.09);color:#2563eb;border:1px solid rgba(79,127,247,0.2);animation-delay:0.8s}
+.tf-3{top:140px;left:20px;background:rgba(16,185,129,0.08);color:#059669;border:1px solid rgba(16,185,129,0.18);animation-delay:1.6s}
+.tf-4{top:170px;right:50px;background:rgba(168,85,247,0.08);color:#7c3aed;border:1px solid rgba(168,85,247,0.18);animation-delay:0.4s}
+.tf-5{bottom:140px;left:80px;background:rgba(234,179,8,0.08);color:#b45309;border:1px solid rgba(234,179,8,0.2);animation-delay:1.2s}
+.tf-6{bottom:90px;right:30px;background:rgba(236,72,153,0.08);color:#db2777;border:1px solid rgba(236,72,153,0.2);animation-delay:2s}
+.tf-7{bottom:30px;left:40px;background:rgba(239,68,68,0.08);color:#dc2626;border:1px solid rgba(239,68,68,0.18);animation-delay:0.6s}
+.tf-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:110px;height:110px;background:var(--navy);border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;box-shadow:0 12px 40px rgba(18,64,147,0.3);animation:pulse-center 3s ease-in-out infinite}
+.tf-center .big{font-family:var(--title);font-size:28px;font-weight:900;color:#fff;line-height:1}
+.tf-center .small{font-family:var(--body);font-size:9px;font-weight:500;color:rgba(255,255,255,0.6);letter-spacing:1.5px;text-transform:uppercase}
+@keyframes float-anim{0%,100%{transform:translateY(0px)}50%{transform:translateY(-10px)}}
+@keyframes pulse-center{0%,100%{box-shadow:0 12px 40px rgba(18,64,147,0.3)}50%{box-shadow:0 12px 60px rgba(18,64,147,0.5)}}
+.hero-content{position:relative;z-index:2;width:54%;padding:clamp(48px,8vw,96px) clamp(24px,5vw,72px) clamp(48px,8vw,96px)}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:5px 14px;background:var(--navy-dim);border:1px solid rgba(18,64,147,0.18);border-radius:100px;margin-bottom:22px;font-family:var(--body);font-size:10px;font-weight:600;color:var(--navy);letter-spacing:1.2px;text-transform:uppercase}
+.hero-eyebrow .dot{width:5px;height:5px;background:var(--navy);border-radius:50%}
+.hero h1{font-family:var(--title);font-size:clamp(28px,4.5vw,52px);font-weight:900;color:var(--ink);line-height:1.08;letter-spacing:-1.2px;margin-bottom:20px}
+.hero h1 .line2{display:block;color:var(--navy)}
+.hero-sub{font-family:var(--body);font-size:clamp(13px,1.6vw,15px);font-weight:300;color:#4b5563;line-height:1.85;max-width:500px;margin-bottom:34px}
+.breadcrumb{display:flex;align-items:center;gap:7px;margin-bottom:28px;font-family:var(--mono);font-size:10px;color:#9ca3af}
+.breadcrumb a{color:inherit;text-decoration:none;transition:color 0.2s}
+.breadcrumb a:hover{color:var(--navy)}
+.breadcrumb .sep{color:#d1d5db}
+.breadcrumb .cur{color:#6b7280}
+.meta-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:14px 20px;background:var(--paper);border:1px solid var(--rule);border-radius:10px;margin-bottom:24px}
+.meta-item{font-family:var(--body);font-size:10.5px;font-weight:500;color:var(--muted);display:flex;align-items:center;gap:5px}
+.tags-row{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-family:var(--body);font-size:10px;font-weight:500;color:var(--navy);background:var(--navy-dim);padding:4px 11px;border-radius:100px;border:1px solid rgba(18,64,147,0.15)}
+@media(max-width:900px){.hero{min-height:auto;padding-bottom:48px}.hero-content{width:100%;padding:48px 24px 36px}.hero-tokens{display:none}.hero-lines{display:none}}
+
+/* SECTION NAV DOTS */
+.section-nav{position:fixed;right:clamp(12px,2vw,24px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:9px;z-index:100}
+.snav-dot{width:7px;height:7px;border-radius:50%;background:#d1d5db;border:none;padding:0;cursor:pointer;transition:all 0.3s;position:relative}
+.snav-dot::after{content:attr(data-label);position:absolute;right:16px;top:50%;transform:translateY(-50%);font-family:var(--body);font-size:9px;font-weight:500;color:var(--ink);background:#fff;padding:3px 9px;border-radius:4px;border:1px solid var(--rule);box-shadow:0 2px 8px rgba(0,0,0,0.06);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.2s}
+.snav-dot:hover::after{opacity:1}
+.snav-dot.active{background:var(--navy);transform:scale(1.5)}
+.snav-dot:hover:not(.active){background:rgba(18,64,147,0.4)}
+@media(max-width:768px){.section-nav{display:none}}
+
+/* LAYOUT */
+.layout{max-width:860px;margin:0 auto;padding:clamp(40px,6vw,68px) clamp(20px,5vw,56px) 80px}
+
+/* TOC */
+.toc{background:var(--paper);border:1px solid var(--rule);border-left:4px solid var(--navy);border-radius:10px;padding:22px 26px;margin-bottom:52px}
+.toc-title{font-family:var(--title);font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
+.toc-list{list-style:none;display:flex;flex-direction:column;gap:3px}
+.toc-list li a{display:flex;align-items:center;gap:12px;text-decoration:none;padding:6px 0;font-family:var(--body);font-size:13px;font-weight:400;color:var(--ink);transition:color 0.2s}
+.toc-list li a:hover{color:var(--navy)}
+.toc-num{font-family:var(--mono);font-size:9px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* PROSE */
+.prose{line-height:1.85}
+.prose h2{font-family:var(--title);font-size:clamp(18px,2.5vw,23px);font-weight:700;color:var(--ink);letter-spacing:-0.4px;margin:52px 0 8px;line-height:1.2;scroll-margin-top:80px;padding-left:18px;position:relative}
+.prose h2::before{content:'';position:absolute;left:0;top:5px;bottom:5px;width:3px;background:var(--navy);border-radius:2px}
+.prose h2:first-child{margin-top:0}
+.prose h3{font-family:var(--title);font-size:14px;font-weight:700;color:var(--ink);margin:26px 0 8px}
+.section-rule{width:36px;height:2px;background:var(--navy);border-radius:2px;margin:8px 0 22px 18px;opacity:0.4}
+.prose p{font-family:var(--body);font-size:clamp(13.5px,1.7vw,15px);line-height:1.88;color:#374151;margin-bottom:16px;font-weight:300}
+.prose p strong{font-weight:600;color:var(--ink)}
+.prose ul,.prose ol{list-style:none;padding:0;margin:4px 0 20px}
+.prose ul li,.prose ol li{font-family:var(--body);font-size:clamp(13.5px,1.7vw,14.5px);line-height:1.8;color:#374151;padding:4px 0 4px 26px;position:relative;font-weight:300}
+.prose ul li::before{content:'';position:absolute;left:5px;top:14px;width:5px;height:5px;background:var(--navy);border-radius:50%;opacity:0.55}
+.prose ol{counter-reset:li}
+.prose ol li{counter-increment:li}
+.prose ol li::before{content:counter(li);position:absolute;left:0;top:5px;font-family:var(--mono);font-size:8px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.ic{font-family:var(--mono);font-size:12.5px;background:var(--navy-dim);color:var(--navy);padding:1.5px 6px;border-radius:4px;border:1px solid rgba(18,64,147,0.15)}
+
+/* CODE */
+.code-block{background:var(--code-bg);border-radius:10px;margin:24px 0;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.12),0 0 0 1px rgba(18,64,147,0.1)}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.02)}
+.code-dots{display:flex;gap:5px}
+.cd{width:10px;height:10px;border-radius:50%}
+.cd-r{background:#ff5f56}.cd-y{background:#ffbd2e}.cd-g{background:#27c93f}
+.code-filename{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,0.25)}
+.code-lang{font-family:var(--mono);font-size:9px;color:rgba(91,140,247,0.6);letter-spacing:1px;text-transform:uppercase}
+.code-body{padding:20px 22px;overflow-x:auto}
+.code-body pre{margin:0}
+.code-body code{font-family:var(--mono);font-size:12.5px;line-height:1.9;color:#c9d4f5}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;margin:24px 0;border-radius:10px;border:1px solid var(--rule);box-shadow:0 2px 12px rgba(0,0,0,0.04)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:var(--ink)}
+thead th{padding:12px 16px;text-align:left;font-family:var(--body);font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,0.45)}
+thead th:first-child{color:#6b9fff}
+tbody tr{border-bottom:1px solid var(--rule);transition:background 0.15s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--paper)}
+tbody td{padding:10px 16px;font-family:var(--body);font-size:13px;color:#374151;font-weight:300;line-height:1.5}
+tbody td:first-child{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--navy)}
+
+/* CALLOUTS */
+.callout{border-radius:9px;padding:16px 20px;margin:24px 0;display:flex;gap:13px;align-items:flex-start}
+.callout-tip{background:rgba(18,64,147,0.05);border:1px solid rgba(18,64,147,0.16);border-left:3px solid var(--navy)}
+.callout-warn{background:rgba(220,38,38,0.04);border:1px solid rgba(220,38,38,0.14);border-left:3px solid #dc2626}
+.callout-note{background:rgba(200,151,58,0.05);border:1px solid rgba(200,151,58,0.2);border-left:3px solid var(--gold)}
+.callout-icon{font-size:16px;flex-shrink:0;margin-top:1px;line-height:1}
+.callout p{font-size:13.5px!important;line-height:1.7!important;color:#374151!important;margin:0!important}
+
+/* EP NAV */
+.ep-nav{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:64px;padding-top:32px;border-top:1px solid var(--rule)}
+@media(max-width:500px){.ep-nav{grid-template-columns:1fr}}
+.ep-nav-card{display:flex;flex-direction:column;text-decoration:none;padding:20px 22px;border:1px solid var(--rule);border-radius:10px;background:var(--paper);transition:all 0.25s;gap:5px}
+.ep-nav-card:hover{border-color:rgba(18,64,147,0.3);background:var(--navy-dim);transform:translateY(-2px);box-shadow:0 6px 20px rgba(18,64,147,0.08)}
+.ep-nav-dir{font-family:var(--body);font-size:9px;font-weight:600;color:var(--navy);letter-spacing:1px;text-transform:uppercase}
+.ep-nav-title{font-family:var(--title);font-size:13px;font-weight:600;color:var(--ink);line-height:1.4}
+.ep-nav-card.next{align-items:flex-end;text-align:right}
+
+/* FOOTER */
+footer{background:var(--ink);padding:44px clamp(20px,5vw,60px);border-top:3px solid var(--navy)}
+.footer-inner{max-width:860px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.footer-logo{height:32px;width:auto;object-fit:contain;filter:brightness(0) invert(1);opacity:0.7}
+.footer-tagline{font-family:var(--body);font-size:11px;color:rgba(255,255,255,0.22);font-style:italic;margin-top:4px;font-weight:300}
+.footer-links{display:flex;gap:20px;flex-wrap:wrap}
+.footer-links a{font-family:var(--body);font-size:11px;font-weight:400;color:rgba(255,255,255,0.3);text-decoration:none;transition:color 0.2s}
+.footer-links a:hover{color:rgba(255,255,255,0.75)}
+
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.hero-content>*{animation:fadeUp 0.65s cubic-bezier(0.22,1,0.36,1) both}
+.hero-content>*:nth-child(1){animation-delay:0.05s}
+.hero-content>*:nth-child(2){animation-delay:0.1s}
+.hero-content>*:nth-child(3){animation-delay:0.15s}
+.hero-content>*:nth-child(4){animation-delay:0.2s}
+.hero-content>*:nth-child(5){animation-delay:0.25s}
+.hero-content>*:nth-child(6){animation-delay:0.3s}
+.hero-content>*:nth-child(7){animation-delay:0.35s}
+@media(max-width:640px){.nav-link:not(.nav-cta){display:none}}
+</style>
+</head>
+<body>
+
+<div class="progress-bar-fixed"><div class="progress-fill" id="prog"></div></div>
+
+<nav class="top">
+  <a href="field-manual-index.html" class="logo-wrap">
+    <img class="logo-img" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+  </a>
+  <div class="nav-right">
+    <a href="field-manual-index.html" class="nav-link">All Episodes</a>
+    <a href="field-manual-index.html#g10" class="nav-link nav-cta">💻 GPU & Hardware</a>
+  </div>
+</nav>
+
+<nav class="section-nav" id="sectionNav"></nav>
+
+<header class="hero">
+  <div class="hero-bg">
+    <div class="hero-blob-1"></div>
+    <div class="hero-blob-2"></div>
+    <div class="hero-lines">
+      <svg viewBox="0 0 600 800" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+        <line x1="0" y1="200" x2="600" y2="0" stroke="#124093" stroke-width="1"/>
+        <line x1="0" y1="400" x2="600" y2="200" stroke="#124093" stroke-width="0.6"/>
+        <line x1="0" y1="600" x2="600" y2="400" stroke="#124093" stroke-width="0.4"/>
+        <circle cx="500" cy="150" r="120" stroke="#124093" stroke-width="0.8" fill="none"/>
+        <circle cx="500" cy="150" r="80" stroke="#124093" stroke-width="0.4" fill="none"/>
+        <circle cx="500" cy="150" r="40" stroke="#124093" stroke-width="0.3" fill="none"/>
+        <line x1="300" y1="0" x2="300" y2="800" stroke="#124093" stroke-width="0.4" stroke-dasharray="6,12"/>
+        <rect x="360" y="480" width="160" height="160" stroke="#124093" stroke-width="0.6" fill="none" transform="rotate(15 440 560)"/>
+      </svg>
+    </div>
+  </div>
+  <div class="hero-tokens" aria-hidden="true">
+    <div class="token-float-wrap">
+      <div class="tf tf-1">token</div>
+<div class="tf tf-2">model</div>
+<div class="tf tf-3">layer</div>
+<div class="tf tf-4">vector</div>
+<div class="tf tf-5">embed</div>
+<div class="tf tf-6">weight</div>
+<div class="tf tf-7">param</div>
+      <div class="tf-center">
+        <span class="big">GPU</span>
+        <span class="small">EP 64</span>
+      </div>
+    </div>
+  </div>
+  <div class="hero-content">
+    <nav class="breadcrumb">
+      <a href="field-manual-index.html">Field Manual</a>
+      <span class="sep">›</span>
+      <a href="field-manual-index.html#g10">💻 GPU & Hardware</a>
+      <span class="sep">›</span>
+      <span class="cur">Episode 64</span>
+    </nav>
+    <div class="hero-eyebrow"><span class="dot"></span>MODULE 10 &nbsp;·&nbsp; GPU & Hardware</div>
+    <h1>GPU Architecture Basics: Why GPUs Are AI's Engine</h1>
+    <p class="hero-sub">Your CPU has 8 cores. Maybe 16. A single NVIDIA H100 has 16,896 CUDA cores and 528 Tensor Cores. Here's why that matters.</p>
+    <div class="meta-row">
+      <div class="meta-item"><span>📅</span> Mar 2026</div>
+      <div class="meta-item"><span>⏱</span> 10 min read</div>
+      <div class="meta-item"><span>🎯</span> Episode 64 of 98</div>
+    </div>
+    <div class="tags-row"><span class="tag">GPU Architecture</span><span class="tag">CUDA</span><span class="tag">Tensor Cores</span><span class="tag">Hardware</span></div>
+  </div>
+</header>
+
+<main class="layout">
+  <div class="toc">
+  <div class="toc-title">In this episode</div>
+  <ul class="toc-list"><li><a href="#s1"><span class="toc-num">1</span>CPU vs GPU: The Fundamental Difference</a></li>
+<li><a href="#s2"><span class="toc-num">2</span>CPU: Few Cores, Very Smart</a></li>
+<li><a href="#s3"><span class="toc-num">3</span>Virtual memory management</a></li>
+<li><a href="#s4"><span class="toc-num">4</span>Interrupt handling</a></li>
+<li><a href="#s5"><span class="toc-num">5</span>GPU: Thousands of Cores, Simple Each</a></li>
+<li><a href="#s6"><span class="toc-num">6</span>CPU (16 cores):</a></li>
+<li><a href="#s7"><span class="toc-num">7</span>Each core handles a section of the matrix</a></li>
+<li><a href="#s8"><span class="toc-num">8</span>GPU (16,896 CUDA cores):</a></li>
+<li><a href="#s9"><span class="toc-num">9</span>Each core handles a tiny piece</a></li>
+<li><a href="#s10"><span class="toc-num">10</span>Why AI Needs GPUs</a></li>
+<li><a href="#s11"><span class="toc-num">11</span>AI is almost entirely matrix multiplication:</a></li>
+<li><a href="#s12"><span class="toc-num">12</span>NVIDIA GPU Architecture: Inside the Chip</a></li>
+<li><a href="#s13"><span class="toc-num">13</span>The Hierarchy</a></li>
+<li><a href="#s14"><span class="toc-num">14</span>GPU Chip (H100)</a></li>
+<li><a href="#s15"><span class="toc-num">15</span>Streaming Multiprocessor (SM)</a></li>
+<li><a href="#s16"><span class="toc-num">16</span>CUDA Cores vs Tensor Cores</a></li>
+<li><a href="#s17"><span class="toc-num">17</span>This is the most important distinction for AI:</a></li>
+<li><a href="#s18"><span class="toc-num">18</span>CUDA Core: a × b + c = result   (1 operation per clock)</a></li>
+<li><a href="#s19"><span class="toc-num">19</span>Core Type	FP16 Performance (H100)	Use Case</a></li>
+<li><a href="#s20"><span class="toc-num">20</span>CUDA Cores	~130 TFLOPS	General compute, non-matrix ops</a></li>
+<li><a href="#s21"><span class="toc-num">21</span>Memory Architecture: Where the Real Bottleneck Lives</a></li>
+<li><a href="#s22"><span class="toc-num">22</span>The Memory Hierarchy</a></li>
+<li><a href="#s23"><span class="toc-num">23</span>HBM: High Bandwidth Memory</a></li>
+<li><a href="#s24"><span class="toc-num">24</span>Regular DDR5 RAM:  ~50 GB/s bandwidth</a></li>
+<li><a href="#s25"><span class="toc-num">25</span>HBM3 (H100):      3,350 GB/s bandwidth (3.35 TB/s)</a></li>
+<li><a href="#s26"><span class="toc-num">26</span>HBM3e (H200):     4,800 GB/s bandwidth (4.8 TB/s)</a></li>
+<li><a href="#s27"><span class="toc-num">27</span>Why Memory Bandwidth Matters</a></li>
+<li><a href="#s28"><span class="toc-num">28</span>Each token generation:</a></li>
+<li><a href="#s29"><span class="toc-num">29</span>The GPU Generations That Matter</a></li>
+<li><a href="#s30"><span class="toc-num">30</span>GPU	Year	VRAM	Bandwidth	FP16 Tensor	Key Feature</a></li>
+<li><a href="#s31"><span class="toc-num">31</span>Precision Formats: Why FP8 and FP4 Exist</a></li>
+<li><a href="#s32"><span class="toc-num">32</span>Format	Bits	Range	Tensor Core Support	Use Case</a></li>
+<li><a href="#s33"><span class="toc-num">33</span>FP32	32	±3.4×10³⁸	All GPUs	Training (master weights)</a></li>
+<li><a href="#s34"><span class="toc-num">34</span>TF32	19*	±3.4×10³⁸	A100+	Training (Tensor Core default)</a></li>
+<li><a href="#s35"><span class="toc-num">35</span>FP16	16	±65,504	V100+	Mixed precision training</a></li>
+<li><a href="#s36"><span class="toc-num">36</span>BF16	16	±3.4×10³⁸	A100+	Training (preferred)</a></li>
+<li><a href="#s37"><span class="toc-num">37</span>FP8	8	±448 (E4M3)	H100+	Inference, some training</a></li>
+<li><a href="#s38"><span class="toc-num">38</span>INT8	8	-128 to 127	All	Quantized inference</a></li>
+<li><a href="#s39"><span class="toc-num">39</span>INT4	4	-8 to 7	H100+	Quantized inference</a></li>
+<li><a href="#s40"><span class="toc-num">40</span>FP4	4	—	B200	Heavily quantized inference</a></li>
+<li><a href="#s41"><span class="toc-num">41</span>FP32: 280 GB (doesn't fit on any single GPU)</a></li>
+<li><a href="#s42"><span class="toc-num">42</span>FP16: 140 GB (fits on H200)</a></li>
+<li><a href="#s43"><span class="toc-num">43</span>FP8:   70 GB (fits on A100/H100 80GB)</a></li>
+<li><a href="#s44"><span class="toc-num">44</span>INT4:  35 GB (fits on consumer RTX 4090 24GB — close)</a></li>
+<li><a href="#s45"><span class="toc-num">45</span>NVLink and GPU Interconnects</a></li>
+<li><a href="#s46"><span class="toc-num">46</span>Interconnect	Bandwidth	Use Case</a></li>
+<li><a href="#s47"><span class="toc-num">47</span>The CUDA Software Stack</a></li>
+<li><a href="#s48"><span class="toc-num">48</span>CUDA Runtime</a></li>
+<li><a href="#s49"><span class="toc-num">49</span>CUDA Driver</a></li>
+<li><a href="#s50"><span class="toc-num">50</span>GPU Hardware</a></li>
+<li><a href="#s51"><span class="toc-num">51</span>Practical Takeaways</a></li>
+<li><a href="#s52"><span class="toc-num">52</span>Ep 63: What's Next in AI</a></li>
+<li><a href="#s53"><span class="toc-num">53</span>Ep 65: VRAM Math</a></li>
+<li><a href="#s54"><span class="toc-num">54</span>Next: Episode 65 — VRAM Math</a></li>
+</ul>
+</div>
+  <article class="prose" id="s0">
+<p>Your CPU has 8 cores. Maybe 16 if you're fancy. A single NVIDIA H100 GPU has 16,896 CUDA cores and 528 Tensor Cores.</p>
+<p>But it's not just about the number of cores. CPUs and GPUs are fundamentally different machines, designed for fundamentally different problems. A CPU is a Swiss Army knife — versatile, precise, handles anything. A GPU is a combine harvester — does one thing (parallel math) and does it at a scale that makes CPUs look like hand tools.</p>
+<p>Understanding GPU architecture isn't just academic. It explains why quantization works, why batching matters, why tensor parallelism exists, and why an H100 costs $30,000. Every optimization we've covered in this series traces back to the hardware.</p>
+<h2 id="s1">CPU vs GPU: The Fundamental Difference</h2><div class="section-rule"></div>
+<h2 id="s2">CPU: Few Cores, Very Smart</h2><div class="section-rule"></div>
+<p>A CPU core is a general-purpose computing marvel. It handles:</p>
+<p>Branch prediction (guessing which if statement path to take)</p>
+<p>Out-of-order execution (reordering instructions for speed)</p>
+<p>Complex cache hierarchies (L1, L2, L3)</p>
+<h2 id="s3">Virtual memory management</h2><div class="section-rule"></div>
+<h2 id="s4">Interrupt handling</h2><div class="section-rule"></div>
+<p>Each core is like a PhD mathematician — can solve any problem, handles complex logic, works independently.</p>
+<h2 id="s5">GPU: Thousands of Cores, Simple Each</h2><div class="section-rule"></div>
+<p>A GPU core (CUDA core) does one thing: multiply and add numbers. That's it. No branch prediction. Minimal cache. Limited control flow. But there are thousands of them, all working simultaneously.</p>
+<p>Each core is like a factory worker doing one repetitive task — simple but incredibly fast when thousands work in parallel.</p>
+<p>Task: Multiply two 4096×4096 matrices</p>
+<h2 id="s6">CPU (16 cores):</h2><div class="section-rule"></div>
+<h2 id="s7">Each core handles a section of the matrix</h2><div class="section-rule"></div>
+<p>Serial inner loops, complex scheduling</p>
+<p>Time: ~500ms</p>
+<h2 id="s8">GPU (16,896 CUDA cores):</h2><div class="section-rule"></div>
+<h2 id="s9">Each core handles a tiny piece</h2><div class="section-rule"></div>
+<p>Massively parallel, simple math</p>
+<p>Time: ~2ms</p>
+<p>GPU is 250x faster at this specific task.</p>
+<h2 id="s10">Why AI Needs GPUs</h2><div class="section-rule"></div>
+<h2 id="s11">AI is almost entirely matrix multiplication:</h2><div class="section-rule"></div>
+<p>Forward pass:    output = input × weights + bias    (matrix multiply)</p>
+<p>Attention:       scores = Q × K^T                    (matrix multiply)</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>output = scores × V                 (matrix multiply)</code></pre></div>
+</div>
+<p>Backward pass:   gradients = error × weights^T       (matrix multiply)</p>
+<p>A single transformer forward pass for a 70B model involves thousands of matrix multiplications. This is the most parallelizable workload in computing — perfect for GPUs.</p>
+<div class="callout callout-tip"><span class="callout-icon">⚡</span><p></p></div>
+<h2 id="s12">NVIDIA GPU Architecture: Inside the Chip</h2><div class="section-rule"></div>
+<p>Let's break down what's inside an H100:</p>
+<h2 id="s13">The Hierarchy</h2><div class="section-rule"></div>
+<h2 id="s14">GPU Chip (H100)</h2><div class="section-rule"></div>
+<p>└── 132 Streaming Multiprocessors (SMs)</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>└── Each SM contains:
+            ├── 128 CUDA Cores (FP32)
+            ├── 4 Tensor Cores (4th gen)
+            ├── 64 INT32 cores
+            ├── 256 KB Register File
+            ├── 256 KB L1 Cache / Shared Memory
+            └── Warp schedulers (4 per SM)</code></pre></div>
+</div>
+<h2 id="s15">Streaming Multiprocessor (SM)</h2><div class="section-rule"></div>
+<p>The SM is the fundamental compute unit. Think of it as a mini-processor. The H100 has 132 SMs, each operating semi-independently.</p>
+<p>Key concept: warps. The GPU groups 32 threads into a warp. All 32 threads in a warp execute the same instruction at the same time (SIMT — Single Instruction, Multiple Threads). This is why GPUs love uniform computation and hate branching.</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Warp (32 threads):</code></pre></div>
+</div>
+<p>Thread 0:  multiply a[0] × b[0]</p>
+<p>Thread 1:  multiply a[1] × b[1]</p>
+<p>Thread 2:  multiply a[2] × b[2]</p>
+<p>...</p>
+<p>Thread 31: multiply a[31] × b[31]</p>
+<p>All 32 multiplications happen SIMULTANEOUSLY in one clock cycle.</p>
+<h2 id="s16">CUDA Cores vs Tensor Cores</h2><div class="section-rule"></div>
+<h2 id="s17">This is the most important distinction for AI:</h2><div class="section-rule"></div>
+<p>CUDA Cores — General-purpose floating point units. Each performs one multiply-add per clock cycle:</p>
+<h2 id="s18">CUDA Core: a × b + c = result   (1 operation per clock)</h2><div class="section-rule"></div>
+<p>Tensor Cores — Specialized matrix multiply units. Each performs a 4×4 matrix multiply-accumulate per clock cycle:</p>
+<p>Tensor Core: A[4×4] × B[4×4] + C[4×4] = D[4×4]   (64 operations per clock!)</p>
+<p>That's 64x more operations per clock for matrix math. This is why Tensor Cores dominate AI workloads:</p>
+<h2 id="s19">Core Type	FP16 Performance (H100)	Use Case</h2><div class="section-rule"></div>
+<h2 id="s20">CUDA Cores	~130 TFLOPS	General compute, non-matrix ops</h2><div class="section-rule"></div>
+<p>Tensor Cores	~990 TFLOPS	Matrix multiply (attention, FFN)</p>
+<p>Tensor Cores are why NVIDIA owns the AI market. They're purpose-built for the exact operation AI needs most.</p>
+<p>🔧</p>
+<h2 id="s21">Memory Architecture: Where the Real Bottleneck Lives</h2><div class="section-rule"></div>
+<p>GPU compute is fast. Getting data to the compute units is the bottleneck. This is the memory wall — and it's the most important concept in AI hardware.</p>
+<h2 id="s22">The Memory Hierarchy</h2><div class="section-rule"></div>
+<p>Register File:     Fastest    256 KB per SM     ~20 TB/s bandwidth</p>
+<p>↓</p>
+<p>L1 Cache/SMEM:     Fast       256 KB per SM     ~20 TB/s bandwidth</p>
+<p>↓</p>
+<p>L2 Cache:          Medium     50 MB (shared)    ~12 TB/s bandwidth</p>
+<p>↓</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>HBM3 (VRAM):       Slow       80 GB             3.35 TB/s bandwidth</code></pre></div>
+</div>
+<p>↓</p>
+<p>PCIe/NVLink:       Slowest    Host ↔ GPU        64-900 GB/s</p>
+<h2 id="s23">HBM: High Bandwidth Memory</h2><div class="section-rule"></div>
+<p>GPU VRAM isn't regular RAM. It's HBM (High Bandwidth Memory) — stacked memory chips physically mounted on top of the GPU die:</p>
+<h2 id="s24">Regular DDR5 RAM:  ~50 GB/s bandwidth</h2><div class="section-rule"></div>
+<h2 id="s25">HBM3 (H100):      3,350 GB/s bandwidth (3.35 TB/s)</h2><div class="section-rule"></div>
+<h2 id="s26">HBM3e (H200):     4,800 GB/s bandwidth (4.8 TB/s)</h2><div class="section-rule"></div>
+<p>67x more bandwidth than regular RAM. This is what makes GPUs fast for AI — not just compute, but the ability to feed data to the compute units fast enough.</p>
+<h2 id="s27">Why Memory Bandwidth Matters</h2><div class="section-rule"></div>
+<p>During inference, the model weights must be read from VRAM for every forward pass:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Model: Llama 3 70B in FP16 = 140 GB of weights</code></pre></div>
+</div>
+<h2 id="s28">Each token generation:</h2><div class="section-rule"></div>
+<ul><li>Read 140 GB of weights from VRAM</li><li>Do matrix multiplies (fast)</li><li>Write output (small)</li></ul>
+<p>At 3.35 TB/s bandwidth (H100):</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Time to read weights = 140 GB / 3,350 GB/s = 0.042 seconds</code></pre></div>
+</div>
+<p>≈ 24 tokens/second (memory-bound!)</p>
+<p>The Tensor Cores could compute MUCH faster,</p>
+<p>but they're waiting for data from memory.</p>
+<p>This is why inference for large models is memory bandwidth-bound, not compute-bound. The Tensor Cores sit idle most of the time, waiting for weights to arrive from HBM.</p>
+<p>📊</p>
+<h2 id="s29">The GPU Generations That Matter</h2><div class="section-rule"></div>
+<h2 id="s30">GPU	Year	VRAM	Bandwidth	FP16 Tensor	Key Feature</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>V100</th><th>2017</th><th>32 GB HBM2</th><th>900 GB/s</th><th>125 TFLOPS</th><th>First Tensor Core GPU</th></tr></thead><tbody><tr><td>A100</td><td>2020</td><td>80 GB HBM2e</td><td>2,039 GB/s</td><td>312 TFLOPS</td><td>TF32, MIG</td></tr><tr><td>H100</td><td>2022</td><td>80 GB HBM3</td><td>3,350 GB/s</td><td>990 TFLOPS</td><td>FP8, Transformer Engine</td></tr><tr><td>H200</td><td>2024</td><td>141 GB HBM3e</td><td>4,800 GB/s</td><td>990 TFLOPS</td><td>More memory + bandwidth</td></tr><tr><td>B200</td><td>2024</td><td>192 GB HBM3e</td><td>8,000 GB/s</td><td>2,250 TFLOPS</td><td>2x everything</td></tr><tr><td>GB200 NVL72</td><td>2024</td><td>13.5 TB total</td><td>—</td><td>720 PFLOPS FP4</td><td>Full rack system</td></tr></tbody></table></div>
+<p>The generational jumps are massive — each generation roughly doubles both memory bandwidth and compute. This is why a 2-year-old GPU feels ancient in AI.</p>
+<h2 id="s31">Precision Formats: Why FP8 and FP4 Exist</h2><div class="section-rule"></div>
+<p>GPUs support multiple number formats, and newer GPUs add lower-precision formats specifically for AI:</p>
+<h2 id="s32">Format	Bits	Range	Tensor Core Support	Use Case</h2><div class="section-rule"></div>
+<h2 id="s33">FP32	32	±3.4×10³⁸	All GPUs	Training (master weights)</h2><div class="section-rule"></div>
+<h2 id="s34">TF32	19*	±3.4×10³⁸	A100+	Training (Tensor Core default)</h2><div class="section-rule"></div>
+<h2 id="s35">FP16	16	±65,504	V100+	Mixed precision training</h2><div class="section-rule"></div>
+<h2 id="s36">BF16	16	±3.4×10³⁸	A100+	Training (preferred)</h2><div class="section-rule"></div>
+<h2 id="s37">FP8	8	±448 (E4M3)	H100+	Inference, some training</h2><div class="section-rule"></div>
+<h2 id="s38">INT8	8	-128 to 127	All	Quantized inference</h2><div class="section-rule"></div>
+<h2 id="s39">INT4	4	-8 to 7	H100+	Quantized inference</h2><div class="section-rule"></div>
+<h2 id="s40">FP4	4	—	B200	Heavily quantized inference</h2><div class="section-rule"></div>
+<p>*TF32 uses 19 bits total but has FP32 range with FP16 mantissa precision.</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Now you understand why quantization (Episode 12) works — the hardware literally supports running models at lower precision. FP16 on Tensor Cores gives you 2x the throughput of FP32. FP8 doubles again. INT4 doubles again. Each lower precision means more operations per second and less memory for weights.</code></pre></div>
+</div>
+<p>70B model memory:</p>
+<h2 id="s41">FP32: 280 GB (doesn't fit on any single GPU)</h2><div class="section-rule"></div>
+<h2 id="s42">FP16: 140 GB (fits on H200)</h2><div class="section-rule"></div>
+<h2 id="s43">FP8:   70 GB (fits on A100/H100 80GB)</h2><div class="section-rule"></div>
+<h2 id="s44">INT4:  35 GB (fits on consumer RTX 4090 24GB — close)</h2><div class="section-rule"></div>
+<div class="callout callout-tip"><span class="callout-icon">💡</span><p></p></div>
+<h2 id="s45">NVLink and GPU Interconnects</h2><div class="section-rule"></div>
+<p>When one GPU isn't enough, you need to connect multiple GPUs. The interconnect speed determines how well multi-GPU setups work:</p>
+<h2 id="s46">Interconnect	Bandwidth	Use Case</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>PCIe Gen5</th><th>64 GB/s (per direction)</th><th>CPU ↔ GPU, budget multi-GPU</th></tr></thead><tbody><tr><td>NVLink 4 (H100)</td><td>900 GB/s (total)</td><td>Multi-GPU within a node</td></tr><tr><td>NVLink 5 (B200)</td><td>1,800 GB/s</td><td>Next-gen multi-GPU</td></tr><tr><td>NVSwitch</td><td>Full mesh connectivity</td><td>8 GPUs all-to-all</td></tr><tr><td>InfiniBand NDR</td><td>400 Gb/s per port</td><td>Multi-node (across servers)</td></tr></tbody></table></div>
+<p>NVLink is 14x faster than PCIe. This is why NVIDIA's DGX systems (with NVLink) vastly outperform DIY multi-GPU setups (with PCIe).</p>
+<p>Tensor Parallelism (splitting model across GPUs):</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>With NVLink: 900 GB/s → minimal overhead → scales well
+With PCIe:    64 GB/s → massive overhead → doesn't scale</code></pre></div>
+</div>
+<p>This is why you can't just buy 8 consumer GPUs and get the same performance as a DGX — the interconnect bottleneck kills performance.</p>
+<p>🔬</p>
+<h2 id="s47">The CUDA Software Stack</h2><div class="section-rule"></div>
+<p>NVIDIA's dominance isn't just hardware — it's the software ecosystem:</p>
+<p>Your AI code (PyTorch)</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>↓</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>cuDNN (deep learning primitives)
+↓
+cuBLAS (matrix operations)
+↓</code></pre></div>
+</div>
+<h2 id="s48">CUDA Runtime</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>↓</code></pre></div>
+</div>
+<h2 id="s49">CUDA Driver</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>↓</code></pre></div>
+</div>
+<h2 id="s50">GPU Hardware</h2><div class="section-rule"></div>
+<p>cuBLAS — Optimized matrix multiply library. Years of hand-tuned kernels for every GPU generation.</p>
+<p>cuDNN — Deep learning primitives (convolution, attention, normalization). Used by PyTorch and TensorFlow internally.</p>
+<p>CUDA — The programming model. Write code that runs on thousands of GPU threads.</p>
+<p>This software stack represents 15+ years of investment. AMD (ROCm) and Intel (OneAPI) are catching up, but NVIDIA's software moat is deep.</p>
+<p>🛡️</p>
+<h2 id="s51">Practical Takeaways</h2><div class="section-rule"></div>
+<p>GPUs beat CPUs at AI because of massive parallelism — thousands of cores doing matrix math simultaneously</p>
+<p>Tensor Cores are the key innovation — 64 operations per clock for matrix multiply, 8x faster than CUDA cores for AI</p>
+<p>Memory bandwidth is usually the bottleneck — inference is limited by how fast you can read weights from VRAM, not compute</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Lower precision = more speed — FP16 doubles throughput over FP32, FP8 doubles again — hardware natively supports it</code></pre></div>
+</div>
+<p>Interconnects matter for multi-GPU — NVLink (900 GB/s) vs PCIe (64 GB/s) is a 14x difference</p>
+<p>NVIDIA's moat is software + hardware — CUDA, cuBLAS, cuDNN represent 15 years of optimization</p>
+<p>📦</p>
+<p>What's Next?</p>
+<p>Episode 65: VRAM Math — How do you calculate if a model fits in your GPU? Bytes per parameter, KV cache memory, batch size impact. A practical formula you'll use every day as an AI engineer.</p>
+<p>← Previous</p>
+<h2 id="s52">Ep 63: What's Next in AI</h2><div class="section-rule"></div>
+<p>Next →</p>
+<h2 id="s53">Ep 65: VRAM Math</h2><div class="section-rule"></div>
+<h2 id="s54">Next: Episode 65 — VRAM Math</h2><div class="section-rule"></div>
+<p>Every AI engineer asks: will this model fit on my GPU? Here's how to calculate it yourself — in your head, in 30 seconds.</p>
+<p>This is part of a 98-episode series covering AI engineering from tokens to production deployment.</p>
+  </article>
+  <div class="ep-nav">
+    <a href="episode-63.html" class="ep-nav-card">
+      <span class="ep-nav-dir">← Previous</span>
+      <span class="ep-nav-title">Ep 63: What's Next in AI: Where This Is All Heading</span>
+    </a>
+    <a href="episode-65.html" class="ep-nav-card next">
+      <span class="ep-nav-dir">Next Episode →</span>
+      <span class="ep-nav-title">Ep 65: VRAM Math: How to Calculate If a Model Fits</span>
+    </a>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <img class="footer-logo" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+      <div class="footer-tagline">98 Field Manual · Build with AI, not just use it · Free forever</div>
+    </div>
+    <div class="footer-links">
+      <a href="field-manual-index.html">All Episodes</a>
+      <a href="field-manual-index.html#g10">GPU & Hardware</a>
+      <a href="episode-63.html">← Ep 63</a>
+      <a href="episode-65.html">Ep 65 →</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+const prog=document.getElementById('prog');
+window.addEventListener('scroll',()=>{
+  const total=document.documentElement.scrollHeight-window.innerHeight;
+  prog.style.width=Math.min(100,(window.scrollY/total)*100)+'%';
+},{passive:true});
+
+// Build section nav dots from h2s
+const h2s=document.querySelectorAll('.prose h2');
+const sNav=document.getElementById('sectionNav');
+const dots=[];
+h2s.forEach((h,i)=>{
+  const btn=document.createElement('button');
+  btn.className='snav-dot';
+  btn.setAttribute('data-label',h.textContent.trim().substring(0,28));
+  btn.onclick=()=>h.scrollIntoView({behavior:'smooth',block:'start'});
+  sNav.appendChild(btn);
+  dots.push({btn,h});
+});
+
+const dotObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      const idx=dots.findIndex(d=>d.h===e.target);
+      if(idx>-1) dots.forEach((d,i)=>d.btn.classList.toggle('active',i===idx));
+    }
+  });
+},{rootMargin:'-30% 0px -60% 0px'});
+dots.forEach(d=>dotObs.observe(d.h));
+
+// Scroll reveal
+const revObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='translateY(0)';}});
+},{threshold:0.08});
+document.querySelectorAll('.toc,.callout,.table-wrap,.code-block,.ep-nav-card').forEach(el=>{
+  el.style.opacity='0';
+  el.style.transform='translateY(14px)';
+  el.style.transition='opacity 0.55s ease,transform 0.55s ease';
+  revObs.observe(el);
+});
+</script>
+</body>
+</html>

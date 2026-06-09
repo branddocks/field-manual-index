@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ep 48: Model Merging: Frankenstein Your Way to a Better Model</title>
+<meta name="description" content="One model is amazing at coding. Another at creative writing. You want both. Model merging lets you combine them — no training required.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,300&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0d0d1a;--page:#ffffff;--paper:#f8f9ff;
+  --navy:#124093;--navy-dim:rgba(18,64,147,0.07);--navy-mid:rgba(18,64,147,0.15);
+  --red:#e2190e;--gold:#c8973a;--muted:#6b7280;--rule:#e5e7ef;--code-bg:#0d0d1f;
+  --title:'Roboto',sans-serif;--body:'Poppins',sans-serif;--mono:'DM Mono',monospace;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--page);color:var(--ink);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:#fff}
+::-webkit-scrollbar-thumb{background:var(--navy);border-radius:2px}
+
+/* NAV */
+nav.top{position:sticky;top:0;z-index:200;background:#fff;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(20px,5vw,60px);border-bottom:1px solid var(--rule);box-shadow:0 1px 12px rgba(0,0,0,0.05)}
+.logo-wrap{display:flex;align-items:center;text-decoration:none}
+.logo-img{height:38px;width:auto;object-fit:contain;display:block}
+.nav-right{display:flex;align-items:center;gap:6px}
+.nav-link{font-family:var(--body);font-size:11.5px;font-weight:500;color:var(--muted);text-decoration:none;padding:6px 14px;border-radius:6px;transition:all 0.2s}
+.nav-link:hover{color:var(--navy);background:var(--navy-dim)}
+.nav-cta{background:var(--navy)!important;color:#fff!important}
+.nav-cta:hover{background:#1a52c0!important;color:#fff!important}
+
+/* PROGRESS */
+.progress-bar-fixed{position:fixed;top:60px;left:0;right:0;height:2.5px;background:rgba(18,64,147,0.1);z-index:199}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--navy),#4f7ff7);width:0%;transition:width 0.1s;border-radius:0 2px 2px 0}
+
+/* HERO */
+.hero{background:#fff;position:relative;overflow:hidden;min-height:88vh;display:flex;flex-direction:column;justify-content:center}
+.hero-bg{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.hero-blob-1{position:absolute;top:-120px;right:-120px;width:700px;height:700px;background:radial-gradient(circle at 60% 40%,rgba(18,64,147,0.07) 0%,rgba(18,64,147,0.03) 40%,transparent 70%);border-radius:50%}
+.hero-blob-2{position:absolute;bottom:-80px;left:-80px;width:500px;height:500px;background:radial-gradient(circle,rgba(79,127,247,0.06) 0%,transparent 65%);border-radius:50%}
+.hero-lines{position:absolute;top:0;right:0;width:45%;height:100%;opacity:0.06}
+.hero-lines svg{width:100%;height:100%}
+.hero-tokens{position:absolute;top:0;right:0;width:46%;height:100%;display:flex;align-items:center;justify-content:center}
+.token-float-wrap{position:relative;width:360px;height:360px}
+.tf{position:absolute;font-family:var(--mono);font-size:13px;font-weight:500;padding:8px 16px;border-radius:8px;white-space:nowrap;animation:float-anim 6s ease-in-out infinite;box-shadow:0 4px 20px rgba(0,0,0,0.08)}
+.tf-1{top:20px;left:60px;background:rgba(18,64,147,0.09);color:#124093;border:1px solid rgba(18,64,147,0.18);animation-delay:0s}
+.tf-2{top:70px;right:20px;background:rgba(79,127,247,0.09);color:#2563eb;border:1px solid rgba(79,127,247,0.2);animation-delay:0.8s}
+.tf-3{top:140px;left:20px;background:rgba(16,185,129,0.08);color:#059669;border:1px solid rgba(16,185,129,0.18);animation-delay:1.6s}
+.tf-4{top:170px;right:50px;background:rgba(168,85,247,0.08);color:#7c3aed;border:1px solid rgba(168,85,247,0.18);animation-delay:0.4s}
+.tf-5{bottom:140px;left:80px;background:rgba(234,179,8,0.08);color:#b45309;border:1px solid rgba(234,179,8,0.2);animation-delay:1.2s}
+.tf-6{bottom:90px;right:30px;background:rgba(236,72,153,0.08);color:#db2777;border:1px solid rgba(236,72,153,0.2);animation-delay:2s}
+.tf-7{bottom:30px;left:40px;background:rgba(239,68,68,0.08);color:#dc2626;border:1px solid rgba(239,68,68,0.18);animation-delay:0.6s}
+.tf-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:110px;height:110px;background:var(--navy);border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;box-shadow:0 12px 40px rgba(18,64,147,0.3);animation:pulse-center 3s ease-in-out infinite}
+.tf-center .big{font-family:var(--title);font-size:28px;font-weight:900;color:#fff;line-height:1}
+.tf-center .small{font-family:var(--body);font-size:9px;font-weight:500;color:rgba(255,255,255,0.6);letter-spacing:1.5px;text-transform:uppercase}
+@keyframes float-anim{0%,100%{transform:translateY(0px)}50%{transform:translateY(-10px)}}
+@keyframes pulse-center{0%,100%{box-shadow:0 12px 40px rgba(18,64,147,0.3)}50%{box-shadow:0 12px 60px rgba(18,64,147,0.5)}}
+.hero-content{position:relative;z-index:2;width:54%;padding:clamp(48px,8vw,96px) clamp(24px,5vw,72px) clamp(48px,8vw,96px)}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:5px 14px;background:var(--navy-dim);border:1px solid rgba(18,64,147,0.18);border-radius:100px;margin-bottom:22px;font-family:var(--body);font-size:10px;font-weight:600;color:var(--navy);letter-spacing:1.2px;text-transform:uppercase}
+.hero-eyebrow .dot{width:5px;height:5px;background:var(--navy);border-radius:50%}
+.hero h1{font-family:var(--title);font-size:clamp(28px,4.5vw,52px);font-weight:900;color:var(--ink);line-height:1.08;letter-spacing:-1.2px;margin-bottom:20px}
+.hero h1 .line2{display:block;color:var(--navy)}
+.hero-sub{font-family:var(--body);font-size:clamp(13px,1.6vw,15px);font-weight:300;color:#4b5563;line-height:1.85;max-width:500px;margin-bottom:34px}
+.breadcrumb{display:flex;align-items:center;gap:7px;margin-bottom:28px;font-family:var(--mono);font-size:10px;color:#9ca3af}
+.breadcrumb a{color:inherit;text-decoration:none;transition:color 0.2s}
+.breadcrumb a:hover{color:var(--navy)}
+.breadcrumb .sep{color:#d1d5db}
+.breadcrumb .cur{color:#6b7280}
+.meta-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:14px 20px;background:var(--paper);border:1px solid var(--rule);border-radius:10px;margin-bottom:24px}
+.meta-item{font-family:var(--body);font-size:10.5px;font-weight:500;color:var(--muted);display:flex;align-items:center;gap:5px}
+.tags-row{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-family:var(--body);font-size:10px;font-weight:500;color:var(--navy);background:var(--navy-dim);padding:4px 11px;border-radius:100px;border:1px solid rgba(18,64,147,0.15)}
+@media(max-width:900px){.hero{min-height:auto;padding-bottom:48px}.hero-content{width:100%;padding:48px 24px 36px}.hero-tokens{display:none}.hero-lines{display:none}}
+
+/* SECTION NAV DOTS */
+.section-nav{position:fixed;right:clamp(12px,2vw,24px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:9px;z-index:100}
+.snav-dot{width:7px;height:7px;border-radius:50%;background:#d1d5db;border:none;padding:0;cursor:pointer;transition:all 0.3s;position:relative}
+.snav-dot::after{content:attr(data-label);position:absolute;right:16px;top:50%;transform:translateY(-50%);font-family:var(--body);font-size:9px;font-weight:500;color:var(--ink);background:#fff;padding:3px 9px;border-radius:4px;border:1px solid var(--rule);box-shadow:0 2px 8px rgba(0,0,0,0.06);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.2s}
+.snav-dot:hover::after{opacity:1}
+.snav-dot.active{background:var(--navy);transform:scale(1.5)}
+.snav-dot:hover:not(.active){background:rgba(18,64,147,0.4)}
+@media(max-width:768px){.section-nav{display:none}}
+
+/* LAYOUT */
+.layout{max-width:860px;margin:0 auto;padding:clamp(40px,6vw,68px) clamp(20px,5vw,56px) 80px}
+
+/* TOC */
+.toc{background:var(--paper);border:1px solid var(--rule);border-left:4px solid var(--navy);border-radius:10px;padding:22px 26px;margin-bottom:52px}
+.toc-title{font-family:var(--title);font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
+.toc-list{list-style:none;display:flex;flex-direction:column;gap:3px}
+.toc-list li a{display:flex;align-items:center;gap:12px;text-decoration:none;padding:6px 0;font-family:var(--body);font-size:13px;font-weight:400;color:var(--ink);transition:color 0.2s}
+.toc-list li a:hover{color:var(--navy)}
+.toc-num{font-family:var(--mono);font-size:9px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* PROSE */
+.prose{line-height:1.85}
+.prose h2{font-family:var(--title);font-size:clamp(18px,2.5vw,23px);font-weight:700;color:var(--ink);letter-spacing:-0.4px;margin:52px 0 8px;line-height:1.2;scroll-margin-top:80px;padding-left:18px;position:relative}
+.prose h2::before{content:'';position:absolute;left:0;top:5px;bottom:5px;width:3px;background:var(--navy);border-radius:2px}
+.prose h2:first-child{margin-top:0}
+.prose h3{font-family:var(--title);font-size:14px;font-weight:700;color:var(--ink);margin:26px 0 8px}
+.section-rule{width:36px;height:2px;background:var(--navy);border-radius:2px;margin:8px 0 22px 18px;opacity:0.4}
+.prose p{font-family:var(--body);font-size:clamp(13.5px,1.7vw,15px);line-height:1.88;color:#374151;margin-bottom:16px;font-weight:300}
+.prose p strong{font-weight:600;color:var(--ink)}
+.prose ul,.prose ol{list-style:none;padding:0;margin:4px 0 20px}
+.prose ul li,.prose ol li{font-family:var(--body);font-size:clamp(13.5px,1.7vw,14.5px);line-height:1.8;color:#374151;padding:4px 0 4px 26px;position:relative;font-weight:300}
+.prose ul li::before{content:'';position:absolute;left:5px;top:14px;width:5px;height:5px;background:var(--navy);border-radius:50%;opacity:0.55}
+.prose ol{counter-reset:li}
+.prose ol li{counter-increment:li}
+.prose ol li::before{content:counter(li);position:absolute;left:0;top:5px;font-family:var(--mono);font-size:8px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.ic{font-family:var(--mono);font-size:12.5px;background:var(--navy-dim);color:var(--navy);padding:1.5px 6px;border-radius:4px;border:1px solid rgba(18,64,147,0.15)}
+
+/* CODE */
+.code-block{background:var(--code-bg);border-radius:10px;margin:24px 0;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.12),0 0 0 1px rgba(18,64,147,0.1)}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.02)}
+.code-dots{display:flex;gap:5px}
+.cd{width:10px;height:10px;border-radius:50%}
+.cd-r{background:#ff5f56}.cd-y{background:#ffbd2e}.cd-g{background:#27c93f}
+.code-filename{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,0.25)}
+.code-lang{font-family:var(--mono);font-size:9px;color:rgba(91,140,247,0.6);letter-spacing:1px;text-transform:uppercase}
+.code-body{padding:20px 22px;overflow-x:auto}
+.code-body pre{margin:0}
+.code-body code{font-family:var(--mono);font-size:12.5px;line-height:1.9;color:#c9d4f5}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;margin:24px 0;border-radius:10px;border:1px solid var(--rule);box-shadow:0 2px 12px rgba(0,0,0,0.04)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:var(--ink)}
+thead th{padding:12px 16px;text-align:left;font-family:var(--body);font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,0.45)}
+thead th:first-child{color:#6b9fff}
+tbody tr{border-bottom:1px solid var(--rule);transition:background 0.15s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--paper)}
+tbody td{padding:10px 16px;font-family:var(--body);font-size:13px;color:#374151;font-weight:300;line-height:1.5}
+tbody td:first-child{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--navy)}
+
+/* CALLOUTS */
+.callout{border-radius:9px;padding:16px 20px;margin:24px 0;display:flex;gap:13px;align-items:flex-start}
+.callout-tip{background:rgba(18,64,147,0.05);border:1px solid rgba(18,64,147,0.16);border-left:3px solid var(--navy)}
+.callout-warn{background:rgba(220,38,38,0.04);border:1px solid rgba(220,38,38,0.14);border-left:3px solid #dc2626}
+.callout-note{background:rgba(200,151,58,0.05);border:1px solid rgba(200,151,58,0.2);border-left:3px solid var(--gold)}
+.callout-icon{font-size:16px;flex-shrink:0;margin-top:1px;line-height:1}
+.callout p{font-size:13.5px!important;line-height:1.7!important;color:#374151!important;margin:0!important}
+
+/* EP NAV */
+.ep-nav{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:64px;padding-top:32px;border-top:1px solid var(--rule)}
+@media(max-width:500px){.ep-nav{grid-template-columns:1fr}}
+.ep-nav-card{display:flex;flex-direction:column;text-decoration:none;padding:20px 22px;border:1px solid var(--rule);border-radius:10px;background:var(--paper);transition:all 0.25s;gap:5px}
+.ep-nav-card:hover{border-color:rgba(18,64,147,0.3);background:var(--navy-dim);transform:translateY(-2px);box-shadow:0 6px 20px rgba(18,64,147,0.08)}
+.ep-nav-dir{font-family:var(--body);font-size:9px;font-weight:600;color:var(--navy);letter-spacing:1px;text-transform:uppercase}
+.ep-nav-title{font-family:var(--title);font-size:13px;font-weight:600;color:var(--ink);line-height:1.4}
+.ep-nav-card.next{align-items:flex-end;text-align:right}
+
+/* FOOTER */
+footer{background:var(--ink);padding:44px clamp(20px,5vw,60px);border-top:3px solid var(--navy)}
+.footer-inner{max-width:860px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.footer-logo{height:32px;width:auto;object-fit:contain;filter:brightness(0) invert(1);opacity:0.7}
+.footer-tagline{font-family:var(--body);font-size:11px;color:rgba(255,255,255,0.22);font-style:italic;margin-top:4px;font-weight:300}
+.footer-links{display:flex;gap:20px;flex-wrap:wrap}
+.footer-links a{font-family:var(--body);font-size:11px;font-weight:400;color:rgba(255,255,255,0.3);text-decoration:none;transition:color 0.2s}
+.footer-links a:hover{color:rgba(255,255,255,0.75)}
+
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.hero-content>*{animation:fadeUp 0.65s cubic-bezier(0.22,1,0.36,1) both}
+.hero-content>*:nth-child(1){animation-delay:0.05s}
+.hero-content>*:nth-child(2){animation-delay:0.1s}
+.hero-content>*:nth-child(3){animation-delay:0.15s}
+.hero-content>*:nth-child(4){animation-delay:0.2s}
+.hero-content>*:nth-child(5){animation-delay:0.25s}
+.hero-content>*:nth-child(6){animation-delay:0.3s}
+.hero-content>*:nth-child(7){animation-delay:0.35s}
+@media(max-width:640px){.nav-link:not(.nav-cta){display:none}}
+</style>
+</head>
+<body>
+
+<div class="progress-bar-fixed"><div class="progress-fill" id="prog"></div></div>
+
+<nav class="top">
+  <a href="field-manual-index.html" class="logo-wrap">
+    <img class="logo-img" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+  </a>
+  <div class="nav-right">
+    <a href="field-manual-index.html" class="nav-link">All Episodes</a>
+    <a href="field-manual-index.html#g7" class="nav-link nav-cta">🎯 Fine-Tuning</a>
+  </div>
+</nav>
+
+<nav class="section-nav" id="sectionNav"></nav>
+
+<header class="hero">
+  <div class="hero-bg">
+    <div class="hero-blob-1"></div>
+    <div class="hero-blob-2"></div>
+    <div class="hero-lines">
+      <svg viewBox="0 0 600 800" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+        <line x1="0" y1="200" x2="600" y2="0" stroke="#124093" stroke-width="1"/>
+        <line x1="0" y1="400" x2="600" y2="200" stroke="#124093" stroke-width="0.6"/>
+        <line x1="0" y1="600" x2="600" y2="400" stroke="#124093" stroke-width="0.4"/>
+        <circle cx="500" cy="150" r="120" stroke="#124093" stroke-width="0.8" fill="none"/>
+        <circle cx="500" cy="150" r="80" stroke="#124093" stroke-width="0.4" fill="none"/>
+        <circle cx="500" cy="150" r="40" stroke="#124093" stroke-width="0.3" fill="none"/>
+        <line x1="300" y1="0" x2="300" y2="800" stroke="#124093" stroke-width="0.4" stroke-dasharray="6,12"/>
+        <rect x="360" y="480" width="160" height="160" stroke="#124093" stroke-width="0.6" fill="none" transform="rotate(15 440 560)"/>
+      </svg>
+    </div>
+  </div>
+  <div class="hero-tokens" aria-hidden="true">
+    <div class="token-float-wrap">
+      <div class="tf tf-1">token</div>
+<div class="tf tf-2">model</div>
+<div class="tf tf-3">layer</div>
+<div class="tf tf-4">vector</div>
+<div class="tf tf-5">embed</div>
+<div class="tf tf-6">weight</div>
+<div class="tf tf-7">param</div>
+      <div class="tf-center">
+        <span class="big">MODE</span>
+        <span class="small">EP 48</span>
+      </div>
+    </div>
+  </div>
+  <div class="hero-content">
+    <nav class="breadcrumb">
+      <a href="field-manual-index.html">Field Manual</a>
+      <span class="sep">›</span>
+      <a href="field-manual-index.html#g7">🎯 Fine-Tuning</a>
+      <span class="sep">›</span>
+      <span class="cur">Episode 48</span>
+    </nav>
+    <div class="hero-eyebrow"><span class="dot"></span>MODULE 7 &nbsp;·&nbsp; Fine-Tuning</div>
+    <h1>Model Merging: Frankenstein Your Way to a Better Model</h1>
+    <p class="hero-sub">One model is amazing at coding. Another at creative writing. You want both. Model merging lets you combine them — no training required.</p>
+    <div class="meta-row">
+      <div class="meta-item"><span>📅</span> Mar 2026</div>
+      <div class="meta-item"><span>⏱</span> 10 min read</div>
+      <div class="meta-item"><span>🎯</span> Episode 48 of 98</div>
+    </div>
+    <div class="tags-row"><span class="tag">Model Merging</span><span class="tag">SLERP</span><span class="tag">TIES</span><span class="tag">Fine-Tuning</span></div>
+  </div>
+</header>
+
+<main class="layout">
+  <div class="toc">
+  <div class="toc-title">In this episode</div>
+  <ul class="toc-list"><li><a href="#s1"><span class="toc-num">1</span>Why Merging Works (The Intuition)</a></li>
+<li><a href="#s2"><span class="toc-num">2</span>Base Model ──────</a></li>
+<li><a href="#s3"><span class="toc-num">3</span>The merged model sits somewhere between them:</a></li>
+<li><a href="#s4"><span class="toc-num">4</span>Merging Methods</a></li>
+<li><a href="#s5"><span class="toc-num">5</span>Linear interpolation</a></li>
+<li><a href="#s6"><span class="toc-num">6</span>SLERP interpolation</a></li>
+<li><a href="#s7"><span class="toc-num">7</span>TIES fixes this in three steps:</a></li>
+<li><a href="#s8"><span class="toc-num">8</span>Step 1: TRIM — Remove small-magnitude changes (they're noise)</a></li>
+<li><a href="#s9"><span class="toc-num">9</span>Step 2: ELECT SIGN — For each parameter, vote on the direction</a></li>
+<li><a href="#s10"><span class="toc-num">10</span>Step 3: MERGE — Average only the parameters that agree</a></li>
+<li><a href="#s11"><span class="toc-num">11</span>mergekit TIES config</a></li>
+<li><a href="#s12"><span class="toc-num">12</span>Step 2: Sum the surviving deltas</a></li>
+<li><a href="#s13"><span class="toc-num">13</span>Step 3: Add to base model</a></li>
+<li><a href="#s14"><span class="toc-num">14</span>mergekit DARE config</a></li>
+<li><a href="#s15"><span class="toc-num">15</span>Layers  1-16:  From Coding Model</a></li>
+<li><a href="#s16"><span class="toc-num">16</span>Layers 17-24:  From Creative Model</a></li>
+<li><a href="#s17"><span class="toc-num">17</span>Layers 25-32:  From Coding Model</a></li>
+<li><a href="#s18"><span class="toc-num">18</span>mergekit passthrough (frankenmerge) config</a></li>
+<li><a href="#s19"><span class="toc-num">19</span>MergeKit: The Standard Tool</a></li>
+<li><a href="#s20"><span class="toc-num">20</span>Install</a></li>
+<li><a href="#s21"><span class="toc-num">21</span>Run a merge</a></li>
+<li><a href="#s22"><span class="toc-num">22</span>merge_config.yaml</a></li>
+<li><a href="#s23"><span class="toc-num">23</span>Execute the merge (needs enough RAM to hold all models)</a></li>
+<li><a href="#s24"><span class="toc-num">24</span>Test the result</a></li>
+<li><a href="#s25"><span class="toc-num">25</span>Test coding</a></li>
+<li><a href="#s26"><span class="toc-num">26</span>Test creative writing</a></li>
+<li><a href="#s27"><span class="toc-num">27</span>Compare with individual models</a></li>
+<li><a href="#s28"><span class="toc-num">28</span>Merging LoRA Adapters</a></li>
+<li><a href="#s29"><span class="toc-num">29</span>Load base model</a></li>
+<li><a href="#s30"><span class="toc-num">30</span>Load and merge first adapter</a></li>
+<li><a href="#s31"><span class="toc-num">31</span>Load and merge second adapter (with weight)</a></li>
+<li><a href="#s32"><span class="toc-num">32</span>Manually scale the adapter before merging</a></li>
+<li><a href="#s33"><span class="toc-num">33</span>The Merge Leaderboard Phenomenon</a></li>
+<li><a href="#s34"><span class="toc-num">34</span>Model	How It Was Made	MMLU</a></li>
+<li><a href="#s35"><span class="toc-num">35</span>When Merging Fails</a></li>
+<li><a href="#s36"><span class="toc-num">36</span>The Merge Workflow</a></li>
+<li><a href="#s37"><span class="toc-num">37</span>Practical Takeaways</a></li>
+<li><a href="#s38"><span class="toc-num">38</span>Ep 47: Fine-Tune Evaluation</a></li>
+<li><a href="#s39"><span class="toc-num">39</span>Ep 49: RLHF & DPO</a></li>
+</ul>
+</div>
+  <article class="prose" id="s0">
+<p>You have two fine-tuned models. One is amazing at coding. The other is amazing at creative writing. You want one model that does both.</p>
+<p>The obvious approach: fine-tune on a combined dataset of coding AND creative writing examples. But that takes GPU hours, data curation, and the model might lose quality on both tasks.</p>
+<p>The insane approach: just average their weights together.</p>
+<p>And it works. This is model merging — the most "this shouldn't work but it does" technique in AI. The open-source community has built models that beat their individual components by literally mashing weight matrices together. No training. No GPUs. Just math.</p>
+<h2 id="s1">Why Merging Works (The Intuition)</h2><div class="section-rule"></div>
+<p>When you fine-tune two models from the same base, they start from the same point in "weight space." Each fine-tune moves the weights in a slightly different direction — one toward coding, one toward creative writing.</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Coding Model
+                   ↗</code></pre></div>
+</div>
+<h2 id="s2">Base Model ──────</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>↘
+                    Creative Model</code></pre></div>
+</div>
+<h2 id="s3">The merged model sits somewhere between them:</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Coding Model
+                   ↗</code></pre></div>
+</div>
+<p>Base Model ────── ──→ Merged Model</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>↘
+                    Creative Model</code></pre></div>
+</div>
+<p>Because both models started from the same base, the regions of weight space they moved to are structurally compatible. The coding knowledge lives in certain parameters, the creative knowledge lives in others. Averaging them combines both — with surprisingly little interference.</p>
+<p>This only works when models share the same architecture AND the same base model. You can't merge Llama and Mistral (different architectures). You CAN merge two Llama fine-tunes.</p>
+<div class="callout callout-tip"><span class="callout-icon">⚡</span><p></p></div>
+<h2 id="s4">Merging Methods</h2><div class="section-rule"></div>
+<ol><li>Linear Merge (SLERP)</li></ol>
+<p>The simplest approach: weighted average of two models.</p>
+<p>python</p>
+<h2 id="s5">Linear interpolation</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>merged_weight = alpha  model_A_weight + (1 - alpha)  model_B_weight
+SLERP (Spherical Linear Interpolation) is a fancier version that interpolates along a sphere instead of a straight line, preserving the magnitude of weight vectors:</code></pre></div>
+</div>
+<p>python</p>
+<h2 id="s6">SLERP interpolation</h2><div class="section-rule"></div>
+<p>import numpy as np</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>def slerp(t, v0, v1, DOT_THRESHOLD=0.9995):
+"""Spherical linear interpolation between two vectors."""
+    dot = np.sum(v0 * v1 / (np.linalg.norm(v0) * np.linalg.norm(v1)))
+if abs(dot) &gt; DOT_THRESHOLD:
+        # Vectors are very close, use linear interpolation
+        return (1 - t) * v0 + t * v1
+theta_0 = np.arccos(dot)
+    sin_theta_0 = np.sin(theta_0)
+    theta = theta_0 * t
+    sin_theta = np.sin(theta)
+s0 = np.cos(theta) - dot * sin_theta / sin_theta_0
+    s1 = sin_theta / sin_theta_0
+return s0 * v0 + s1 * v1</code></pre></div>
+</div>
+<p>Use when: Merging exactly 2 models with similar capabilities.</p>
+<ol><li>TIES (Trim, Elect Sign, Merge)</li></ol>
+<p>TIES addresses a key problem: when merging, many parameters fight each other. Model A wants a parameter to go up, Model B wants it to go down. Averaging gives you zero — both contributions cancelled out.</p>
+<h2 id="s7">TIES fixes this in three steps:</h2><div class="section-rule"></div>
+<h2 id="s8">Step 1: TRIM — Remove small-magnitude changes (they're noise)</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Keep only the top-k% most significant parameter changes</code></pre></div>
+</div>
+<h2 id="s9">Step 2: ELECT SIGN — For each parameter, vote on the direction</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>If 2 out of 3 models moved it positive → positive wins
+         Discard the minority direction</code></pre></div>
+</div>
+<h2 id="s10">Step 3: MERGE — Average only the parameters that agree</h2><div class="section-rule"></div>
+<p>yaml</p>
+<h2 id="s11">mergekit TIES config</h2><div class="section-rule"></div>
+<p>models:</p>
+<ul><li>model: base_model</li></ul>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>parameters:
+      weight: 1.0</code></pre></div>
+</div>
+<ul><li>model: coding_model</li></ul>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>parameters:
+      weight: 0.5
+      density: 0.5  # Keep top 50% of changes (TRIM)</code></pre></div>
+</div>
+<ul><li>model: creative_model</li></ul>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>parameters:
+      weight: 0.5
+      density: 0.5</code></pre></div>
+</div>
+<p>merge_method: ties</p>
+<p>base_model: base_model</p>
+<p>dtype: float16</p>
+<p>Use when: Merging 2+ models where you want to avoid interference.</p>
+<ol><li>DARE (Drop And REscale)</li></ol>
+<p>DARE takes a different approach: randomly drop parameter changes and rescale the remaining ones.</p>
+<p>Step 1: For each model's delta (change from base):</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>- Randomly drop p% of the changes (set to zero)
+        - Rescale remaining by 1/(1-p) to maintain magnitude</code></pre></div>
+</div>
+<h2 id="s12">Step 2: Sum the surviving deltas</h2><div class="section-rule"></div>
+<h2 id="s13">Step 3: Add to base model</h2><div class="section-rule"></div>
+<p>Why does dropping work? Because of the redundancy in fine-tuning changes. You can drop 90% of parameter changes and the model barely notices — the remaining 10% captures most of the learned behavior. And by randomly dropping different parameters from each model, you reduce interference.</p>
+<p>yaml</p>
+<h2 id="s14">mergekit DARE config</h2><div class="section-rule"></div>
+<p>models:</p>
+<ul><li>model: coding_model</li></ul>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>parameters:
+      weight: 0.4
+      density: 0.3  # Keep only 30% of changes</code></pre></div>
+</div>
+<ul><li>model: creative_model</li></ul>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>parameters:
+      weight: 0.4
+      density: 0.3</code></pre></div>
+</div>
+<p>merge_method: dare_ties  # DARE with TIES sign election</p>
+<p>base_model: base_model</p>
+<p>dtype: float16</p>
+<p>Use when: Merging models with very different specializations.</p>
+<ol><li>Passthrough (Frankenmerge)</li></ol>
+<p>The wildest technique. Instead of merging parameter values, you stack LAYERS from different models:</p>
+<h2 id="s15">Layers  1-16:  From Coding Model</h2><div class="section-rule"></div>
+<h2 id="s16">Layers 17-24:  From Creative Model</h2><div class="section-rule"></div>
+<h2 id="s17">Layers 25-32:  From Coding Model</h2><div class="section-rule"></div>
+<p>This creates a literal Frankenstein model. It shouldn't work at all — you're stitching together layers that were never trained together. But it often produces surprisingly good results, especially when both models have the same base architecture.</p>
+<p>yaml</p>
+<h2 id="s18">mergekit passthrough (frankenmerge) config</h2><div class="section-rule"></div>
+<p>slices:</p>
+<ul><li>sources:</li><li>model: coding_model</li></ul>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>layer_range: [0, 16]</code></pre></div>
+</div>
+<ul><li>sources:</li><li>model: creative_model</li></ul>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>layer_range: [16, 24]</code></pre></div>
+</div>
+<ul><li>sources:</li><li>model: coding_model</li></ul>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>layer_range: [24, 32]</code></pre></div>
+</div>
+<p>merge_method: passthrough</p>
+<p>dtype: float16</p>
+<p>Use when: You want to experiment. Results are unpredictable but sometimes magical.</p>
+<p>🔧</p>
+<h2 id="s19">MergeKit: The Standard Tool</h2><div class="section-rule"></div>
+<p>mergekit is the go-to library for model merging:</p>
+<p>bash</p>
+<h2 id="s20">Install</h2><div class="section-rule"></div>
+<p>pip install mergekit</p>
+<h2 id="s21">Run a merge</h2><div class="section-rule"></div>
+<p>mergekit-yaml config.yaml ./merged-model --cuda</p>
+<p>Full Example: Merging a Coder + a Writer</p>
+<p>yaml</p>
+<h2 id="s22">merge_config.yaml</h2><div class="section-rule"></div>
+<p>models:</p>
+<ul><li>model: ./llama3-8b-coding-lora-merged</li></ul>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>parameters:
+      weight: 0.6
+      density: 0.5</code></pre></div>
+</div>
+<ul><li>model: ./llama3-8b-creative-lora-merged</li></ul>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>parameters:
+      weight: 0.4
+      density: 0.5</code></pre></div>
+</div>
+<p>merge_method: dare_ties</p>
+<p>base_model: meta-llama/Meta-Llama-3-8B</p>
+<p>parameters:</p>
+<p>normalize: true</p>
+<p>int8_mask: true</p>
+<p>dtype: float16</p>
+<p>bash</p>
+<h2 id="s23">Execute the merge (needs enough RAM to hold all models)</h2><div class="section-rule"></div>
+<p>mergekit-yaml merge_config.yaml ./merged-coder-writer \</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>--cuda \
+    --lazy-unpickle</code></pre></div>
+</div>
+<h2 id="s24">Test the result</h2><div class="section-rule"></div>
+<p>python -c "</p>
+<p>from transformers import AutoModelForCausalLM, AutoTokenizer</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>model = AutoModelForCausalLM.from_pretrained('./merged-coder-writer')
+tokenizer = AutoTokenizer.from_pretrained('./merged-coder-writer')</code></pre></div>
+</div>
+<h2 id="s25">Test coding</h2><div class="section-rule"></div>
+<h2 id="s26">Test creative writing</h2><div class="section-rule"></div>
+<h2 id="s27">Compare with individual models</h2><div class="section-rule"></div>
+<p>"</p>
+<h2 id="s28">Merging LoRA Adapters</h2><div class="section-rule"></div>
+<p>You don't need to merge full models. You can merge LoRA adapters directly:</p>
+<p>python</p>
+<p>from peft import PeftModel</p>
+<h2 id="s29">Load base model</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>base = AutoModelForCausalLM.from_pretrained("meta-llama/Llama-3-8B")</code></pre></div>
+</div>
+<h2 id="s30">Load and merge first adapter</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>model = PeftModel.from_pretrained(base, "./coding-adapter")
+model = model.merge_and_unload()</code></pre></div>
+</div>
+<h2 id="s31">Load and merge second adapter (with weight)</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>model = PeftModel.from_pretrained(model, "./creative-adapter")</code></pre></div>
+</div>
+<h2 id="s32">Manually scale the adapter before merging</h2><div class="section-rule"></div>
+<p>for name, param in model.named_parameters():</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>if "lora" in name:
+        param.data *= 0.5  # Reduce influence to 50%</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>model = model.merge_and_unload()</code></pre></div>
+</div>
+<p>model.save_pretrained("./dual-adapter-merged")</p>
+<p>📊</p>
+<h2 id="s33">The Merge Leaderboard Phenomenon</h2><div class="section-rule"></div>
+<p>The open-source AI community went absolutely wild with merging. On the Open LLM Leaderboard, merged models regularly outperform their components:</p>
+<h2 id="s34">Model	How It Was Made	MMLU</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>Base Llama 3 8B</th><th>Pretrained</th><th>64.0</th></tr></thead><tbody><tr><td>Coding fine-tune</td><td>QLoRA on code</td><td>58.2 (worse at general)</td></tr><tr><td>Chat fine-tune</td><td>QLoRA on conversations</td><td>62.1</td></tr><tr><td>DARE merge of both</td><td>No training, just math</td><td>65.8</td></tr></tbody></table></div>
+<p>The merged model is BETTER than both components AND the base model. This shouldn't happen, but it does — consistently.</p>
+<h2 id="s35">When Merging Fails</h2><div class="section-rule"></div>
+<p>Different base models — Merging a Llama fine-tune with a Mistral fine-tune produces garbage. Same architecture and same base weights required.</p>
+<p>Too many models — Merging 5+ models usually degrades quality. Stick to 2-3.</p>
+<p>Conflicting specializations — A model fine-tuned to be concise merged with one fine-tuned to be verbose will be confused, not balanced.</p>
+<p>No evaluation — Merging is cheap to try but still needs evaluation. Don't ship without testing.</p>
+<p>Wrong density/weight — These hyperparameters matter. Grid search a few values.</p>
+<div class="callout callout-tip"><span class="callout-icon">💡</span><p></p></div>
+<h2 id="s36">The Merge Workflow</h2><div class="section-rule"></div>
+<ol><li>Fine-tune Model A (coding) with LoRA</li><li>Fine-tune Model B (creative) with LoRA</li><li>Merge both adapters into base model</li><li>Evaluate merged model on BOTH tasks</li><li>If quality drops, adjust weights/density</li><li>Compare: merged vs individual + routing</li><li>Ship whichever wins</li></ol>
+<p>Alternative to merging: Use a router that sends coding questions to the coding model and creative questions to the creative model. Routing is more reliable but adds complexity. Merging is simpler but might lose quality on edge cases.</p>
+<p>🔬</p>
+<h2 id="s37">Practical Takeaways</h2><div class="section-rule"></div>
+<p>Model merging combines capabilities without training — just math on weight matrices</p>
+<p>SLERP for 2 similar models, DARE/TIES for different specializations — choose the method based on your models</p>
+<p>Both models must share the same base — same architecture AND same pretrained weights</p>
+<p>Merged models can outperform components — this is counterintuitive but consistently true</p>
+<p>Always evaluate after merging — cheap to try doesn't mean guaranteed to work</p>
+<p>MergeKit is the standard tool — YAML config, one command, done</p>
+<p>🛡️</p>
+<p>What's Next?</p>
+<p>Episode 49: RLHF & DPO — Fine-tuning teaches the model your task. But how do you teach it to be helpful? How do you make it prefer good answers over technically-correct-but-terrible ones? Reinforcement Learning from Human Feedback (RLHF) and Direct Preference Optimization (DPO) are how models go from smart to useful.</p>
+<p>← Previous</p>
+<h2 id="s38">Ep 47: Fine-Tune Evaluation</h2><div class="section-rule"></div>
+<p>Next →</p>
+<h2 id="s39">Ep 49: RLHF & DPO</h2><div class="section-rule"></div>
+<p>Next: Episode 49 — RLHF & DPO</p>
+<p>GPT-3 was brilliant but also a nightmare. RLHF and DPO taught it to be helpful instead of just technically correct.</p>
+<p>This is part of a 98-episode series covering AI engineering from tokens to production deployment.</p>
+  </article>
+  <div class="ep-nav">
+    <a href="episode-47.html" class="ep-nav-card">
+      <span class="ep-nav-dir">← Previous</span>
+      <span class="ep-nav-title">Ep 47: Fine-Tune Evaluation: How to Know If Your Model Is Actu…</span>
+    </a>
+    <a href="episode-49.html" class="ep-nav-card next">
+      <span class="ep-nav-dir">Next Episode →</span>
+      <span class="ep-nav-title">Ep 49: RLHF & DPO: How Models Learn to Be Helpful (Not Just Co…</span>
+    </a>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <img class="footer-logo" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+      <div class="footer-tagline">98 Field Manual · Build with AI, not just use it · Free forever</div>
+    </div>
+    <div class="footer-links">
+      <a href="field-manual-index.html">All Episodes</a>
+      <a href="field-manual-index.html#g7">Fine-Tuning</a>
+      <a href="episode-47.html">← Ep 47</a>
+      <a href="episode-49.html">Ep 49 →</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+const prog=document.getElementById('prog');
+window.addEventListener('scroll',()=>{
+  const total=document.documentElement.scrollHeight-window.innerHeight;
+  prog.style.width=Math.min(100,(window.scrollY/total)*100)+'%';
+},{passive:true});
+
+// Build section nav dots from h2s
+const h2s=document.querySelectorAll('.prose h2');
+const sNav=document.getElementById('sectionNav');
+const dots=[];
+h2s.forEach((h,i)=>{
+  const btn=document.createElement('button');
+  btn.className='snav-dot';
+  btn.setAttribute('data-label',h.textContent.trim().substring(0,28));
+  btn.onclick=()=>h.scrollIntoView({behavior:'smooth',block:'start'});
+  sNav.appendChild(btn);
+  dots.push({btn,h});
+});
+
+const dotObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      const idx=dots.findIndex(d=>d.h===e.target);
+      if(idx>-1) dots.forEach((d,i)=>d.btn.classList.toggle('active',i===idx));
+    }
+  });
+},{rootMargin:'-30% 0px -60% 0px'});
+dots.forEach(d=>dotObs.observe(d.h));
+
+// Scroll reveal
+const revObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='translateY(0)';}});
+},{threshold:0.08});
+document.querySelectorAll('.toc,.callout,.table-wrap,.code-block,.ep-nav-card').forEach(el=>{
+  el.style.opacity='0';
+  el.style.transform='translateY(14px)';
+  el.style.transition='opacity 0.55s ease,transform 0.55s ease';
+  revObs.observe(el);
+});
+</script>
+</body>
+</html>

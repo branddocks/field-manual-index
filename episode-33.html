@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ep 33: Agent Memory: Why Your AI Keeps Forgetting (And How to Fix It)</title>
+<meta name="description" content="You've told ChatGPT your name ten times. It keeps asking. Here's why AI memory is so hard — and how agents solve it.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,300&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0d0d1a;--page:#ffffff;--paper:#f8f9ff;
+  --navy:#124093;--navy-dim:rgba(18,64,147,0.07);--navy-mid:rgba(18,64,147,0.15);
+  --red:#e2190e;--gold:#c8973a;--muted:#6b7280;--rule:#e5e7ef;--code-bg:#0d0d1f;
+  --title:'Roboto',sans-serif;--body:'Poppins',sans-serif;--mono:'DM Mono',monospace;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--page);color:var(--ink);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:#fff}
+::-webkit-scrollbar-thumb{background:var(--navy);border-radius:2px}
+
+/* NAV */
+nav.top{position:sticky;top:0;z-index:200;background:#fff;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(20px,5vw,60px);border-bottom:1px solid var(--rule);box-shadow:0 1px 12px rgba(0,0,0,0.05)}
+.logo-wrap{display:flex;align-items:center;text-decoration:none}
+.logo-img{height:38px;width:auto;object-fit:contain;display:block}
+.nav-right{display:flex;align-items:center;gap:6px}
+.nav-link{font-family:var(--body);font-size:11.5px;font-weight:500;color:var(--muted);text-decoration:none;padding:6px 14px;border-radius:6px;transition:all 0.2s}
+.nav-link:hover{color:var(--navy);background:var(--navy-dim)}
+.nav-cta{background:var(--navy)!important;color:#fff!important}
+.nav-cta:hover{background:#1a52c0!important;color:#fff!important}
+
+/* PROGRESS */
+.progress-bar-fixed{position:fixed;top:60px;left:0;right:0;height:2.5px;background:rgba(18,64,147,0.1);z-index:199}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--navy),#4f7ff7);width:0%;transition:width 0.1s;border-radius:0 2px 2px 0}
+
+/* HERO */
+.hero{background:#fff;position:relative;overflow:hidden;min-height:88vh;display:flex;flex-direction:column;justify-content:center}
+.hero-bg{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.hero-blob-1{position:absolute;top:-120px;right:-120px;width:700px;height:700px;background:radial-gradient(circle at 60% 40%,rgba(18,64,147,0.07) 0%,rgba(18,64,147,0.03) 40%,transparent 70%);border-radius:50%}
+.hero-blob-2{position:absolute;bottom:-80px;left:-80px;width:500px;height:500px;background:radial-gradient(circle,rgba(79,127,247,0.06) 0%,transparent 65%);border-radius:50%}
+.hero-lines{position:absolute;top:0;right:0;width:45%;height:100%;opacity:0.06}
+.hero-lines svg{width:100%;height:100%}
+.hero-tokens{position:absolute;top:0;right:0;width:46%;height:100%;display:flex;align-items:center;justify-content:center}
+.token-float-wrap{position:relative;width:360px;height:360px}
+.tf{position:absolute;font-family:var(--mono);font-size:13px;font-weight:500;padding:8px 16px;border-radius:8px;white-space:nowrap;animation:float-anim 6s ease-in-out infinite;box-shadow:0 4px 20px rgba(0,0,0,0.08)}
+.tf-1{top:20px;left:60px;background:rgba(18,64,147,0.09);color:#124093;border:1px solid rgba(18,64,147,0.18);animation-delay:0s}
+.tf-2{top:70px;right:20px;background:rgba(79,127,247,0.09);color:#2563eb;border:1px solid rgba(79,127,247,0.2);animation-delay:0.8s}
+.tf-3{top:140px;left:20px;background:rgba(16,185,129,0.08);color:#059669;border:1px solid rgba(16,185,129,0.18);animation-delay:1.6s}
+.tf-4{top:170px;right:50px;background:rgba(168,85,247,0.08);color:#7c3aed;border:1px solid rgba(168,85,247,0.18);animation-delay:0.4s}
+.tf-5{bottom:140px;left:80px;background:rgba(234,179,8,0.08);color:#b45309;border:1px solid rgba(234,179,8,0.2);animation-delay:1.2s}
+.tf-6{bottom:90px;right:30px;background:rgba(236,72,153,0.08);color:#db2777;border:1px solid rgba(236,72,153,0.2);animation-delay:2s}
+.tf-7{bottom:30px;left:40px;background:rgba(239,68,68,0.08);color:#dc2626;border:1px solid rgba(239,68,68,0.18);animation-delay:0.6s}
+.tf-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:110px;height:110px;background:var(--navy);border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;box-shadow:0 12px 40px rgba(18,64,147,0.3);animation:pulse-center 3s ease-in-out infinite}
+.tf-center .big{font-family:var(--title);font-size:28px;font-weight:900;color:#fff;line-height:1}
+.tf-center .small{font-family:var(--body);font-size:9px;font-weight:500;color:rgba(255,255,255,0.6);letter-spacing:1.5px;text-transform:uppercase}
+@keyframes float-anim{0%,100%{transform:translateY(0px)}50%{transform:translateY(-10px)}}
+@keyframes pulse-center{0%,100%{box-shadow:0 12px 40px rgba(18,64,147,0.3)}50%{box-shadow:0 12px 60px rgba(18,64,147,0.5)}}
+.hero-content{position:relative;z-index:2;width:54%;padding:clamp(48px,8vw,96px) clamp(24px,5vw,72px) clamp(48px,8vw,96px)}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:5px 14px;background:var(--navy-dim);border:1px solid rgba(18,64,147,0.18);border-radius:100px;margin-bottom:22px;font-family:var(--body);font-size:10px;font-weight:600;color:var(--navy);letter-spacing:1.2px;text-transform:uppercase}
+.hero-eyebrow .dot{width:5px;height:5px;background:var(--navy);border-radius:50%}
+.hero h1{font-family:var(--title);font-size:clamp(28px,4.5vw,52px);font-weight:900;color:var(--ink);line-height:1.08;letter-spacing:-1.2px;margin-bottom:20px}
+.hero h1 .line2{display:block;color:var(--navy)}
+.hero-sub{font-family:var(--body);font-size:clamp(13px,1.6vw,15px);font-weight:300;color:#4b5563;line-height:1.85;max-width:500px;margin-bottom:34px}
+.breadcrumb{display:flex;align-items:center;gap:7px;margin-bottom:28px;font-family:var(--mono);font-size:10px;color:#9ca3af}
+.breadcrumb a{color:inherit;text-decoration:none;transition:color 0.2s}
+.breadcrumb a:hover{color:var(--navy)}
+.breadcrumb .sep{color:#d1d5db}
+.breadcrumb .cur{color:#6b7280}
+.meta-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:14px 20px;background:var(--paper);border:1px solid var(--rule);border-radius:10px;margin-bottom:24px}
+.meta-item{font-family:var(--body);font-size:10.5px;font-weight:500;color:var(--muted);display:flex;align-items:center;gap:5px}
+.tags-row{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-family:var(--body);font-size:10px;font-weight:500;color:var(--navy);background:var(--navy-dim);padding:4px 11px;border-radius:100px;border:1px solid rgba(18,64,147,0.15)}
+@media(max-width:900px){.hero{min-height:auto;padding-bottom:48px}.hero-content{width:100%;padding:48px 24px 36px}.hero-tokens{display:none}.hero-lines{display:none}}
+
+/* SECTION NAV DOTS */
+.section-nav{position:fixed;right:clamp(12px,2vw,24px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:9px;z-index:100}
+.snav-dot{width:7px;height:7px;border-radius:50%;background:#d1d5db;border:none;padding:0;cursor:pointer;transition:all 0.3s;position:relative}
+.snav-dot::after{content:attr(data-label);position:absolute;right:16px;top:50%;transform:translateY(-50%);font-family:var(--body);font-size:9px;font-weight:500;color:var(--ink);background:#fff;padding:3px 9px;border-radius:4px;border:1px solid var(--rule);box-shadow:0 2px 8px rgba(0,0,0,0.06);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.2s}
+.snav-dot:hover::after{opacity:1}
+.snav-dot.active{background:var(--navy);transform:scale(1.5)}
+.snav-dot:hover:not(.active){background:rgba(18,64,147,0.4)}
+@media(max-width:768px){.section-nav{display:none}}
+
+/* LAYOUT */
+.layout{max-width:860px;margin:0 auto;padding:clamp(40px,6vw,68px) clamp(20px,5vw,56px) 80px}
+
+/* TOC */
+.toc{background:var(--paper);border:1px solid var(--rule);border-left:4px solid var(--navy);border-radius:10px;padding:22px 26px;margin-bottom:52px}
+.toc-title{font-family:var(--title);font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
+.toc-list{list-style:none;display:flex;flex-direction:column;gap:3px}
+.toc-list li a{display:flex;align-items:center;gap:12px;text-decoration:none;padding:6px 0;font-family:var(--body);font-size:13px;font-weight:400;color:var(--ink);transition:color 0.2s}
+.toc-list li a:hover{color:var(--navy)}
+.toc-num{font-family:var(--mono);font-size:9px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* PROSE */
+.prose{line-height:1.85}
+.prose h2{font-family:var(--title);font-size:clamp(18px,2.5vw,23px);font-weight:700;color:var(--ink);letter-spacing:-0.4px;margin:52px 0 8px;line-height:1.2;scroll-margin-top:80px;padding-left:18px;position:relative}
+.prose h2::before{content:'';position:absolute;left:0;top:5px;bottom:5px;width:3px;background:var(--navy);border-radius:2px}
+.prose h2:first-child{margin-top:0}
+.prose h3{font-family:var(--title);font-size:14px;font-weight:700;color:var(--ink);margin:26px 0 8px}
+.section-rule{width:36px;height:2px;background:var(--navy);border-radius:2px;margin:8px 0 22px 18px;opacity:0.4}
+.prose p{font-family:var(--body);font-size:clamp(13.5px,1.7vw,15px);line-height:1.88;color:#374151;margin-bottom:16px;font-weight:300}
+.prose p strong{font-weight:600;color:var(--ink)}
+.prose ul,.prose ol{list-style:none;padding:0;margin:4px 0 20px}
+.prose ul li,.prose ol li{font-family:var(--body);font-size:clamp(13.5px,1.7vw,14.5px);line-height:1.8;color:#374151;padding:4px 0 4px 26px;position:relative;font-weight:300}
+.prose ul li::before{content:'';position:absolute;left:5px;top:14px;width:5px;height:5px;background:var(--navy);border-radius:50%;opacity:0.55}
+.prose ol{counter-reset:li}
+.prose ol li{counter-increment:li}
+.prose ol li::before{content:counter(li);position:absolute;left:0;top:5px;font-family:var(--mono);font-size:8px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.ic{font-family:var(--mono);font-size:12.5px;background:var(--navy-dim);color:var(--navy);padding:1.5px 6px;border-radius:4px;border:1px solid rgba(18,64,147,0.15)}
+
+/* CODE */
+.code-block{background:var(--code-bg);border-radius:10px;margin:24px 0;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.12),0 0 0 1px rgba(18,64,147,0.1)}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.02)}
+.code-dots{display:flex;gap:5px}
+.cd{width:10px;height:10px;border-radius:50%}
+.cd-r{background:#ff5f56}.cd-y{background:#ffbd2e}.cd-g{background:#27c93f}
+.code-filename{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,0.25)}
+.code-lang{font-family:var(--mono);font-size:9px;color:rgba(91,140,247,0.6);letter-spacing:1px;text-transform:uppercase}
+.code-body{padding:20px 22px;overflow-x:auto}
+.code-body pre{margin:0}
+.code-body code{font-family:var(--mono);font-size:12.5px;line-height:1.9;color:#c9d4f5}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;margin:24px 0;border-radius:10px;border:1px solid var(--rule);box-shadow:0 2px 12px rgba(0,0,0,0.04)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:var(--ink)}
+thead th{padding:12px 16px;text-align:left;font-family:var(--body);font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,0.45)}
+thead th:first-child{color:#6b9fff}
+tbody tr{border-bottom:1px solid var(--rule);transition:background 0.15s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--paper)}
+tbody td{padding:10px 16px;font-family:var(--body);font-size:13px;color:#374151;font-weight:300;line-height:1.5}
+tbody td:first-child{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--navy)}
+
+/* CALLOUTS */
+.callout{border-radius:9px;padding:16px 20px;margin:24px 0;display:flex;gap:13px;align-items:flex-start}
+.callout-tip{background:rgba(18,64,147,0.05);border:1px solid rgba(18,64,147,0.16);border-left:3px solid var(--navy)}
+.callout-warn{background:rgba(220,38,38,0.04);border:1px solid rgba(220,38,38,0.14);border-left:3px solid #dc2626}
+.callout-note{background:rgba(200,151,58,0.05);border:1px solid rgba(200,151,58,0.2);border-left:3px solid var(--gold)}
+.callout-icon{font-size:16px;flex-shrink:0;margin-top:1px;line-height:1}
+.callout p{font-size:13.5px!important;line-height:1.7!important;color:#374151!important;margin:0!important}
+
+/* EP NAV */
+.ep-nav{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:64px;padding-top:32px;border-top:1px solid var(--rule)}
+@media(max-width:500px){.ep-nav{grid-template-columns:1fr}}
+.ep-nav-card{display:flex;flex-direction:column;text-decoration:none;padding:20px 22px;border:1px solid var(--rule);border-radius:10px;background:var(--paper);transition:all 0.25s;gap:5px}
+.ep-nav-card:hover{border-color:rgba(18,64,147,0.3);background:var(--navy-dim);transform:translateY(-2px);box-shadow:0 6px 20px rgba(18,64,147,0.08)}
+.ep-nav-dir{font-family:var(--body);font-size:9px;font-weight:600;color:var(--navy);letter-spacing:1px;text-transform:uppercase}
+.ep-nav-title{font-family:var(--title);font-size:13px;font-weight:600;color:var(--ink);line-height:1.4}
+.ep-nav-card.next{align-items:flex-end;text-align:right}
+
+/* FOOTER */
+footer{background:var(--ink);padding:44px clamp(20px,5vw,60px);border-top:3px solid var(--navy)}
+.footer-inner{max-width:860px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.footer-logo{height:32px;width:auto;object-fit:contain;filter:brightness(0) invert(1);opacity:0.7}
+.footer-tagline{font-family:var(--body);font-size:11px;color:rgba(255,255,255,0.22);font-style:italic;margin-top:4px;font-weight:300}
+.footer-links{display:flex;gap:20px;flex-wrap:wrap}
+.footer-links a{font-family:var(--body);font-size:11px;font-weight:400;color:rgba(255,255,255,0.3);text-decoration:none;transition:color 0.2s}
+.footer-links a:hover{color:rgba(255,255,255,0.75)}
+
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.hero-content>*{animation:fadeUp 0.65s cubic-bezier(0.22,1,0.36,1) both}
+.hero-content>*:nth-child(1){animation-delay:0.05s}
+.hero-content>*:nth-child(2){animation-delay:0.1s}
+.hero-content>*:nth-child(3){animation-delay:0.15s}
+.hero-content>*:nth-child(4){animation-delay:0.2s}
+.hero-content>*:nth-child(5){animation-delay:0.25s}
+.hero-content>*:nth-child(6){animation-delay:0.3s}
+.hero-content>*:nth-child(7){animation-delay:0.35s}
+@media(max-width:640px){.nav-link:not(.nav-cta){display:none}}
+</style>
+</head>
+<body>
+
+<div class="progress-bar-fixed"><div class="progress-fill" id="prog"></div></div>
+
+<nav class="top">
+  <a href="field-manual-index.html" class="logo-wrap">
+    <img class="logo-img" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+  </a>
+  <div class="nav-right">
+    <a href="field-manual-index.html" class="nav-link">All Episodes</a>
+    <a href="field-manual-index.html#g5" class="nav-link nav-cta">🤖 AI Agents</a>
+  </div>
+</nav>
+
+<nav class="section-nav" id="sectionNav"></nav>
+
+<header class="hero">
+  <div class="hero-bg">
+    <div class="hero-blob-1"></div>
+    <div class="hero-blob-2"></div>
+    <div class="hero-lines">
+      <svg viewBox="0 0 600 800" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+        <line x1="0" y1="200" x2="600" y2="0" stroke="#124093" stroke-width="1"/>
+        <line x1="0" y1="400" x2="600" y2="200" stroke="#124093" stroke-width="0.6"/>
+        <line x1="0" y1="600" x2="600" y2="400" stroke="#124093" stroke-width="0.4"/>
+        <circle cx="500" cy="150" r="120" stroke="#124093" stroke-width="0.8" fill="none"/>
+        <circle cx="500" cy="150" r="80" stroke="#124093" stroke-width="0.4" fill="none"/>
+        <circle cx="500" cy="150" r="40" stroke="#124093" stroke-width="0.3" fill="none"/>
+        <line x1="300" y1="0" x2="300" y2="800" stroke="#124093" stroke-width="0.4" stroke-dasharray="6,12"/>
+        <rect x="360" y="480" width="160" height="160" stroke="#124093" stroke-width="0.6" fill="none" transform="rotate(15 440 560)"/>
+      </svg>
+    </div>
+  </div>
+  <div class="hero-tokens" aria-hidden="true">
+    <div class="token-float-wrap">
+      <div class="tf tf-1">token</div>
+<div class="tf tf-2">model</div>
+<div class="tf tf-3">layer</div>
+<div class="tf tf-4">vector</div>
+<div class="tf tf-5">embed</div>
+<div class="tf tf-6">weight</div>
+<div class="tf tf-7">param</div>
+      <div class="tf-center">
+        <span class="big">AGEN</span>
+        <span class="small">EP 33</span>
+      </div>
+    </div>
+  </div>
+  <div class="hero-content">
+    <nav class="breadcrumb">
+      <a href="field-manual-index.html">Field Manual</a>
+      <span class="sep">›</span>
+      <a href="field-manual-index.html#g5">🤖 AI Agents</a>
+      <span class="sep">›</span>
+      <span class="cur">Episode 33</span>
+    </nav>
+    <div class="hero-eyebrow"><span class="dot"></span>MODULE 5 &nbsp;·&nbsp; AI Agents</div>
+    <h1>Agent Memory: Why Your AI Keeps Forgetting (And How to Fix It)</h1>
+    <p class="hero-sub">You've told ChatGPT your name ten times. It keeps asking. Here's why AI memory is so hard — and how agents solve it.</p>
+    <div class="meta-row">
+      <div class="meta-item"><span>📅</span> Mar 2026</div>
+      <div class="meta-item"><span>⏱</span> 10 min read</div>
+      <div class="meta-item"><span>🎯</span> Episode 33 of 98</div>
+    </div>
+    <div class="tags-row"><span class="tag">Agent Memory</span><span class="tag">State Management</span><span class="tag">Context</span><span class="tag">Persistence</span></div>
+  </div>
+</header>
+
+<main class="layout">
+  <div class="toc">
+  <div class="toc-title">In this episode</div>
+  <ul class="toc-list"><li><a href="#s1"><span class="toc-num">1</span>The Two Types of Memory</a></li>
+<li><a href="#s2"><span class="toc-num">2</span>Short-Term Memory: The Context Window</a></li>
+<li><a href="#s3"><span class="toc-num">3</span>But it has limits:</a></li>
+<li><a href="#s4"><span class="toc-num">4</span>Limitation	Impact</a></li>
+<li><a href="#s5"><span class="toc-num">5</span>Long-Term Memory: External Storage</a></li>
+<li><a href="#s6"><span class="toc-num">6</span>How Long-Term Memory Works</a></li>
+<li><a href="#s7"><span class="toc-num">7</span>User says something important</a></li>
+<li><a href="#s8"><span class="toc-num">8</span>User starts a new conversation</a></li>
+<li><a href="#s9"><span class="toc-num">9</span>LLM sees memories in its context</a></li>
+<li><a href="#s10"><span class="toc-num">10</span>Simplified memory system</a></li>
+<li><a href="#s11"><span class="toc-num">11</span>Usage</a></li>
+<li><a href="#s12"><span class="toc-num">12</span>Later, in a new conversation:</a></li>
+<li><a href="#s13"><span class="toc-num">13</span>Returns: ["User prefers Python over JavaScript", "User's project is called 'HappenAI'"]</a></li>
+<li><a href="#s14"><span class="toc-num">14</span>Episodic vs Semantic Memory</a></li>
+<li><a href="#s15"><span class="toc-num">15</span>Episodic Memory — What Happened</a></li>
+<li><a href="#s16"><span class="toc-num">16</span>Semantic Memory — What Is True</a></li>
+<li><a href="#s17"><span class="toc-num">17</span>Working Memory — What Matters Right Now</a></li>
+<li><a href="#s18"><span class="toc-num">18</span>Memory Type	What It Stores	Persistence	Example</a></li>
+<li><a href="#s19"><span class="toc-num">19</span>Memory in Practice: Architecture Patterns</a></li>
+<li><a href="#s20"><span class="toc-num">20</span>Pattern 1: File-Based Memory (Simple)</a></li>
+<li><a href="#s21"><span class="toc-num">21</span>At session start, read memory files</a></li>
+<li><a href="#s22"><span class="toc-num">22</span>Things you know about the user:</a></li>
+<li><a href="#s23"><span class="toc-num">23</span>Recent activity:</a></li>
+<li><a href="#s24"><span class="toc-num">24</span>Pattern 2: Vector Store Memory (Scalable)</a></li>
+<li><a href="#s25"><span class="toc-num">25</span>At session start, retrieve relevant memories</a></li>
+<li><a href="#s26"><span class="toc-num">26</span>Inject into context</a></li>
+<li><a href="#s27"><span class="toc-num">27</span>Relevant context from previous conversations:</a></li>
+<li><a href="#s28"><span class="toc-num">28</span>Always loaded</a></li>
+<li><a href="#s29"><span class="toc-num">29</span>Dynamically retrieved</a></li>
+<li><a href="#s30"><span class="toc-num">30</span>Relevant past context:</a></li>
+<li><a href="#s31"><span class="toc-num">31</span>Recent conversations:</a></li>
+<li><a href="#s32"><span class="toc-num">32</span>The Memory Lifecycle</a></li>
+<li><a href="#s33"><span class="toc-num">33</span>The Forgetting Problem</a></li>
+<li><a href="#s34"><span class="toc-num">34</span>Solutions:</a></li>
+<li><a href="#s35"><span class="toc-num">35</span>Time decay: Reduce relevance score of older memories</a></li>
+<li><a href="#s36"><span class="toc-num">36</span>Periodic review: Agent reviews its own memories and cleans house</a></li>
+<li><a href="#s37"><span class="toc-num">37</span>Memory and Cost</a></li>
+<li><a href="#s38"><span class="toc-num">38</span>Every memory you inject costs tokens:</a></li>
+<li><a href="#s39"><span class="toc-num">39</span>Memories Retrieved	Extra Tokens	Extra Cost (GPT-4o)</a></li>
+<li><a href="#s40"><span class="toc-num">40</span>Building Memory That Works</a></li>
+<li><a href="#s41"><span class="toc-num">41</span>Complete memory system skeleton</a></li>
+<li><a href="#s42"><span class="toc-num">42</span>Practical Takeaways</a></li>
+<li><a href="#s43"><span class="toc-num">43</span>Ep 32: Multi-Agent Systems</a></li>
+<li><a href="#s44"><span class="toc-num">44</span>Ep 34: Agent Frameworks</a></li>
+<li><a href="#s45"><span class="toc-num">45</span>Next: Episode 34 — Agent Frameworks</a></li>
+</ul>
+</div>
+  <article class="prose" id="s0">
+<p>You've told ChatGPT your name ten times. It keeps asking.</p>
+<p>You've explained your project setup in excruciating detail. Next conversation — blank slate. Gone. Like the last session never happened.</p>
+<p>This isn't a bug. It's architecture. LLMs have no persistent memory by default. Every conversation starts from zero. The model doesn't remember you, your preferences, your projects, or the brilliant idea you shared yesterday at 2 AM.</p>
+<p>AI agents need memory to be useful. Without it, they're brilliant amnesics — smart enough to solve hard problems, but can't remember solving the same problem for you last week. Let's fix that.</p>
+<h2 id="s1">The Two Types of Memory</h2><div class="section-rule"></div>
+<h2 id="s2">Short-Term Memory: The Context Window</h2><div class="section-rule"></div>
+<p>The context window IS the LLM's short-term memory. Everything the model can "remember" lives inside the current conversation — the system prompt, chat history, tool results, all of it.</p>
+<p>┌─────────────────────────────────────────┐</p>
+<p>│            Context Window (128K)         │</p>
+<p>│                                         │</p>
+<p>│  System prompt        (~500 tokens)     │</p>
+<p>│  Tool definitions     (~2,000 tokens)   │</p>
+<p>│  Chat history         (~10,000 tokens)  │</p>
+<p>│  Tool results         (~5,000 tokens)   │</p>
+<p>│  Current message      (~100 tokens)     │</p>
+<p>│                                         │</p>
+<p>│  Free space: ~110,400 tokens            │</p>
+<p>└─────────────────────────────────────────┘</p>
+<p>This is fast, reliable, and built-in. The model can see everything in the context window and reason about it naturally. No extra infrastructure needed.</p>
+<h2 id="s3">But it has limits:</h2><div class="section-rule"></div>
+<h2 id="s4">Limitation	Impact</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>Fixed size</th><th>128K tokens max (GPT-4o), ~200 pages of text</th></tr></thead><tbody><tr><td>Per-session</td><td>Resets completely between conversations</td></tr><tr><td>Gets expensive</td><td>More context = more tokens = higher cost per call</td></tr><tr><td>Degradation</td><td>Models perform worse with very long contexts ("lost in the middle" problem)</td></tr><tr><td>No prioritization</td><td>Can't mark some memories as more important than others</td></tr></tbody></table></div>
+<p>Short-term memory is like a whiteboard. Useful during the meeting, erased afterward.</p>
+<h2 id="s5">Long-Term Memory: External Storage</h2><div class="section-rule"></div>
+<p>For an agent to truly remember things, it needs external storage that persists across sessions. This is long-term memory — data stored outside the model and retrieved when relevant.</p>
+<p>User: "Remember, I prefer Python over JavaScript"</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>↓</code></pre></div>
+</div>
+<p>Agent stores: {"fact": "User prefers Python over JS", "timestamp": "2025-01-15"}</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>↓</code></pre></div>
+</div>
+<p>[Two weeks later]</p>
+<p>User: "Set up a new project for me"</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>↓</code></pre></div>
+</div>
+<p>Agent retrieves: "User prefers Python over JS"</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>↓</code></pre></div>
+</div>
+<p>Agent: "I'll set this up as a Python project since you prefer Python."</p>
+<p>Long-term memory requires infrastructure — databases, embeddings, retrieval systems. But it's what separates a tool from an assistant.</p>
+<div class="callout callout-tip"><span class="callout-icon">⚡</span><p></p></div>
+<h2 id="s6">How Long-Term Memory Works</h2><div class="section-rule"></div>
+<p>The architecture is essentially RAG (Retrieval-Augmented Generation) applied to personal context:</p>
+<ol><li>STORE</li></ol>
+<h2 id="s7">User says something important</h2><div class="section-rule"></div>
+<p>→ Extract the fact</p>
+<p>→ Generate an embedding (vector)</p>
+<p>→ Store in vector database</p>
+<ol><li>RETRIEVE</li></ol>
+<h2 id="s8">User starts a new conversation</h2><div class="section-rule"></div>
+<p>→ Embed the current query</p>
+<p>→ Search vector DB for relevant memories</p>
+<p>→ Inject top memories into context window</p>
+<ol><li>USE</li></ol>
+<h2 id="s9">LLM sees memories in its context</h2><div class="section-rule"></div>
+<p>→ Incorporates them naturally into its response</p>
+<p>python</p>
+<h2 id="s10">Simplified memory system</h2><div class="section-rule"></div>
+<p>import chromadb</p>
+<p>from openai import OpenAI</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>client = OpenAI()
+db = chromadb.Client()
+collection = db.create_collection("agent_memory")
+def store_memory(text, metadata=None):
+"""Store a fact in long-term memory"""
+    embedding = client.embeddings.create(
+        model="text-embedding-3-small",
+        input=text
+    ).data[0].embedding
+collection.add(
+        documents=[text],
+        embeddings=[embedding],
+        ids=[str(uuid4())],
+        metadatas=[metadata or {}]
+    )
+def recall(query, n=5):
+"""Retrieve relevant memories"""
+    embedding = client.embeddings.create(
+        model="text-embedding-3-small",
+        input=query
+    ).data[0].embedding
+results = collection.query(
+        query_embeddings=[embedding],
+        n_results=n
+    )
+    return results["documents"][0]</code></pre></div>
+</div>
+<h2 id="s11">Usage</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>store_memory("User prefers Python over JavaScript")
+store_memory("User's project is called 'HappenAI'")
+store_memory("User is in IST timezone (GMT+5:30)")</code></pre></div>
+</div>
+<h2 id="s12">Later, in a new conversation:</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>memories = recall("Set up a new web project")</code></pre></div>
+</div>
+<h2 id="s13">Returns: ["User prefers Python over JavaScript", "User's project is called 'HappenAI'"]</h2><div class="section-rule"></div>
+<p>🔧</p>
+<h2 id="s14">Episodic vs Semantic Memory</h2><div class="section-rule"></div>
+<p>Cognitive science gives us a useful framework for thinking about agent memory:</p>
+<h2 id="s15">Episodic Memory — What Happened</h2><div class="section-rule"></div>
+<p>Specific events, conversations, experiences. "The user asked me to fix a bug in auth.py on Tuesday, and the fix was adding a null check on line 47."</p>
+<p>python</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>episodic_memory = {
+"event": "Bug fix in auth.py",
+    "date": "2025-01-14",
+    "context": "User reported login failures",
+    "action": "Added null check on line 47",
+    "result": "Fixed — auth flow works now",
+    "conversation_id": "conv_abc123"</code></pre></div>
+</div>
+<p>}</p>
+<h2 id="s16">Semantic Memory — What Is True</h2><div class="section-rule"></div>
+<p>General facts, preferences, knowledge. "The user prefers Python. The project uses PostgreSQL. The deployment is on AWS."</p>
+<p>python</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>semantic_memory = {
+"fact": "User prefers Python over JavaScript",
+    "confidence": 0.95,
+    "source": "Stated directly in conversation",
+    "last_confirmed": "2025-01-14"</code></pre></div>
+</div>
+<p>}</p>
+<h2 id="s17">Working Memory — What Matters Right Now</h2><div class="section-rule"></div>
+<p>The subset of memories relevant to the current task. This is what gets injected into the context window.</p>
+<h2 id="s18">Memory Type	What It Stores	Persistence	Example</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>Episodic</th><th>Events, conversations</th><th>Long-term</th><th>"Last time we deployed, the DB migration failed"</th></tr></thead><tbody><tr><td>Semantic</td><td>Facts, preferences</td><td>Long-term</td><td>"User uses PostgreSQL on AWS"</td></tr><tr><td>Working</td><td>Current task context</td><td>Session only</td><td>"We're fixing bug #234 in auth.py"</td></tr></tbody></table></div>
+<p>📊</p>
+<h2 id="s19">Memory in Practice: Architecture Patterns</h2><div class="section-rule"></div>
+<h2 id="s20">Pattern 1: File-Based Memory (Simple)</h2><div class="section-rule"></div>
+<p>Store memories as files. Read them at the start of each session.</p>
+<p>~/.agent/memory/</p>
+<p>├── MEMORY.md           # Curated long-term facts</p>
+<p>├── 2025-01-14.md       # Daily log</p>
+<p>├── 2025-01-15.md       # Daily log</p>
+<p>└── preferences.json    # Structured preferences</p>
+<p>python</p>
+<h2 id="s21">At session start, read memory files</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>memory_context = read_file("~/.agent/memory/MEMORY.md")
+today_log = read_file(f"~/.agent/memory/{today}.md")
+system_prompt = f"""You are a personal assistant.</code></pre></div>
+</div>
+<h2 id="s22">Things you know about the user:</h2><div class="section-rule"></div>
+<p>{memory_context}</p>
+<h2 id="s23">Recent activity:</h2><div class="section-rule"></div>
+<p>{today_log}</p>
+<p>"""</p>
+<p>Pros: Dead simple, human-readable, editable.</p>
+<p>Cons: Doesn't scale, no semantic search, reads everything every time.</p>
+<h2 id="s24">Pattern 2: Vector Store Memory (Scalable)</h2><div class="section-rule"></div>
+<p>Use embeddings and a vector database for semantic retrieval.</p>
+<p>python</p>
+<h2 id="s25">At session start, retrieve relevant memories</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>user_message = "Help me with the HappenAI deployment"
+relevant_memories = vector_store.search(
+query=user_message,
+    n_results=10,
+    filter={"user_id": "abhi"}</code></pre></div>
+</div>
+<p>)</p>
+<h2 id="s26">Inject into context</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>system_prompt = f"""</code></pre></div>
+</div>
+<h2 id="s27">Relevant context from previous conversations:</h2><div class="section-rule"></div>
+<p>{format_memories(relevant_memories)}</p>
+<p>"""</p>
+<p>Pros: Scales to thousands of memories, retrieves only relevant ones.</p>
+<p>Cons: Requires embedding infrastructure, retrieval can miss things.</p>
+<p>Pattern 3: Hybrid (Production)</p>
+<p>Combine both — files for critical always-loaded context, vectors for searchable history.</p>
+<p>python</p>
+<h2 id="s28">Always loaded</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>core_context = read_file("MEMORY.md")       # User preferences, key facts
+tools_context = read_file("TOOLS.md")        # Environment details</code></pre></div>
+</div>
+<h2 id="s29">Dynamically retrieved</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>relevant = vector_search(user_message)       # Semantic search
+recent = get_recent_conversations(n=3)       # Last 3 conversations
+system_prompt = f"""</code></pre></div>
+</div>
+<p>{core_context}</p>
+<p>{tools_context}</p>
+<h2 id="s30">Relevant past context:</h2><div class="section-rule"></div>
+<p>{relevant}</p>
+<h2 id="s31">Recent conversations:</h2><div class="section-rule"></div>
+<p>{recent}</p>
+<p>"""</p>
+<p>This is what most production agents actually do. OpenClaw uses this pattern — MEMORY.md for core facts, daily files for logs, and Qdrant for semantic search.</p>
+<h2 id="s32">The Memory Lifecycle</h2><div class="section-rule"></div>
+<p>Memory isn't just store-and-retrieve. Good memory systems have a lifecycle:</p>
+<ol><li>CAPTURE    → Detect important information in conversation</li><li>EXTRACT    → Parse into structured facts</li><li>STORE      → Save with embedding + metadata</li><li>RETRIEVE   → Find relevant memories for current context</li><li>USE        → Inject into context window</li><li>UPDATE     → Modify memories when facts change</li><li>FORGET     → Remove outdated or contradicted memories</li></ol>
+<h2 id="s33">The Forgetting Problem</h2><div class="section-rule"></div>
+<p>Humans forget naturally. AI agents don't — unless you build it in. This causes problems:</p>
+<p>Memory from January: "User is working on Project Alpha"</p>
+<p>Memory from March: "User is working on Project Beta"</p>
+<p>Without forgetting: Agent mentions both projects, confusing itself</p>
+<p>With forgetting: Old memory is superseded, only Beta matters</p>
+<h2 id="s34">Solutions:</h2><div class="section-rule"></div>
+<h2 id="s35">Time decay: Reduce relevance score of older memories</h2><div class="section-rule"></div>
+<p>Contradiction detection: When a new fact contradicts an old one, mark the old one as outdated</p>
+<p>Explicit deletion: Let users say "forget that" and actually remove it</p>
+<h2 id="s36">Periodic review: Agent reviews its own memories and cleans house</h2><div class="section-rule"></div>
+<div class="callout callout-tip"><span class="callout-icon">💡</span><p></p></div>
+<h2 id="s37">Memory and Cost</h2><div class="section-rule"></div>
+<h2 id="s38">Every memory you inject costs tokens:</h2><div class="section-rule"></div>
+<h2 id="s39">Memories Retrieved	Extra Tokens	Extra Cost (GPT-4o)</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>5 short facts</th><th>~200</th><th>$0.0005</th></tr></thead><tbody><tr><td>10 detailed memories</td><td>~1,000</td><td>$0.0025</td></tr><tr><td>20 conversation excerpts</td><td>~5,000</td><td>$0.0125</td></tr><tr><td>50 full conversations</td><td>~25,000</td><td>$0.0625</td></tr></tbody></table></div>
+<p>Per call, it's cheap. But agents make many calls per task, and tasks happen all day. A memory system that retrieves 5,000 extra tokens per call, across 100 calls per day, adds $1.25/day — or $37.50/month.</p>
+<p>Optimization: Only retrieve memories when the conversation actually needs them. Don't load your entire memory into every single API call.</p>
+<p>🔬</p>
+<h2 id="s40">Building Memory That Works</h2><div class="section-rule"></div>
+<p>python</p>
+<h2 id="s41">Complete memory system skeleton</h2><div class="section-rule"></div>
+<p>class AgentMemory:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>def __init__(self):
+        self.vector_store = ChromaDB("agent_memories")
+        self.core_file = "MEMORY.md"</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>def remember(self, text, type="semantic", metadata=None):
+        """Store a new memory"""
+        # Check for contradictions
+        existing = self.recall(text, n=3)
+        for mem in existing:
+            if self.contradicts(text, mem):
+                self.forget(mem.id)</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>self.vector_store.add(text, metadata={
+            "type": type,
+            "timestamp": now(),
+            **(metadata or {})
+        })</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>def recall(self, query, n=5, type=None):
+        """Retrieve relevant memories"""
+        filters = {"type": type} if type else None
+        return self.vector_store.search(query, n=n, filter=filters)</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>def forget(self, memory_id):
+        """Remove a specific memory"""
+        self.vector_store.delete(memory_id)</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>def get_context(self, user_message):
+        """Build context for current conversation"""
+        core = read_file(self.core_file)
+        relevant = self.recall(user_message, n=10)
+        return f"{core}\n\nRelevant memories:\n{format(relevant)}"</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>def review(self):
+        """Periodic maintenance — consolidate and clean"""
+        all_memories = self.vector_store.list_all()
+        # Remove duplicates, merge related facts, decay old ones
+        ...</code></pre></div>
+</div>
+<p>🛡️</p>
+<h2 id="s42">Practical Takeaways</h2><div class="section-rule"></div>
+<p>Short-term memory = context window — built-in, reliable, but per-session only</p>
+<p>Long-term memory = external storage — requires infrastructure but enables persistence</p>
+<p>Use hybrid: files + vectors — core facts in files, searchable history in vector DB</p>
+<p>Build a forgetting mechanism — outdated memories cause more harm than no memory</p>
+<p>Memory costs tokens — retrieve selectively, not everything every time</p>
+<p>Episodic + semantic is the winning combo — what happened AND what is true</p>
+<p>📦</p>
+<p>What's Next?</p>
+<p>Episode 34: Agent Frameworks — LangChain, CrewAI, AutoGen, Smolagents — every framework promises to make agents easy. Which ones actually deliver? We'll look at the internals of each, when to use them, and when to just build from scratch.</p>
+<p>← Previous</p>
+<h2 id="s43">Ep 32: Multi-Agent Systems</h2><div class="section-rule"></div>
+<p>Next →</p>
+<h2 id="s44">Ep 34: Agent Frameworks</h2><div class="section-rule"></div>
+<h2 id="s45">Next: Episode 34 — Agent Frameworks</h2><div class="section-rule"></div>
+<p>Everyone has an opinion on agent frameworks. 'LangChain is bloated.' 'CrewAI is magical.' Here's what actually matters.</p>
+<p>This is part of a 98-episode series covering AI engineering from tokens to production deployment.</p>
+  </article>
+  <div class="ep-nav">
+    <a href="episode-32.html" class="ep-nav-card">
+      <span class="ep-nav-dir">← Previous</span>
+      <span class="ep-nav-title">Ep 32: Multi-Agent Systems: When One Brain Isn't Enough</span>
+    </a>
+    <a href="episode-34.html" class="ep-nav-card next">
+      <span class="ep-nav-dir">Next Episode →</span>
+      <span class="ep-nav-title">Ep 34: Agent Frameworks: LangChain, CrewAI, AutoGen, Smolagent…</span>
+    </a>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <img class="footer-logo" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+      <div class="footer-tagline">98 Field Manual · Build with AI, not just use it · Free forever</div>
+    </div>
+    <div class="footer-links">
+      <a href="field-manual-index.html">All Episodes</a>
+      <a href="field-manual-index.html#g5">AI Agents</a>
+      <a href="episode-32.html">← Ep 32</a>
+      <a href="episode-34.html">Ep 34 →</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+const prog=document.getElementById('prog');
+window.addEventListener('scroll',()=>{
+  const total=document.documentElement.scrollHeight-window.innerHeight;
+  prog.style.width=Math.min(100,(window.scrollY/total)*100)+'%';
+},{passive:true});
+
+// Build section nav dots from h2s
+const h2s=document.querySelectorAll('.prose h2');
+const sNav=document.getElementById('sectionNav');
+const dots=[];
+h2s.forEach((h,i)=>{
+  const btn=document.createElement('button');
+  btn.className='snav-dot';
+  btn.setAttribute('data-label',h.textContent.trim().substring(0,28));
+  btn.onclick=()=>h.scrollIntoView({behavior:'smooth',block:'start'});
+  sNav.appendChild(btn);
+  dots.push({btn,h});
+});
+
+const dotObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      const idx=dots.findIndex(d=>d.h===e.target);
+      if(idx>-1) dots.forEach((d,i)=>d.btn.classList.toggle('active',i===idx));
+    }
+  });
+},{rootMargin:'-30% 0px -60% 0px'});
+dots.forEach(d=>dotObs.observe(d.h));
+
+// Scroll reveal
+const revObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='translateY(0)';}});
+},{threshold:0.08});
+document.querySelectorAll('.toc,.callout,.table-wrap,.code-block,.ep-nav-card').forEach(el=>{
+  el.style.opacity='0';
+  el.style.transform='translateY(14px)';
+  el.style.transition='opacity 0.55s ease,transform 0.55s ease';
+  revObs.observe(el);
+});
+</script>
+</body>
+</html>

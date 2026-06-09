@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ep 95: How Midjourney Works: From Text to Stunning Images</title>
+<meta name="description" content="You type 'a cyberpunk street in Mumbai, neon lights, rain, 8k' and get art that belongs in a gallery. Here's how.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,300&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0d0d1a;--page:#ffffff;--paper:#f8f9ff;
+  --navy:#124093;--navy-dim:rgba(18,64,147,0.07);--navy-mid:rgba(18,64,147,0.15);
+  --red:#e2190e;--gold:#c8973a;--muted:#6b7280;--rule:#e5e7ef;--code-bg:#0d0d1f;
+  --title:'Roboto',sans-serif;--body:'Poppins',sans-serif;--mono:'DM Mono',monospace;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--page);color:var(--ink);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:#fff}
+::-webkit-scrollbar-thumb{background:var(--navy);border-radius:2px}
+
+/* NAV */
+nav.top{position:sticky;top:0;z-index:200;background:#fff;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(20px,5vw,60px);border-bottom:1px solid var(--rule);box-shadow:0 1px 12px rgba(0,0,0,0.05)}
+.logo-wrap{display:flex;align-items:center;text-decoration:none}
+.logo-img{height:38px;width:auto;object-fit:contain;display:block}
+.nav-right{display:flex;align-items:center;gap:6px}
+.nav-link{font-family:var(--body);font-size:11.5px;font-weight:500;color:var(--muted);text-decoration:none;padding:6px 14px;border-radius:6px;transition:all 0.2s}
+.nav-link:hover{color:var(--navy);background:var(--navy-dim)}
+.nav-cta{background:var(--navy)!important;color:#fff!important}
+.nav-cta:hover{background:#1a52c0!important;color:#fff!important}
+
+/* PROGRESS */
+.progress-bar-fixed{position:fixed;top:60px;left:0;right:0;height:2.5px;background:rgba(18,64,147,0.1);z-index:199}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--navy),#4f7ff7);width:0%;transition:width 0.1s;border-radius:0 2px 2px 0}
+
+/* HERO */
+.hero{background:#fff;position:relative;overflow:hidden;min-height:88vh;display:flex;flex-direction:column;justify-content:center}
+.hero-bg{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.hero-blob-1{position:absolute;top:-120px;right:-120px;width:700px;height:700px;background:radial-gradient(circle at 60% 40%,rgba(18,64,147,0.07) 0%,rgba(18,64,147,0.03) 40%,transparent 70%);border-radius:50%}
+.hero-blob-2{position:absolute;bottom:-80px;left:-80px;width:500px;height:500px;background:radial-gradient(circle,rgba(79,127,247,0.06) 0%,transparent 65%);border-radius:50%}
+.hero-lines{position:absolute;top:0;right:0;width:45%;height:100%;opacity:0.06}
+.hero-lines svg{width:100%;height:100%}
+.hero-tokens{position:absolute;top:0;right:0;width:46%;height:100%;display:flex;align-items:center;justify-content:center}
+.token-float-wrap{position:relative;width:360px;height:360px}
+.tf{position:absolute;font-family:var(--mono);font-size:13px;font-weight:500;padding:8px 16px;border-radius:8px;white-space:nowrap;animation:float-anim 6s ease-in-out infinite;box-shadow:0 4px 20px rgba(0,0,0,0.08)}
+.tf-1{top:20px;left:60px;background:rgba(18,64,147,0.09);color:#124093;border:1px solid rgba(18,64,147,0.18);animation-delay:0s}
+.tf-2{top:70px;right:20px;background:rgba(79,127,247,0.09);color:#2563eb;border:1px solid rgba(79,127,247,0.2);animation-delay:0.8s}
+.tf-3{top:140px;left:20px;background:rgba(16,185,129,0.08);color:#059669;border:1px solid rgba(16,185,129,0.18);animation-delay:1.6s}
+.tf-4{top:170px;right:50px;background:rgba(168,85,247,0.08);color:#7c3aed;border:1px solid rgba(168,85,247,0.18);animation-delay:0.4s}
+.tf-5{bottom:140px;left:80px;background:rgba(234,179,8,0.08);color:#b45309;border:1px solid rgba(234,179,8,0.2);animation-delay:1.2s}
+.tf-6{bottom:90px;right:30px;background:rgba(236,72,153,0.08);color:#db2777;border:1px solid rgba(236,72,153,0.2);animation-delay:2s}
+.tf-7{bottom:30px;left:40px;background:rgba(239,68,68,0.08);color:#dc2626;border:1px solid rgba(239,68,68,0.18);animation-delay:0.6s}
+.tf-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:110px;height:110px;background:var(--navy);border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;box-shadow:0 12px 40px rgba(18,64,147,0.3);animation:pulse-center 3s ease-in-out infinite}
+.tf-center .big{font-family:var(--title);font-size:28px;font-weight:900;color:#fff;line-height:1}
+.tf-center .small{font-family:var(--body);font-size:9px;font-weight:500;color:rgba(255,255,255,0.6);letter-spacing:1.5px;text-transform:uppercase}
+@keyframes float-anim{0%,100%{transform:translateY(0px)}50%{transform:translateY(-10px)}}
+@keyframes pulse-center{0%,100%{box-shadow:0 12px 40px rgba(18,64,147,0.3)}50%{box-shadow:0 12px 60px rgba(18,64,147,0.5)}}
+.hero-content{position:relative;z-index:2;width:54%;padding:clamp(48px,8vw,96px) clamp(24px,5vw,72px) clamp(48px,8vw,96px)}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:5px 14px;background:var(--navy-dim);border:1px solid rgba(18,64,147,0.18);border-radius:100px;margin-bottom:22px;font-family:var(--body);font-size:10px;font-weight:600;color:var(--navy);letter-spacing:1.2px;text-transform:uppercase}
+.hero-eyebrow .dot{width:5px;height:5px;background:var(--navy);border-radius:50%}
+.hero h1{font-family:var(--title);font-size:clamp(28px,4.5vw,52px);font-weight:900;color:var(--ink);line-height:1.08;letter-spacing:-1.2px;margin-bottom:20px}
+.hero h1 .line2{display:block;color:var(--navy)}
+.hero-sub{font-family:var(--body);font-size:clamp(13px,1.6vw,15px);font-weight:300;color:#4b5563;line-height:1.85;max-width:500px;margin-bottom:34px}
+.breadcrumb{display:flex;align-items:center;gap:7px;margin-bottom:28px;font-family:var(--mono);font-size:10px;color:#9ca3af}
+.breadcrumb a{color:inherit;text-decoration:none;transition:color 0.2s}
+.breadcrumb a:hover{color:var(--navy)}
+.breadcrumb .sep{color:#d1d5db}
+.breadcrumb .cur{color:#6b7280}
+.meta-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:14px 20px;background:var(--paper);border:1px solid var(--rule);border-radius:10px;margin-bottom:24px}
+.meta-item{font-family:var(--body);font-size:10.5px;font-weight:500;color:var(--muted);display:flex;align-items:center;gap:5px}
+.tags-row{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-family:var(--body);font-size:10px;font-weight:500;color:var(--navy);background:var(--navy-dim);padding:4px 11px;border-radius:100px;border:1px solid rgba(18,64,147,0.15)}
+@media(max-width:900px){.hero{min-height:auto;padding-bottom:48px}.hero-content{width:100%;padding:48px 24px 36px}.hero-tokens{display:none}.hero-lines{display:none}}
+
+/* SECTION NAV DOTS */
+.section-nav{position:fixed;right:clamp(12px,2vw,24px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:9px;z-index:100}
+.snav-dot{width:7px;height:7px;border-radius:50%;background:#d1d5db;border:none;padding:0;cursor:pointer;transition:all 0.3s;position:relative}
+.snav-dot::after{content:attr(data-label);position:absolute;right:16px;top:50%;transform:translateY(-50%);font-family:var(--body);font-size:9px;font-weight:500;color:var(--ink);background:#fff;padding:3px 9px;border-radius:4px;border:1px solid var(--rule);box-shadow:0 2px 8px rgba(0,0,0,0.06);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.2s}
+.snav-dot:hover::after{opacity:1}
+.snav-dot.active{background:var(--navy);transform:scale(1.5)}
+.snav-dot:hover:not(.active){background:rgba(18,64,147,0.4)}
+@media(max-width:768px){.section-nav{display:none}}
+
+/* LAYOUT */
+.layout{max-width:860px;margin:0 auto;padding:clamp(40px,6vw,68px) clamp(20px,5vw,56px) 80px}
+
+/* TOC */
+.toc{background:var(--paper);border:1px solid var(--rule);border-left:4px solid var(--navy);border-radius:10px;padding:22px 26px;margin-bottom:52px}
+.toc-title{font-family:var(--title);font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
+.toc-list{list-style:none;display:flex;flex-direction:column;gap:3px}
+.toc-list li a{display:flex;align-items:center;gap:12px;text-decoration:none;padding:6px 0;font-family:var(--body);font-size:13px;font-weight:400;color:var(--ink);transition:color 0.2s}
+.toc-list li a:hover{color:var(--navy)}
+.toc-num{font-family:var(--mono);font-size:9px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* PROSE */
+.prose{line-height:1.85}
+.prose h2{font-family:var(--title);font-size:clamp(18px,2.5vw,23px);font-weight:700;color:var(--ink);letter-spacing:-0.4px;margin:52px 0 8px;line-height:1.2;scroll-margin-top:80px;padding-left:18px;position:relative}
+.prose h2::before{content:'';position:absolute;left:0;top:5px;bottom:5px;width:3px;background:var(--navy);border-radius:2px}
+.prose h2:first-child{margin-top:0}
+.prose h3{font-family:var(--title);font-size:14px;font-weight:700;color:var(--ink);margin:26px 0 8px}
+.section-rule{width:36px;height:2px;background:var(--navy);border-radius:2px;margin:8px 0 22px 18px;opacity:0.4}
+.prose p{font-family:var(--body);font-size:clamp(13.5px,1.7vw,15px);line-height:1.88;color:#374151;margin-bottom:16px;font-weight:300}
+.prose p strong{font-weight:600;color:var(--ink)}
+.prose ul,.prose ol{list-style:none;padding:0;margin:4px 0 20px}
+.prose ul li,.prose ol li{font-family:var(--body);font-size:clamp(13.5px,1.7vw,14.5px);line-height:1.8;color:#374151;padding:4px 0 4px 26px;position:relative;font-weight:300}
+.prose ul li::before{content:'';position:absolute;left:5px;top:14px;width:5px;height:5px;background:var(--navy);border-radius:50%;opacity:0.55}
+.prose ol{counter-reset:li}
+.prose ol li{counter-increment:li}
+.prose ol li::before{content:counter(li);position:absolute;left:0;top:5px;font-family:var(--mono);font-size:8px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.ic{font-family:var(--mono);font-size:12.5px;background:var(--navy-dim);color:var(--navy);padding:1.5px 6px;border-radius:4px;border:1px solid rgba(18,64,147,0.15)}
+
+/* CODE */
+.code-block{background:var(--code-bg);border-radius:10px;margin:24px 0;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.12),0 0 0 1px rgba(18,64,147,0.1)}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.02)}
+.code-dots{display:flex;gap:5px}
+.cd{width:10px;height:10px;border-radius:50%}
+.cd-r{background:#ff5f56}.cd-y{background:#ffbd2e}.cd-g{background:#27c93f}
+.code-filename{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,0.25)}
+.code-lang{font-family:var(--mono);font-size:9px;color:rgba(91,140,247,0.6);letter-spacing:1px;text-transform:uppercase}
+.code-body{padding:20px 22px;overflow-x:auto}
+.code-body pre{margin:0}
+.code-body code{font-family:var(--mono);font-size:12.5px;line-height:1.9;color:#c9d4f5}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;margin:24px 0;border-radius:10px;border:1px solid var(--rule);box-shadow:0 2px 12px rgba(0,0,0,0.04)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:var(--ink)}
+thead th{padding:12px 16px;text-align:left;font-family:var(--body);font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,0.45)}
+thead th:first-child{color:#6b9fff}
+tbody tr{border-bottom:1px solid var(--rule);transition:background 0.15s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--paper)}
+tbody td{padding:10px 16px;font-family:var(--body);font-size:13px;color:#374151;font-weight:300;line-height:1.5}
+tbody td:first-child{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--navy)}
+
+/* CALLOUTS */
+.callout{border-radius:9px;padding:16px 20px;margin:24px 0;display:flex;gap:13px;align-items:flex-start}
+.callout-tip{background:rgba(18,64,147,0.05);border:1px solid rgba(18,64,147,0.16);border-left:3px solid var(--navy)}
+.callout-warn{background:rgba(220,38,38,0.04);border:1px solid rgba(220,38,38,0.14);border-left:3px solid #dc2626}
+.callout-note{background:rgba(200,151,58,0.05);border:1px solid rgba(200,151,58,0.2);border-left:3px solid var(--gold)}
+.callout-icon{font-size:16px;flex-shrink:0;margin-top:1px;line-height:1}
+.callout p{font-size:13.5px!important;line-height:1.7!important;color:#374151!important;margin:0!important}
+
+/* EP NAV */
+.ep-nav{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:64px;padding-top:32px;border-top:1px solid var(--rule)}
+@media(max-width:500px){.ep-nav{grid-template-columns:1fr}}
+.ep-nav-card{display:flex;flex-direction:column;text-decoration:none;padding:20px 22px;border:1px solid var(--rule);border-radius:10px;background:var(--paper);transition:all 0.25s;gap:5px}
+.ep-nav-card:hover{border-color:rgba(18,64,147,0.3);background:var(--navy-dim);transform:translateY(-2px);box-shadow:0 6px 20px rgba(18,64,147,0.08)}
+.ep-nav-dir{font-family:var(--body);font-size:9px;font-weight:600;color:var(--navy);letter-spacing:1px;text-transform:uppercase}
+.ep-nav-title{font-family:var(--title);font-size:13px;font-weight:600;color:var(--ink);line-height:1.4}
+.ep-nav-card.next{align-items:flex-end;text-align:right}
+
+/* FOOTER */
+footer{background:var(--ink);padding:44px clamp(20px,5vw,60px);border-top:3px solid var(--navy)}
+.footer-inner{max-width:860px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.footer-logo{height:32px;width:auto;object-fit:contain;filter:brightness(0) invert(1);opacity:0.7}
+.footer-tagline{font-family:var(--body);font-size:11px;color:rgba(255,255,255,0.22);font-style:italic;margin-top:4px;font-weight:300}
+.footer-links{display:flex;gap:20px;flex-wrap:wrap}
+.footer-links a{font-family:var(--body);font-size:11px;font-weight:400;color:rgba(255,255,255,0.3);text-decoration:none;transition:color 0.2s}
+.footer-links a:hover{color:rgba(255,255,255,0.75)}
+
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.hero-content>*{animation:fadeUp 0.65s cubic-bezier(0.22,1,0.36,1) both}
+.hero-content>*:nth-child(1){animation-delay:0.05s}
+.hero-content>*:nth-child(2){animation-delay:0.1s}
+.hero-content>*:nth-child(3){animation-delay:0.15s}
+.hero-content>*:nth-child(4){animation-delay:0.2s}
+.hero-content>*:nth-child(5){animation-delay:0.25s}
+.hero-content>*:nth-child(6){animation-delay:0.3s}
+.hero-content>*:nth-child(7){animation-delay:0.35s}
+@media(max-width:640px){.nav-link:not(.nav-cta){display:none}}
+</style>
+</head>
+<body>
+
+<div class="progress-bar-fixed"><div class="progress-fill" id="prog"></div></div>
+
+<nav class="top">
+  <a href="field-manual-index.html" class="logo-wrap">
+    <img class="logo-img" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+  </a>
+  <div class="nav-right">
+    <a href="field-manual-index.html" class="nav-link">All Episodes</a>
+    <a href="field-manual-index.html#g14" class="nav-link nav-cta">🏗️ Real-World Architectures</a>
+  </div>
+</nav>
+
+<nav class="section-nav" id="sectionNav"></nav>
+
+<header class="hero">
+  <div class="hero-bg">
+    <div class="hero-blob-1"></div>
+    <div class="hero-blob-2"></div>
+    <div class="hero-lines">
+      <svg viewBox="0 0 600 800" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+        <line x1="0" y1="200" x2="600" y2="0" stroke="#124093" stroke-width="1"/>
+        <line x1="0" y1="400" x2="600" y2="200" stroke="#124093" stroke-width="0.6"/>
+        <line x1="0" y1="600" x2="600" y2="400" stroke="#124093" stroke-width="0.4"/>
+        <circle cx="500" cy="150" r="120" stroke="#124093" stroke-width="0.8" fill="none"/>
+        <circle cx="500" cy="150" r="80" stroke="#124093" stroke-width="0.4" fill="none"/>
+        <circle cx="500" cy="150" r="40" stroke="#124093" stroke-width="0.3" fill="none"/>
+        <line x1="300" y1="0" x2="300" y2="800" stroke="#124093" stroke-width="0.4" stroke-dasharray="6,12"/>
+        <rect x="360" y="480" width="160" height="160" stroke="#124093" stroke-width="0.6" fill="none" transform="rotate(15 440 560)"/>
+      </svg>
+    </div>
+  </div>
+  <div class="hero-tokens" aria-hidden="true">
+    <div class="token-float-wrap">
+      <div class="tf tf-1">token</div>
+<div class="tf tf-2">model</div>
+<div class="tf tf-3">layer</div>
+<div class="tf tf-4">vector</div>
+<div class="tf tf-5">embed</div>
+<div class="tf tf-6">weight</div>
+<div class="tf tf-7">param</div>
+      <div class="tf-center">
+        <span class="big">HOW</span>
+        <span class="small">EP 95</span>
+      </div>
+    </div>
+  </div>
+  <div class="hero-content">
+    <nav class="breadcrumb">
+      <a href="field-manual-index.html">Field Manual</a>
+      <span class="sep">›</span>
+      <a href="field-manual-index.html#g14">🏗️ Real-World Architectures</a>
+      <span class="sep">›</span>
+      <span class="cur">Episode 95</span>
+    </nav>
+    <div class="hero-eyebrow"><span class="dot"></span>MODULE 14 &nbsp;·&nbsp; Real-World Architectures</div>
+    <h1>How Midjourney Works: From Text to Stunning Images</h1>
+    <p class="hero-sub">You type 'a cyberpunk street in Mumbai, neon lights, rain, 8k' and get art that belongs in a gallery. Here's how.</p>
+    <div class="meta-row">
+      <div class="meta-item"><span>📅</span> Mar 2026</div>
+      <div class="meta-item"><span>⏱</span> 10 min read</div>
+      <div class="meta-item"><span>🎯</span> Episode 95 of 98</div>
+    </div>
+    <div class="tags-row"><span class="tag">Midjourney</span><span class="tag">Image Generation</span><span class="tag">Diffusion</span><span class="tag">Creative AI</span></div>
+  </div>
+</header>
+
+<main class="layout">
+  <div class="toc">
+  <div class="toc-title">In this episode</div>
+  <ul class="toc-list"><li><a href="#s1"><span class="toc-num">1</span>The Core Idea: Reverse Diffusion</a></li>
+<li><a href="#s2"><span class="toc-num">2</span>Forward Process (Training)</a></li>
+<li><a href="#s3"><span class="toc-num">3</span>Start with a clear image</a></li>
+<li><a href="#s4"><span class="toc-num">4</span>Image becomes pure static</a></li>
+<li><a href="#s5"><span class="toc-num">5</span>Reverse Process (Generation)</a></li>
+<li><a href="#s6"><span class="toc-num">6</span>Start with pure noise</a></li>
+<li><a href="#s7"><span class="toc-num">7</span>Predict what noise was added</a></li>
+<li><a href="#s8"><span class="toc-num">8</span>Remove it slightly</a></li>
+<li><a href="#s9"><span class="toc-num">9</span>An image emerges</a></li>
+<li><a href="#s10"><span class="toc-num">10</span>The Architecture: Latent Diffusion</a></li>
+<li><a href="#s11"><span class="toc-num">11</span>The Pipeline</a></li>
+<li><a href="#s12"><span class="toc-num">12</span>Random Noise ← U-Net ← Denoising Steps</a></li>
+<li><a href="#s13"><span class="toc-num">13</span>Latent Representation</a></li>
+<li><a href="#s14"><span class="toc-num">14</span>Components Explained</a></li>
+<li><a href="#s15"><span class="toc-num">15</span>Component	Function</a></li>
+<li><a href="#s16"><span class="toc-num">16</span>CLIP Encoder	Converts text to numerical embeddings</a></li>
+<li><a href="#s17"><span class="toc-num">17</span>U-Net	Predicts noise to remove at each step</a></li>
+<li><a href="#s18"><span class="toc-num">18</span>VAE	Compresses/Decompresses between pixel and latent space</a></li>
+<li><a href="#s19"><span class="toc-num">19</span>Scheduler	Controls how much noise to remove each step</a></li>
+<li><a href="#s20"><span class="toc-num">20</span>Step-by-Step Generation</a></li>
+<li><a href="#s21"><span class="toc-num">21</span>Step 1: Text Encoding</a></li>
+<li><a href="#s22"><span class="toc-num">22</span>text_features shape: [1, 512] - numerical representation of meaning</a></li>
+<li><a href="#s23"><span class="toc-num">23</span>Step 2: Initialize Noise</a></li>
+<li><a href="#s24"><span class="toc-num">24</span>Start with random Gaussian noise</a></li>
+<li><a href="#s25"><span class="toc-num">25</span>Step 3: Denoising Loop</a></li>
+<li><a href="#s26"><span class="toc-num">26</span>Step 4: Decode to Pixels</a></li>
+<li><a href="#s27"><span class="toc-num">27</span>VAE decoder turns latent representation into actual image</a></li>
+<li><a href="#s28"><span class="toc-num">28</span>Output: [1, 3, 512, 512] - RGB image</a></li>
+<li><a href="#s29"><span class="toc-num">29</span>The U-Net: Heart of the Process</a></li>
+<li><a href="#s30"><span class="toc-num">30</span>Cross-Attention: Where Text Meets Image</a></li>
+<li><a href="#s31"><span class="toc-num">31</span>The magic happens in cross-attention layers:</a></li>
+<li><a href="#s32"><span class="toc-num">32</span>Image Features ──┐</a></li>
+<li><a href="#s33"><span class="toc-num">33</span>Text Embedding ──┘</a></li>
+<li><a href="#s34"><span class="toc-num">34</span>Classifier-Free Guidance (CFG)</a></li>
+<li><a href="#s35"><span class="toc-num">35</span>Two predictions:</a></li>
+<li><a href="#s36"><span class="toc-num">36</span>Scale the difference</a></li>
+<li><a href="#s37"><span class="toc-num">37</span>CFG Scale	Result</a></li>
+<li><a href="#s38"><span class="toc-num">38</span>Upscaling: From Good to Stunning</a></li>
+<li><a href="#s39"><span class="toc-num">39</span>Two-Stage Upscaling</a></li>
+<li><a href="#s40"><span class="toc-num">40</span>Stage 1: Latent Upscaling</a></li>
+<li><a href="#s41"><span class="toc-num">41</span>Apply more denoising steps</a></li>
+<li><a href="#s42"><span class="toc-num">42</span>Adds detail without hallucination</a></li>
+<li><a href="#s43"><span class="toc-num">43</span>Stage 2: Super-Resolution</a></li>
+<li><a href="#s44"><span class="toc-num">44</span>ESRGAN or similar upscaler</a></li>
+<li><a href="#s45"><span class="toc-num">45</span>Trained on high-quality image pairs</a></li>
+<li><a href="#s46"><span class="toc-num">46</span>Comparison</a></li>
+<li><a href="#s47"><span class="toc-num">47</span>Resolution	Base	Upscaled</a></li>
+<li><a href="#s48"><span class="toc-num">48</span>Fine-Tuning on Curated Data</a></li>
+<li><a href="#s49"><span class="toc-num">49</span>High-rated user generations</a></li>
+<li><a href="#s50"><span class="toc-num">50</span>Professional photography</a></li>
+<li><a href="#s51"><span class="toc-num">51</span>Artistic compositions</a></li>
+<li><a href="#s52"><span class="toc-num">52</span>Specific aesthetic preferences</a></li>
+<li><a href="#s53"><span class="toc-num">53</span>Reinforcement Learning from Human Feedback (RLHF)</a></li>
+<li><a href="#s54"><span class="toc-num">54</span>Prompt Engineering for Diffusion</a></li>
+<li><a href="#s55"><span class="toc-num">55</span>Token Weighting</a></li>
+<li><a href="#s56"><span class="toc-num">56</span>Multi-Prompts</a></li>
+<li><a href="#s57"><span class="toc-num">57</span>Negative Prompts</a></li>
+<li><a href="#s58"><span class="toc-num">58</span>Hardware Requirements</a></li>
+<li><a href="#s59"><span class="toc-num">59</span>Running diffusion locally:</a></li>
+<li><a href="#s60"><span class="toc-num">60</span>Model	VRAM Required	Speed (RTX 4090)</a></li>
+<li><a href="#s61"><span class="toc-num">61</span>SD 1.5	4GB	10 images/min</a></li>
+<li><a href="#s62"><span class="toc-num">62</span>SDXL	8GB	4 images/min</a></li>
+<li><a href="#s63"><span class="toc-num">63</span>FLUX	24GB	1 image/min</a></li>
+<li><a href="#s64"><span class="toc-num">64</span>Practical Takeaways</a></li>
+<li><a href="#s65"><span class="toc-num">65</span>Ep 94: How Perplexity Works</a></li>
+<li><a href="#s66"><span class="toc-num">66</span>Ep 96: How Voice Assistants Work</a></li>
+</ul>
+</div>
+  <article class="prose" id="s0">
+<p>You type "a cyberpunk street in Mumbai, neon lights, rain, 8k" and get back art that belongs in a gallery.</p>
+<p>Not stock photos. Not filters. Original images conjured from noise and math.</p>
+<p>Midjourney, DALL-E, Stable Diffusion — they all use diffusion models. But Midjourney's aesthetic is distinct. Dreamlike. Cinematic. Almost painterly.</p>
+<p>How does it work? Let's trace the journey from text to pixels.</p>
+<h2 id="s1">The Core Idea: Reverse Diffusion</h2><div class="section-rule"></div>
+<p>Diffusion models learn to reverse a destruction process:</p>
+<h2 id="s2">Forward Process (Training)</h2><div class="section-rule"></div>
+<h2 id="s3">Start with a clear image</h2><div class="section-rule"></div>
+<p>Add noise gradually over 1000 steps</p>
+<h2 id="s4">Image becomes pure static</h2><div class="section-rule"></div>
+<h2 id="s5">Reverse Process (Generation)</h2><div class="section-rule"></div>
+<h2 id="s6">Start with pure noise</h2><div class="section-rule"></div>
+<h2 id="s7">Predict what noise was added</h2><div class="section-rule"></div>
+<h2 id="s8">Remove it slightly</h2><div class="section-rule"></div>
+<p>Repeat 50-100 times</p>
+<h2 id="s9">An image emerges</h2><div class="section-rule"></div>
+<p>Like watching a sculptor remove marble to reveal the statue inside — except the statue was always there in the math.</p>
+<div class="callout callout-tip"><span class="callout-icon">⚡</span><p></p></div>
+<h2 id="s10">The Architecture: Latent Diffusion</h2><div class="section-rule"></div>
+<p>Midjourney doesn't work directly on pixels. It works in latent space.</p>
+<h2 id="s11">The Pipeline</h2><div class="section-rule"></div>
+<p>Text Prompt → CLIP Encoder → Text Embedding</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>↓</code></pre></div>
+</div>
+<h2 id="s12">Random Noise ← U-Net ← Denoising Steps</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>↓</code></pre></div>
+</div>
+<h2 id="s13">Latent Representation</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>↓</code></pre></div>
+</div>
+<p>VAE Decoder → Final Image</p>
+<h2 id="s14">Components Explained</h2><div class="section-rule"></div>
+<h2 id="s15">Component	Function</h2><div class="section-rule"></div>
+<h2 id="s16">CLIP Encoder	Converts text to numerical embeddings</h2><div class="section-rule"></div>
+<h2 id="s17">U-Net	Predicts noise to remove at each step</h2><div class="section-rule"></div>
+<h2 id="s18">VAE	Compresses/Decompresses between pixel and latent space</h2><div class="section-rule"></div>
+<h2 id="s19">Scheduler	Controls how much noise to remove each step</h2><div class="section-rule"></div>
+<p>🔧</p>
+<h2 id="s20">Step-by-Step Generation</h2><div class="section-rule"></div>
+<h2 id="s21">Step 1: Text Encoding</h2><div class="section-rule"></div>
+<p>Your prompt "a cyberpunk street in Mumbai" is converted to embeddings using CLIP:</p>
+<p>python</p>
+<p>import clip</p>
+<p>model, preprocess = clip.load("ViT-B/32")</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>text = clip.tokenize(["a cyberpunk street in Mumbai"])
+text_features = model.encode_text(text)</code></pre></div>
+</div>
+<h2 id="s22">text_features shape: [1, 512] - numerical representation of meaning</h2><div class="section-rule"></div>
+<p>These embeddings guide the entire generation process.</p>
+<h2 id="s23">Step 2: Initialize Noise</h2><div class="section-rule"></div>
+<p>python</p>
+<p>import torch</p>
+<h2 id="s24">Start with random Gaussian noise</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>latents = torch.randn(1, 4, 64, 64)  # Batch, channels, height, width</code></pre></div>
+</div>
+<p>This noise is in latent space — 64x64 with 4 channels, not the final 1024x1024 image.</p>
+<h2 id="s25">Step 3: Denoising Loop</h2><div class="section-rule"></div>
+<p>python</p>
+<p>for i, t in enumerate(scheduler.timesteps):</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># Predict noise in the current latent
+    with torch.no_grad():
+        noise_pred = unet(latents, t, encoder_hidden_states=text_embeddings)</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># Compute how much to denoise this step
+    latents = scheduler.step(noise_pred, t, latents).prev_sample</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># After 50-100 steps, latents contain image information</code></pre></div>
+</div>
+<p>Each iteration removes a calculated amount of noise, guided by the text embeddings.</p>
+<h2 id="s26">Step 4: Decode to Pixels</h2><div class="section-rule"></div>
+<p>python</p>
+<h2 id="s27">VAE decoder turns latent representation into actual image</h2><div class="section-rule"></div>
+<p>with torch.no_grad():</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>image = vae.decode(latents / 0.18215).sample</code></pre></div>
+</div>
+<h2 id="s28">Output: [1, 3, 512, 512] - RGB image</h2><div class="section-rule"></div>
+<p>📊</p>
+<h2 id="s29">The U-Net: Heart of the Process</h2><div class="section-rule"></div>
+<p>The U-Net architecture predicts noise. It's called "U" because of its shape:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Input (noisy latent)
+↓
+Encoder (downsampling, extracting features)
+↓
+Bottleneck (compressed representation)
+↓
+Decoder (upsampling, reconstructing)
+↓
+Output (predicted noise)</code></pre></div>
+</div>
+<h2 id="s30">Cross-Attention: Where Text Meets Image</h2><div class="section-rule"></div>
+<h2 id="s31">The magic happens in cross-attention layers:</h2><div class="section-rule"></div>
+<h2 id="s32">Image Features ──┐</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>├──→ Cross-Attention ──→ Text-Guided Features</code></pre></div>
+</div>
+<h2 id="s33">Text Embedding ──┘</h2><div class="section-rule"></div>
+<p>At these layers, the model "looks" at the text embedding and decides which parts of the image to emphasize.</p>
+<h2 id="s34">Classifier-Free Guidance (CFG)</h2><div class="section-rule"></div>
+<p>This is what makes images "follow the prompt" instead of being loosely related.</p>
+<p>python</p>
+<h2 id="s35">Two predictions:</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>noise_conditional = unet(latents, t, text_embeddings)      # With text
+noise_unconditional = unet(latents, t, null_embeddings)    # Without text</code></pre></div>
+</div>
+<h2 id="s36">Scale the difference</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>noise_pred = noise_unconditional + cfg_scale * (noise_conditional - noise_unconditional)</code></pre></div>
+</div>
+<h2 id="s37">CFG Scale	Result</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>1-3</th><th>Creative, loosely related to prompt</th></tr></thead><tbody><tr><td>7-12 (default)</td><td>Balanced accuracy and creativity</td></tr><tr><td>15-20</td><td>Strict adherence, less variety</td></tr></tbody></table></div>
+<p>Midjourney's default CFG (~7) strikes its signature balance.</p>
+<div class="callout callout-tip"><span class="callout-icon">💡</span><p></p></div>
+<h2 id="s38">Upscaling: From Good to Stunning</h2><div class="section-rule"></div>
+<p>The base generation is 512x512 or 1024x1024. The upscaler makes it print-ready.</p>
+<h2 id="s39">Two-Stage Upscaling</h2><div class="section-rule"></div>
+<h2 id="s40">Stage 1: Latent Upscaling</h2><div class="section-rule"></div>
+<p>Upscale in latent space (cheaper)</p>
+<h2 id="s41">Apply more denoising steps</h2><div class="section-rule"></div>
+<h2 id="s42">Adds detail without hallucination</h2><div class="section-rule"></div>
+<h2 id="s43">Stage 2: Super-Resolution</h2><div class="section-rule"></div>
+<h2 id="s44">ESRGAN or similar upscaler</h2><div class="section-rule"></div>
+<h2 id="s45">Trained on high-quality image pairs</h2><div class="section-rule"></div>
+<p>Adds fine textures, sharpness</p>
+<h2 id="s46">Comparison</h2><div class="section-rule"></div>
+<h2 id="s47">Resolution	Base	Upscaled</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>Initial</th><th>1024x1024</th><th>-</th></tr></thead><tbody><tr><td>2x</td><td>-</td><td>2048x2048</td></tr><tr><td>4x</td><td>-</td><td>4096x4096</td></tr></tbody></table></div>
+<p>🔬</p>
+<p>Aesthetic Training: The Midjourney "Look"</p>
+<p>Why do Midjourney images look distinct from DALL-E or Stable Diffusion?</p>
+<h2 id="s48">Fine-Tuning on Curated Data</h2><div class="section-rule"></div>
+<p>After base training, Midjourney fine-tunes on:</p>
+<h2 id="s49">High-rated user generations</h2><div class="section-rule"></div>
+<h2 id="s50">Professional photography</h2><div class="section-rule"></div>
+<h2 id="s51">Artistic compositions</h2><div class="section-rule"></div>
+<h2 id="s52">Specific aesthetic preferences</h2><div class="section-rule"></div>
+<h2 id="s53">Reinforcement Learning from Human Feedback (RLHF)</h2><div class="section-rule"></div>
+<p>Generate 4 variations → Users vote for favorites →</p>
+<p>Model learns what humans prefer → Repeat millions of times</p>
+<p>This creates a feedback loop that pushes the aesthetic in a specific direction — cinematic, painterly, detailed.</p>
+<p>🛡️</p>
+<h2 id="s54">Prompt Engineering for Diffusion</h2><div class="section-rule"></div>
+<p>Unlike LLMs, diffusion models respond to specific syntax:</p>
+<h2 id="s55">Token Weighting</h2><div class="section-rule"></div>
+<p>"a (cyberpunk:1.5) street"  → Emphasize cyberpunk</p>
+<p>"a (rain:0.5) scene"        → De-emphasize rain</p>
+<h2 id="s56">Multi-Prompts</h2><div class="section-rule"></div>
+<p>"cyberpunk street::2 neon lights::1 rain::0.5"</p>
+<p>Each part gets different weight in the final image.</p>
+<h2 id="s57">Negative Prompts</h2><div class="section-rule"></div>
+<p>Prompt: "beautiful landscape"</p>
+<p>Negative: "blurry, low quality, oversaturated, watermark"</p>
+<p>Tells the model what to avoid.</p>
+<p>📦</p>
+<h2 id="s58">Hardware Requirements</h2><div class="section-rule"></div>
+<h2 id="s59">Running diffusion locally:</h2><div class="section-rule"></div>
+<h2 id="s60">Model	VRAM Required	Speed (RTX 4090)</h2><div class="section-rule"></div>
+<h2 id="s61">SD 1.5	4GB	10 images/min</h2><div class="section-rule"></div>
+<h2 id="s62">SDXL	8GB	4 images/min</h2><div class="section-rule"></div>
+<h2 id="s63">FLUX	24GB	1 image/min</h2><div class="section-rule"></div>
+<p>Midjourney API	N/A (cloud)	~1 min/image</p>
+<p>Midjourney runs on enterprise-grade clusters. You can't self-host it.</p>
+<p>🚀</p>
+<h2 id="s64">Practical Takeaways</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Diffusion = reverse noise removal — Start static, gradually reveal structure</code></pre></div>
+</div>
+<p>Latent space is efficient — Work compressed, decode at the end</p>
+<p>CLIP connects text to images — Text embeddings guide every denoising step</p>
+<p>CFG controls prompt adherence — Higher = more literal, lower = more creative</p>
+<p>Upscaling is separate — Base generation + super-resolution pipeline</p>
+<p>Aesthetic is trained — RLHF from millions of user preferences creates the "look"</p>
+<p>Prompt engineering matters — Token weights, multi-prompts, negatives</p>
+<p>🔄</p>
+<p>What's Next?</p>
+<p>Episode 96: How Voice Assistants Work — STT → LLM → TTS pipeline, Whisper, wake words, and the latency challenges of real-time voice AI.</p>
+<p>← Previous</p>
+<h2 id="s65">Ep 94: How Perplexity Works</h2><div class="section-rule"></div>
+<p>Next →</p>
+<h2 id="s66">Ep 96: How Voice Assistants Work</h2><div class="section-rule"></div>
+<p>Next: Episode 96 — How Voice Assistants Work</p>
+<p>You speak. Two seconds later, a voice responds with the weather. Three AI systems chained together make this work.</p>
+<p>This is part of a 98-episode series covering AI engineering from tokens to production deployment.</p>
+  </article>
+  <div class="ep-nav">
+    <a href="episode-94.html" class="ep-nav-card">
+      <span class="ep-nav-dir">← Previous</span>
+      <span class="ep-nav-title">Ep 94: How Perplexity Works: The Search Engine That Actually A…</span>
+    </a>
+    <a href="episode-96.html" class="ep-nav-card next">
+      <span class="ep-nav-dir">Next Episode →</span>
+      <span class="ep-nav-title">Ep 96: How Voice Assistants Work: STT → LLM → TTS Pipeline</span>
+    </a>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <img class="footer-logo" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+      <div class="footer-tagline">98 Field Manual · Build with AI, not just use it · Free forever</div>
+    </div>
+    <div class="footer-links">
+      <a href="field-manual-index.html">All Episodes</a>
+      <a href="field-manual-index.html#g14">Real-World Architectures</a>
+      <a href="episode-94.html">← Ep 94</a>
+      <a href="episode-96.html">Ep 96 →</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+const prog=document.getElementById('prog');
+window.addEventListener('scroll',()=>{
+  const total=document.documentElement.scrollHeight-window.innerHeight;
+  prog.style.width=Math.min(100,(window.scrollY/total)*100)+'%';
+},{passive:true});
+
+// Build section nav dots from h2s
+const h2s=document.querySelectorAll('.prose h2');
+const sNav=document.getElementById('sectionNav');
+const dots=[];
+h2s.forEach((h,i)=>{
+  const btn=document.createElement('button');
+  btn.className='snav-dot';
+  btn.setAttribute('data-label',h.textContent.trim().substring(0,28));
+  btn.onclick=()=>h.scrollIntoView({behavior:'smooth',block:'start'});
+  sNav.appendChild(btn);
+  dots.push({btn,h});
+});
+
+const dotObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      const idx=dots.findIndex(d=>d.h===e.target);
+      if(idx>-1) dots.forEach((d,i)=>d.btn.classList.toggle('active',i===idx));
+    }
+  });
+},{rootMargin:'-30% 0px -60% 0px'});
+dots.forEach(d=>dotObs.observe(d.h));
+
+// Scroll reveal
+const revObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='translateY(0)';}});
+},{threshold:0.08});
+document.querySelectorAll('.toc,.callout,.table-wrap,.code-block,.ep-nav-card').forEach(el=>{
+  el.style.opacity='0';
+  el.style.transform='translateY(14px)';
+  el.style.transition='opacity 0.55s ease,transform 0.55s ease';
+  revObs.observe(el);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ep 60: Diffusion Models: How AI Turns Noise Into Art</title>
+<meta name="description" content="Take a photo. Add static noise until nothing remains but TV static. Now reverse the process. That's diffusion.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,300&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0d0d1a;--page:#ffffff;--paper:#f8f9ff;
+  --navy:#124093;--navy-dim:rgba(18,64,147,0.07);--navy-mid:rgba(18,64,147,0.15);
+  --red:#e2190e;--gold:#c8973a;--muted:#6b7280;--rule:#e5e7ef;--code-bg:#0d0d1f;
+  --title:'Roboto',sans-serif;--body:'Poppins',sans-serif;--mono:'DM Mono',monospace;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--page);color:var(--ink);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:#fff}
+::-webkit-scrollbar-thumb{background:var(--navy);border-radius:2px}
+
+/* NAV */
+nav.top{position:sticky;top:0;z-index:200;background:#fff;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(20px,5vw,60px);border-bottom:1px solid var(--rule);box-shadow:0 1px 12px rgba(0,0,0,0.05)}
+.logo-wrap{display:flex;align-items:center;text-decoration:none}
+.logo-img{height:38px;width:auto;object-fit:contain;display:block}
+.nav-right{display:flex;align-items:center;gap:6px}
+.nav-link{font-family:var(--body);font-size:11.5px;font-weight:500;color:var(--muted);text-decoration:none;padding:6px 14px;border-radius:6px;transition:all 0.2s}
+.nav-link:hover{color:var(--navy);background:var(--navy-dim)}
+.nav-cta{background:var(--navy)!important;color:#fff!important}
+.nav-cta:hover{background:#1a52c0!important;color:#fff!important}
+
+/* PROGRESS */
+.progress-bar-fixed{position:fixed;top:60px;left:0;right:0;height:2.5px;background:rgba(18,64,147,0.1);z-index:199}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--navy),#4f7ff7);width:0%;transition:width 0.1s;border-radius:0 2px 2px 0}
+
+/* HERO */
+.hero{background:#fff;position:relative;overflow:hidden;min-height:88vh;display:flex;flex-direction:column;justify-content:center}
+.hero-bg{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.hero-blob-1{position:absolute;top:-120px;right:-120px;width:700px;height:700px;background:radial-gradient(circle at 60% 40%,rgba(18,64,147,0.07) 0%,rgba(18,64,147,0.03) 40%,transparent 70%);border-radius:50%}
+.hero-blob-2{position:absolute;bottom:-80px;left:-80px;width:500px;height:500px;background:radial-gradient(circle,rgba(79,127,247,0.06) 0%,transparent 65%);border-radius:50%}
+.hero-lines{position:absolute;top:0;right:0;width:45%;height:100%;opacity:0.06}
+.hero-lines svg{width:100%;height:100%}
+.hero-tokens{position:absolute;top:0;right:0;width:46%;height:100%;display:flex;align-items:center;justify-content:center}
+.token-float-wrap{position:relative;width:360px;height:360px}
+.tf{position:absolute;font-family:var(--mono);font-size:13px;font-weight:500;padding:8px 16px;border-radius:8px;white-space:nowrap;animation:float-anim 6s ease-in-out infinite;box-shadow:0 4px 20px rgba(0,0,0,0.08)}
+.tf-1{top:20px;left:60px;background:rgba(18,64,147,0.09);color:#124093;border:1px solid rgba(18,64,147,0.18);animation-delay:0s}
+.tf-2{top:70px;right:20px;background:rgba(79,127,247,0.09);color:#2563eb;border:1px solid rgba(79,127,247,0.2);animation-delay:0.8s}
+.tf-3{top:140px;left:20px;background:rgba(16,185,129,0.08);color:#059669;border:1px solid rgba(16,185,129,0.18);animation-delay:1.6s}
+.tf-4{top:170px;right:50px;background:rgba(168,85,247,0.08);color:#7c3aed;border:1px solid rgba(168,85,247,0.18);animation-delay:0.4s}
+.tf-5{bottom:140px;left:80px;background:rgba(234,179,8,0.08);color:#b45309;border:1px solid rgba(234,179,8,0.2);animation-delay:1.2s}
+.tf-6{bottom:90px;right:30px;background:rgba(236,72,153,0.08);color:#db2777;border:1px solid rgba(236,72,153,0.2);animation-delay:2s}
+.tf-7{bottom:30px;left:40px;background:rgba(239,68,68,0.08);color:#dc2626;border:1px solid rgba(239,68,68,0.18);animation-delay:0.6s}
+.tf-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:110px;height:110px;background:var(--navy);border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;box-shadow:0 12px 40px rgba(18,64,147,0.3);animation:pulse-center 3s ease-in-out infinite}
+.tf-center .big{font-family:var(--title);font-size:28px;font-weight:900;color:#fff;line-height:1}
+.tf-center .small{font-family:var(--body);font-size:9px;font-weight:500;color:rgba(255,255,255,0.6);letter-spacing:1.5px;text-transform:uppercase}
+@keyframes float-anim{0%,100%{transform:translateY(0px)}50%{transform:translateY(-10px)}}
+@keyframes pulse-center{0%,100%{box-shadow:0 12px 40px rgba(18,64,147,0.3)}50%{box-shadow:0 12px 60px rgba(18,64,147,0.5)}}
+.hero-content{position:relative;z-index:2;width:54%;padding:clamp(48px,8vw,96px) clamp(24px,5vw,72px) clamp(48px,8vw,96px)}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:5px 14px;background:var(--navy-dim);border:1px solid rgba(18,64,147,0.18);border-radius:100px;margin-bottom:22px;font-family:var(--body);font-size:10px;font-weight:600;color:var(--navy);letter-spacing:1.2px;text-transform:uppercase}
+.hero-eyebrow .dot{width:5px;height:5px;background:var(--navy);border-radius:50%}
+.hero h1{font-family:var(--title);font-size:clamp(28px,4.5vw,52px);font-weight:900;color:var(--ink);line-height:1.08;letter-spacing:-1.2px;margin-bottom:20px}
+.hero h1 .line2{display:block;color:var(--navy)}
+.hero-sub{font-family:var(--body);font-size:clamp(13px,1.6vw,15px);font-weight:300;color:#4b5563;line-height:1.85;max-width:500px;margin-bottom:34px}
+.breadcrumb{display:flex;align-items:center;gap:7px;margin-bottom:28px;font-family:var(--mono);font-size:10px;color:#9ca3af}
+.breadcrumb a{color:inherit;text-decoration:none;transition:color 0.2s}
+.breadcrumb a:hover{color:var(--navy)}
+.breadcrumb .sep{color:#d1d5db}
+.breadcrumb .cur{color:#6b7280}
+.meta-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:14px 20px;background:var(--paper);border:1px solid var(--rule);border-radius:10px;margin-bottom:24px}
+.meta-item{font-family:var(--body);font-size:10.5px;font-weight:500;color:var(--muted);display:flex;align-items:center;gap:5px}
+.tags-row{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-family:var(--body);font-size:10px;font-weight:500;color:var(--navy);background:var(--navy-dim);padding:4px 11px;border-radius:100px;border:1px solid rgba(18,64,147,0.15)}
+@media(max-width:900px){.hero{min-height:auto;padding-bottom:48px}.hero-content{width:100%;padding:48px 24px 36px}.hero-tokens{display:none}.hero-lines{display:none}}
+
+/* SECTION NAV DOTS */
+.section-nav{position:fixed;right:clamp(12px,2vw,24px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:9px;z-index:100}
+.snav-dot{width:7px;height:7px;border-radius:50%;background:#d1d5db;border:none;padding:0;cursor:pointer;transition:all 0.3s;position:relative}
+.snav-dot::after{content:attr(data-label);position:absolute;right:16px;top:50%;transform:translateY(-50%);font-family:var(--body);font-size:9px;font-weight:500;color:var(--ink);background:#fff;padding:3px 9px;border-radius:4px;border:1px solid var(--rule);box-shadow:0 2px 8px rgba(0,0,0,0.06);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.2s}
+.snav-dot:hover::after{opacity:1}
+.snav-dot.active{background:var(--navy);transform:scale(1.5)}
+.snav-dot:hover:not(.active){background:rgba(18,64,147,0.4)}
+@media(max-width:768px){.section-nav{display:none}}
+
+/* LAYOUT */
+.layout{max-width:860px;margin:0 auto;padding:clamp(40px,6vw,68px) clamp(20px,5vw,56px) 80px}
+
+/* TOC */
+.toc{background:var(--paper);border:1px solid var(--rule);border-left:4px solid var(--navy);border-radius:10px;padding:22px 26px;margin-bottom:52px}
+.toc-title{font-family:var(--title);font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
+.toc-list{list-style:none;display:flex;flex-direction:column;gap:3px}
+.toc-list li a{display:flex;align-items:center;gap:12px;text-decoration:none;padding:6px 0;font-family:var(--body);font-size:13px;font-weight:400;color:var(--ink);transition:color 0.2s}
+.toc-list li a:hover{color:var(--navy)}
+.toc-num{font-family:var(--mono);font-size:9px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* PROSE */
+.prose{line-height:1.85}
+.prose h2{font-family:var(--title);font-size:clamp(18px,2.5vw,23px);font-weight:700;color:var(--ink);letter-spacing:-0.4px;margin:52px 0 8px;line-height:1.2;scroll-margin-top:80px;padding-left:18px;position:relative}
+.prose h2::before{content:'';position:absolute;left:0;top:5px;bottom:5px;width:3px;background:var(--navy);border-radius:2px}
+.prose h2:first-child{margin-top:0}
+.prose h3{font-family:var(--title);font-size:14px;font-weight:700;color:var(--ink);margin:26px 0 8px}
+.section-rule{width:36px;height:2px;background:var(--navy);border-radius:2px;margin:8px 0 22px 18px;opacity:0.4}
+.prose p{font-family:var(--body);font-size:clamp(13.5px,1.7vw,15px);line-height:1.88;color:#374151;margin-bottom:16px;font-weight:300}
+.prose p strong{font-weight:600;color:var(--ink)}
+.prose ul,.prose ol{list-style:none;padding:0;margin:4px 0 20px}
+.prose ul li,.prose ol li{font-family:var(--body);font-size:clamp(13.5px,1.7vw,14.5px);line-height:1.8;color:#374151;padding:4px 0 4px 26px;position:relative;font-weight:300}
+.prose ul li::before{content:'';position:absolute;left:5px;top:14px;width:5px;height:5px;background:var(--navy);border-radius:50%;opacity:0.55}
+.prose ol{counter-reset:li}
+.prose ol li{counter-increment:li}
+.prose ol li::before{content:counter(li);position:absolute;left:0;top:5px;font-family:var(--mono);font-size:8px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.ic{font-family:var(--mono);font-size:12.5px;background:var(--navy-dim);color:var(--navy);padding:1.5px 6px;border-radius:4px;border:1px solid rgba(18,64,147,0.15)}
+
+/* CODE */
+.code-block{background:var(--code-bg);border-radius:10px;margin:24px 0;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.12),0 0 0 1px rgba(18,64,147,0.1)}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.02)}
+.code-dots{display:flex;gap:5px}
+.cd{width:10px;height:10px;border-radius:50%}
+.cd-r{background:#ff5f56}.cd-y{background:#ffbd2e}.cd-g{background:#27c93f}
+.code-filename{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,0.25)}
+.code-lang{font-family:var(--mono);font-size:9px;color:rgba(91,140,247,0.6);letter-spacing:1px;text-transform:uppercase}
+.code-body{padding:20px 22px;overflow-x:auto}
+.code-body pre{margin:0}
+.code-body code{font-family:var(--mono);font-size:12.5px;line-height:1.9;color:#c9d4f5}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;margin:24px 0;border-radius:10px;border:1px solid var(--rule);box-shadow:0 2px 12px rgba(0,0,0,0.04)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:var(--ink)}
+thead th{padding:12px 16px;text-align:left;font-family:var(--body);font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,0.45)}
+thead th:first-child{color:#6b9fff}
+tbody tr{border-bottom:1px solid var(--rule);transition:background 0.15s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--paper)}
+tbody td{padding:10px 16px;font-family:var(--body);font-size:13px;color:#374151;font-weight:300;line-height:1.5}
+tbody td:first-child{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--navy)}
+
+/* CALLOUTS */
+.callout{border-radius:9px;padding:16px 20px;margin:24px 0;display:flex;gap:13px;align-items:flex-start}
+.callout-tip{background:rgba(18,64,147,0.05);border:1px solid rgba(18,64,147,0.16);border-left:3px solid var(--navy)}
+.callout-warn{background:rgba(220,38,38,0.04);border:1px solid rgba(220,38,38,0.14);border-left:3px solid #dc2626}
+.callout-note{background:rgba(200,151,58,0.05);border:1px solid rgba(200,151,58,0.2);border-left:3px solid var(--gold)}
+.callout-icon{font-size:16px;flex-shrink:0;margin-top:1px;line-height:1}
+.callout p{font-size:13.5px!important;line-height:1.7!important;color:#374151!important;margin:0!important}
+
+/* EP NAV */
+.ep-nav{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:64px;padding-top:32px;border-top:1px solid var(--rule)}
+@media(max-width:500px){.ep-nav{grid-template-columns:1fr}}
+.ep-nav-card{display:flex;flex-direction:column;text-decoration:none;padding:20px 22px;border:1px solid var(--rule);border-radius:10px;background:var(--paper);transition:all 0.25s;gap:5px}
+.ep-nav-card:hover{border-color:rgba(18,64,147,0.3);background:var(--navy-dim);transform:translateY(-2px);box-shadow:0 6px 20px rgba(18,64,147,0.08)}
+.ep-nav-dir{font-family:var(--body);font-size:9px;font-weight:600;color:var(--navy);letter-spacing:1px;text-transform:uppercase}
+.ep-nav-title{font-family:var(--title);font-size:13px;font-weight:600;color:var(--ink);line-height:1.4}
+.ep-nav-card.next{align-items:flex-end;text-align:right}
+
+/* FOOTER */
+footer{background:var(--ink);padding:44px clamp(20px,5vw,60px);border-top:3px solid var(--navy)}
+.footer-inner{max-width:860px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.footer-logo{height:32px;width:auto;object-fit:contain;filter:brightness(0) invert(1);opacity:0.7}
+.footer-tagline{font-family:var(--body);font-size:11px;color:rgba(255,255,255,0.22);font-style:italic;margin-top:4px;font-weight:300}
+.footer-links{display:flex;gap:20px;flex-wrap:wrap}
+.footer-links a{font-family:var(--body);font-size:11px;font-weight:400;color:rgba(255,255,255,0.3);text-decoration:none;transition:color 0.2s}
+.footer-links a:hover{color:rgba(255,255,255,0.75)}
+
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.hero-content>*{animation:fadeUp 0.65s cubic-bezier(0.22,1,0.36,1) both}
+.hero-content>*:nth-child(1){animation-delay:0.05s}
+.hero-content>*:nth-child(2){animation-delay:0.1s}
+.hero-content>*:nth-child(3){animation-delay:0.15s}
+.hero-content>*:nth-child(4){animation-delay:0.2s}
+.hero-content>*:nth-child(5){animation-delay:0.25s}
+.hero-content>*:nth-child(6){animation-delay:0.3s}
+.hero-content>*:nth-child(7){animation-delay:0.35s}
+@media(max-width:640px){.nav-link:not(.nav-cta){display:none}}
+</style>
+</head>
+<body>
+
+<div class="progress-bar-fixed"><div class="progress-fill" id="prog"></div></div>
+
+<nav class="top">
+  <a href="field-manual-index.html" class="logo-wrap">
+    <img class="logo-img" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+  </a>
+  <div class="nav-right">
+    <a href="field-manual-index.html" class="nav-link">All Episodes</a>
+    <a href="field-manual-index.html#g9" class="nav-link nav-cta">🚀 The Cutting Edge</a>
+  </div>
+</nav>
+
+<nav class="section-nav" id="sectionNav"></nav>
+
+<header class="hero">
+  <div class="hero-bg">
+    <div class="hero-blob-1"></div>
+    <div class="hero-blob-2"></div>
+    <div class="hero-lines">
+      <svg viewBox="0 0 600 800" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+        <line x1="0" y1="200" x2="600" y2="0" stroke="#124093" stroke-width="1"/>
+        <line x1="0" y1="400" x2="600" y2="200" stroke="#124093" stroke-width="0.6"/>
+        <line x1="0" y1="600" x2="600" y2="400" stroke="#124093" stroke-width="0.4"/>
+        <circle cx="500" cy="150" r="120" stroke="#124093" stroke-width="0.8" fill="none"/>
+        <circle cx="500" cy="150" r="80" stroke="#124093" stroke-width="0.4" fill="none"/>
+        <circle cx="500" cy="150" r="40" stroke="#124093" stroke-width="0.3" fill="none"/>
+        <line x1="300" y1="0" x2="300" y2="800" stroke="#124093" stroke-width="0.4" stroke-dasharray="6,12"/>
+        <rect x="360" y="480" width="160" height="160" stroke="#124093" stroke-width="0.6" fill="none" transform="rotate(15 440 560)"/>
+      </svg>
+    </div>
+  </div>
+  <div class="hero-tokens" aria-hidden="true">
+    <div class="token-float-wrap">
+      <div class="tf tf-1">token</div>
+<div class="tf tf-2">model</div>
+<div class="tf tf-3">layer</div>
+<div class="tf tf-4">vector</div>
+<div class="tf tf-5">embed</div>
+<div class="tf tf-6">weight</div>
+<div class="tf tf-7">param</div>
+      <div class="tf-center">
+        <span class="big">DIFF</span>
+        <span class="small">EP 60</span>
+      </div>
+    </div>
+  </div>
+  <div class="hero-content">
+    <nav class="breadcrumb">
+      <a href="field-manual-index.html">Field Manual</a>
+      <span class="sep">›</span>
+      <a href="field-manual-index.html#g9">🚀 The Cutting Edge</a>
+      <span class="sep">›</span>
+      <span class="cur">Episode 60</span>
+    </nav>
+    <div class="hero-eyebrow"><span class="dot"></span>MODULE 9 &nbsp;·&nbsp; The Cutting Edge</div>
+    <h1>Diffusion Models: How AI Turns Noise Into Art</h1>
+    <p class="hero-sub">Take a photo. Add static noise until nothing remains but TV static. Now reverse the process. That's diffusion.</p>
+    <div class="meta-row">
+      <div class="meta-item"><span>📅</span> Mar 2026</div>
+      <div class="meta-item"><span>⏱</span> 10 min read</div>
+      <div class="meta-item"><span>🎯</span> Episode 60 of 98</div>
+    </div>
+    <div class="tags-row"><span class="tag">Diffusion Models</span><span class="tag">Image Generation</span><span class="tag">Stable Diffusion</span><span class="tag">Architecture</span></div>
+  </div>
+</header>
+
+<main class="layout">
+  <div class="toc">
+  <div class="toc-title">In this episode</div>
+  <ul class="toc-list"><li><a href="#s1"><span class="toc-num">1</span>The Core Idea: Forward and Reverse</a></li>
+<li><a href="#s2"><span class="toc-num">2</span>Diffusion models have two processes:</a></li>
+<li><a href="#s3"><span class="toc-num">3</span>Forward Process (Destroying)</a></li>
+<li><a href="#s4"><span class="toc-num">4</span>Step 0:    [Clear photo of a cat]</a></li>
+<li><a href="#s5"><span class="toc-num">5</span>Step 100:  [Slightly noisy cat]</a></li>
+<li><a href="#s6"><span class="toc-num">6</span>Step 500:  [Very noisy, barely visible cat]</a></li>
+<li><a href="#s7"><span class="toc-num">7</span>Step 1000: [Pure random noise — no cat visible]</a></li>
+<li><a href="#s8"><span class="toc-num">8</span>Reverse Process (Creating)</a></li>
+<li><a href="#s9"><span class="toc-num">9</span>Step 1000: [Pure random noise]</a></li>
+<li><a href="#s10"><span class="toc-num">10</span>Step 900:  [Vaguely shaped blobs]</a></li>
+<li><a href="#s11"><span class="toc-num">11</span>Step 500:  [Recognizable shapes emerge]</a></li>
+<li><a href="#s12"><span class="toc-num">12</span>Step 100:  [Almost clear image]</a></li>
+<li><a href="#s13"><span class="toc-num">13</span>Step 0:    [Clean, sharp photo of a cat]</a></li>
+<li><a href="#s14"><span class="toc-num">14</span>The Training Process</a></li>
+<li><a href="#s15"><span class="toc-num">15</span>Simplified diffusion training loop</a></li>
+<li><a href="#s16"><span class="toc-num">16</span>U-Net: The Workhorse Architecture</a></li>
+<li><a href="#s17"><span class="toc-num">17</span>Timestep Conditioning</a></li>
+<li><a href="#s18"><span class="toc-num">18</span>Timestep embedding (sinusoidal, like positional encoding)</a></li>
+<li><a href="#s19"><span class="toc-num">19</span>Injected into every layer of the U-Net via addition or FiLM conditioning</a></li>
+<li><a href="#s20"><span class="toc-num">20</span>Text Conditioning: How Prompts Guide Generation</a></li>
+<li><a href="#s21"><span class="toc-num">21</span>CLIP Text Encoder</a></li>
+<li><a href="#s22"><span class="toc-num">22</span>Cross-Attention</a></li>
+<li><a href="#s23"><span class="toc-num">23</span>Classifier-Free Guidance (CFG)</a></li>
+<li><a href="#s24"><span class="toc-num">24</span>CFG Scale	Effect</a></li>
+<li><a href="#s25"><span class="toc-num">25</span>Latent Diffusion: The Speed Trick</a></li>
+<li><a href="#s26"><span class="toc-num">26</span>The VAE</a></li>
+<li><a href="#s27"><span class="toc-num">27</span>The Full Pipeline</a></li>
+<li><a href="#s28"><span class="toc-num">28</span>Denoising Steps: Quality vs Speed</a></li>
+<li><a href="#s29"><span class="toc-num">29</span>Steps	Time (A100)	Quality	Use Case</a></li>
+<li><a href="#s30"><span class="toc-num">30</span>Schedulers</a></li>
+<li><a href="#s31"><span class="toc-num">31</span>Scheduler	Steps Needed	Quality	Speed</a></li>
+<li><a href="#s32"><span class="toc-num">32</span>DDPM	1000	Excellent	Very slow</a></li>
+<li><a href="#s33"><span class="toc-num">33</span>DDIM	50	Good	Moderate</a></li>
+<li><a href="#s34"><span class="toc-num">34</span>Euler	20-30	Good	Fast</a></li>
+<li><a href="#s35"><span class="toc-num">35</span>DPM++ 2M Karras	20-30	Excellent	Fast</a></li>
+<li><a href="#s36"><span class="toc-num">36</span>LCM	4-8	Good	Very fast</a></li>
+<li><a href="#s37"><span class="toc-num">37</span>SDXL and Beyond</a></li>
+<li><a href="#s38"><span class="toc-num">38</span>Feature	SD 1.5	SDXL</a></li>
+<li><a href="#s39"><span class="toc-num">39</span>Flux and SD3</a></li>
+<li><a href="#s40"><span class="toc-num">40</span>ControlNet: Guided Generation</a></li>
+<li><a href="#s41"><span class="toc-num">41</span>Control Type	Input	Use Case</a></li>
+<li><a href="#s42"><span class="toc-num">42</span>Canny edges	Edge map	Preserve shapes</a></li>
+<li><a href="#s43"><span class="toc-num">43</span>Image-to-Image: Starting From Something</a></li>
+<li><a href="#s44"><span class="toc-num">44</span>Strength	Noise Level	Result</a></li>
+<li><a href="#s45"><span class="toc-num">45</span>Practical Takeaways</a></li>
+<li><a href="#s46"><span class="toc-num">46</span>Ep 59: Voice & TTS</a></li>
+<li><a href="#s47"><span class="toc-num">47</span>Ep 61: State Space Models</a></li>
+<li><a href="#s48"><span class="toc-num">48</span>Next: Episode 61 — State Space Models</a></li>
+</ul>
+</div>
+  <article class="prose" id="s0">
+<p>Take a photo. Now add a tiny bit of static noise. Then a bit more. More. Keep going until there's nothing left but pure random noise — TV static.</p>
+<p>Now reverse it. Start from the noise and remove it step by step until a photo appears.</p>
+<p>That's diffusion. That's literally how Stable Diffusion, DALL-E 3, and Midjourney create images. They learn to reverse noise — to look at random static and gradually sculpt it into a coherent image. It's like watching a sculptor chip away marble, except the sculptor is a neural network and the marble is Gaussian noise.</p>
+<h2 id="s1">The Core Idea: Forward and Reverse</h2><div class="section-rule"></div>
+<h2 id="s2">Diffusion models have two processes:</h2><div class="section-rule"></div>
+<h2 id="s3">Forward Process (Destroying)</h2><div class="section-rule"></div>
+<p>Take a real image and gradually add Gaussian noise over T timesteps until it becomes pure noise:</p>
+<h2 id="s4">Step 0:    [Clear photo of a cat]</h2><div class="section-rule"></div>
+<h2 id="s5">Step 100:  [Slightly noisy cat]</h2><div class="section-rule"></div>
+<h2 id="s6">Step 500:  [Very noisy, barely visible cat]</h2><div class="section-rule"></div>
+<h2 id="s7">Step 1000: [Pure random noise — no cat visible]</h2><div class="section-rule"></div>
+<p>Mathematically, at each step:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>x_t = √(α_t)  x_{t-1} + √(1 - α_t)  ε</code></pre></div>
+</div>
+<p>where:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>x_t = image at timestep t
+α_t = noise schedule (how much signal to keep)
+ε = random Gaussian noise</code></pre></div>
+</div>
+<p>This is easy — just keep adding noise. A child could do it.</p>
+<h2 id="s8">Reverse Process (Creating)</h2><div class="section-rule"></div>
+<p>Now the hard part: learn to go backwards. Given a noisy image at step t, predict what it looked like at step t-1:</p>
+<h2 id="s9">Step 1000: [Pure random noise]</h2><div class="section-rule"></div>
+<h2 id="s10">Step 900:  [Vaguely shaped blobs]</h2><div class="section-rule"></div>
+<h2 id="s11">Step 500:  [Recognizable shapes emerge]</h2><div class="section-rule"></div>
+<h2 id="s12">Step 100:  [Almost clear image]</h2><div class="section-rule"></div>
+<h2 id="s13">Step 0:    [Clean, sharp photo of a cat]</h2><div class="section-rule"></div>
+<p>The neural network learns this reverse step. It's trained on millions of image-noise pairs: "given this noisy image at step 500, predict the noise that was added." Once you can predict the noise, you can subtract it.</p>
+<div class="callout callout-tip"><span class="callout-icon">⚡</span><p></p></div>
+<h2 id="s14">The Training Process</h2><div class="section-rule"></div>
+<p>Training a diffusion model is surprisingly straightforward:</p>
+<p>python</p>
+<h2 id="s15">Simplified diffusion training loop</h2><div class="section-rule"></div>
+<p>for image in dataset:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># 1. Pick a random timestep
+    t = random.randint(0, 1000)</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># 2. Add noise corresponding to that timestep
+    noise = torch.randn_like(image)
+    noisy_image = add_noise(image, noise, t)</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># 3. Ask the model to predict the noise
+    predicted_noise = model(noisy_image, t)</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># 4. Loss = how wrong was the noise prediction?
+    loss = MSE(predicted_noise, noise)</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># 5. Update model weights
+    loss.backward()
+    optimizer.step()</code></pre></div>
+</div>
+<p>The model doesn't learn to generate images directly. It learns to predict noise. During generation, you start with pure noise and iteratively subtract the predicted noise, step by step. Each step reveals a slightly clearer image.</p>
+<p>🔧</p>
+<h2 id="s16">U-Net: The Workhorse Architecture</h2><div class="section-rule"></div>
+<p>The neural network that predicts noise is typically a U-Net — an architecture shaped like the letter U:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Input (noisy image)
+↓</code></pre></div>
+</div>
+<p>[Encoder] ─── downsample ───→ [Bottleneck] ───→ [Decoder] ─── upsample</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>64×64                      8×8                           64×64
+    ↓                          ↓                             ↓
+    128 channels              512 channels                 128 channels</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>└──── Skip connections ────────────────────────────────┘</code></pre></div>
+</div>
+<p>Why U-Net?</p>
+<p>Encoder — Progressively shrinks the image while increasing channels (captures what's in the image)</p>
+<p>Bottleneck — Compressed representation (captures global structure)</p>
+<p>Decoder — Progressively grows back to full resolution (reconstructs details)</p>
+<p>Skip connections — Connect encoder layers directly to decoder layers (preserves fine details that would otherwise be lost in compression)</p>
+<p>The U-Net also receives the timestep as input (telling it how noisy the image is) and the text embedding (telling it what to generate).</p>
+<h2 id="s17">Timestep Conditioning</h2><div class="section-rule"></div>
+<p>The model needs to know "how noisy is this image?" because denoising at step 900 (very noisy) requires a different strategy than step 100 (almost clean):</p>
+<p>python</p>
+<h2 id="s18">Timestep embedding (sinusoidal, like positional encoding)</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>t_embedding = sinusoidal_embed(timestep)  # [d_model]</code></pre></div>
+</div>
+<h2 id="s19">Injected into every layer of the U-Net via addition or FiLM conditioning</h2><div class="section-rule"></div>
+<p>📊</p>
+<h2 id="s20">Text Conditioning: How Prompts Guide Generation</h2><div class="section-rule"></div>
+<p>When you type "a cat wearing a top hat on the moon," how does the model know what to generate?</p>
+<h2 id="s21">CLIP Text Encoder</h2><div class="section-rule"></div>
+<p>The text prompt gets encoded by a CLIP text encoder (or T5 for newer models) into a sequence of embedding vectors:</p>
+<p>"a cat wearing a top hat on the moon"</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>↓ CLIP Text Encoder</code></pre></div>
+</div>
+<p>[embed_1, embed_2, ..., embed_N]  (77 tokens × 768 dims for SD 1.5)</p>
+<h2 id="s22">Cross-Attention</h2><div class="section-rule"></div>
+<p>These text embeddings are injected into the U-Net via cross-attention layers. At multiple points in the U-Net, the image features attend to the text features:</p>
+<p>Image features (queries) → attend to → Text embeddings (keys, values)</p>
+<p>"Where should I put the cat?" → attention to "cat" token → cat-shaped denoising</p>
+<p>"What should be on its head?" → attention to "top hat" token → hat-shaped denoising</p>
+<p>This is the same cross-attention mechanism from transformers. The image learns to "look at" the relevant words to guide each pixel's denoising.</p>
+<h2 id="s23">Classifier-Free Guidance (CFG)</h2><div class="section-rule"></div>
+<p>Here's a critical trick that makes or breaks image quality. During generation, the model runs two predictions at each step:</p>
+<p>Conditional prediction — "denoise this with the text prompt"</p>
+<p>Unconditional prediction — "denoise this with no text prompt (empty string)"</p>
+<p>Then the final prediction amplifies the difference:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>final = unconditional + guidance_scale × (conditional - unconditional)
+guidance_scale = 7.5 (typical)</code></pre></div>
+</div>
+<p>What this does: It asks "what's the difference between generic denoising and prompt-guided denoising?" and then amplifies that difference. Higher guidance scale = the image follows the prompt more closely but can become oversaturated or artifact-y.</p>
+<h2 id="s24">CFG Scale	Effect</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>1.0</th><th>Random, ignores prompt</th></tr></thead><tbody><tr><td>3.0</td><td>Soft guidance, creative</td></tr><tr><td>7.5</td><td>Standard, balanced</td></tr><tr><td>12.0</td><td>Strong adherence, less diversity</td></tr><tr><td>20.0+</td><td>Over-saturated, artifacts</td></tr></tbody></table></div>
+<p>This is why you see a "CFG scale" slider in Stable Diffusion UIs — it controls how much the image listens to your prompt.</p>
+<div class="callout callout-tip"><span class="callout-icon">💡</span><p></p></div>
+<h2 id="s25">Latent Diffusion: The Speed Trick</h2><div class="section-rule"></div>
+<p>Doing diffusion in pixel space (512×512×3 = 786,432 values) is insanely expensive. Latent Diffusion Models (LDM) — the breakthrough behind Stable Diffusion — do diffusion in a compressed latent space instead.</p>
+<h2 id="s26">The VAE</h2><div class="section-rule"></div>
+<p>A Variational Autoencoder (VAE) compresses images before diffusion and decompresses after:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Image (512×512×3) → VAE Encoder → Latent (64×64×4) → Diffusion → VAE Decoder → Image</code></pre></div>
+</div>
+<p>Compression: 512×512×3 = 786,432 values</p>
+<p>Latent:      64×64×4   = 16,384 values</p>
+<p>Compression ratio: 48x fewer values!</p>
+<p>The diffusion process operates entirely in this compressed latent space. 48x fewer values means 48x less compute per denoising step. This is what made Stable Diffusion runnable on consumer GPUs.</p>
+<h2 id="s27">The Full Pipeline</h2><div class="section-rule"></div>
+<p>Text prompt: "a cat wearing a top hat on the moon"</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>↓</code></pre></div>
+</div>
+<p>CLIP Text Encoder → text embeddings</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>↓</code></pre></div>
+</div>
+<p>Random latent noise (64×64×4)</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>↓</code></pre></div>
+</div>
+<p>U-Net denoises in latent space (50 steps, guided by text embeddings)</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>↓</code></pre></div>
+</div>
+<p>Clean latent (64×64×4)</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>↓</code></pre></div>
+</div>
+<p>VAE Decoder → final image (512×512×3)</p>
+<p>🔬</p>
+<h2 id="s28">Denoising Steps: Quality vs Speed</h2><div class="section-rule"></div>
+<p>More denoising steps = better quality but slower generation:</p>
+<h2 id="s29">Steps	Time (A100)	Quality	Use Case</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>10</th><th>~1 sec</th><th>Rough, artifacts</th><th>Quick previews</th></tr></thead><tbody><tr><td>20</td><td>~2 sec</td><td>Good for most uses</td><td>Fast generation</td></tr><tr><td>30</td><td>~3 sec</td><td>High quality</td><td>Standard</td></tr><tr><td>50</td><td>~5 sec</td><td>Excellent</td><td>Final renders</td></tr><tr><td>100+</td><td>~10+ sec</td><td>Diminishing returns</td><td>Rarely needed</td></tr></tbody></table></div>
+<h2 id="s30">Schedulers</h2><div class="section-rule"></div>
+<p>The scheduler (also called sampler) controls the noise schedule — how much noise to remove at each step. Different schedulers have different tradeoffs:</p>
+<h2 id="s31">Scheduler	Steps Needed	Quality	Speed</h2><div class="section-rule"></div>
+<h2 id="s32">DDPM	1000	Excellent	Very slow</h2><div class="section-rule"></div>
+<h2 id="s33">DDIM	50	Good	Moderate</h2><div class="section-rule"></div>
+<h2 id="s34">Euler	20-30	Good	Fast</h2><div class="section-rule"></div>
+<h2 id="s35">DPM++ 2M Karras	20-30	Excellent	Fast</h2><div class="section-rule"></div>
+<h2 id="s36">LCM	4-8	Good	Very fast</h2><div class="section-rule"></div>
+<p>DPM++ 2M Karras is the community favorite — excellent quality in 20-30 steps.</p>
+<p>🛡️</p>
+<h2 id="s37">SDXL and Beyond</h2><div class="section-rule"></div>
+<p>Stable Diffusion XL (SDXL) improved on SD 1.5 with:</p>
+<h2 id="s38">Feature	SD 1.5	SDXL</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>Base resolution</th><th>512×512</th><th>1024×1024</th></tr></thead><tbody><tr><td>U-Net params</td><td>860M</td><td>2.6B</td></tr><tr><td>Text encoders</td><td>CLIP ViT-L</td><td>CLIP ViT-L + OpenCLIP ViT-bigG</td></tr><tr><td>VAE latent</td><td>64×64×4</td><td>128×128×4</td></tr><tr><td>VRAM needed</td><td>~4GB</td><td>~8GB</td></tr></tbody></table></div>
+<h2 id="s39">Flux and SD3</h2><div class="section-rule"></div>
+<p>The latest generation replaces the U-Net with a DiT (Diffusion Transformer) — using a transformer architecture instead of the traditional U-Net:</p>
+<p>SD 1.5/SDXL: Text → U-Net (conv + attention) → Image</p>
+<p>Flux/SD3:    Text → DiT (pure transformer) → Image</p>
+<p>DiTs scale better with compute and produce higher quality images. Flux by Black Forest Labs (the team behind Stable Diffusion) is currently considered the best open-source image model.</p>
+<p>📦</p>
+<h2 id="s40">ControlNet: Guided Generation</h2><div class="section-rule"></div>
+<p>ControlNet adds structural guidance to diffusion models. Instead of just text, you can provide:</p>
+<h2 id="s41">Control Type	Input	Use Case</h2><div class="section-rule"></div>
+<h2 id="s42">Canny edges	Edge map	Preserve shapes</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>Depth map</th><th>Depth estimation</th><th>Maintain 3D structure</th></tr></thead><tbody><tr><td>Pose</td><td>Skeleton keypoints</td><td>Control human poses</td></tr><tr><td>Segmentation</td><td>Semantic map</td><td>Control scene layout</td></tr><tr><td>Scribble</td><td>Hand-drawn sketch</td><td>Sketch-to-image</td></tr></tbody></table></div>
+<p>Text: "a photo of a woman in a red dress"</p>
+<p>+ Pose control: [skeleton with specific arm positions]</p>
+<p>= Generated image matching both the text AND the pose</p>
+<p>ControlNet works by creating a trainable copy of the U-Net encoder that processes the control signal and adds its output to the main U-Net via addition. This preserves the original model's quality while adding structural control.</p>
+<p>🚀</p>
+<h2 id="s43">Image-to-Image: Starting From Something</h2><div class="section-rule"></div>
+<p>Instead of starting from pure noise, you can start from a real image with noise added:</p>
+<p>Start from noise:  step 1000 → step 0 (full creative freedom)</p>
+<p>Start from image:  step 500  → step 0 (preserves original structure)</p>
+<p>The denoising strength controls how much of the original image to keep:</p>
+<h2 id="s44">Strength	Noise Level	Result</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>0.0</th><th>No noise</th><th>Original image unchanged</th></tr></thead><tbody><tr><td>0.3</td><td>Light noise</td><td>Style transfer, minor changes</td></tr><tr><td>0.5</td><td>Medium</td><td>Significant changes, structure preserved</td></tr><tr><td>0.7</td><td>Heavy</td><td>Major changes, vague structure</td></tr><tr><td>1.0</td><td>Pure noise</td><td>Completely new image</td></tr></tbody></table></div>
+<p>This is how "AI image editing" works — you start from your image, add the right amount of noise, and denoise with a new prompt.</p>
+<p>🔄</p>
+<h2 id="s45">Practical Takeaways</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Diffusion = learn to reverse noise — add noise step by step, then train a model to remove it</code></pre></div>
+</div>
+<p>U-Net predicts noise, not images — the model outputs what noise to subtract at each step</p>
+<p>CFG controls prompt adherence — higher values = more prompt-following but potentially less natural</p>
+<p>Latent diffusion is the speed trick — 48x compression via VAE makes consumer GPU generation possible</p>
+<p>20-30 steps with DPM++ 2M Karras — sweet spot for quality vs speed</p>
+<p>The future is DiT — transformers replacing U-Nets for better scaling</p>
+<p>🏗️</p>
+<p>What's Next?</p>
+<p>Episode 61: State Space Models — Mamba is a challenger to the transformer throne. Linear scaling instead of quadratic. No attention mechanism at all. How does it work, and can it actually replace transformers?</p>
+<p>← Previous</p>
+<h2 id="s46">Ep 59: Voice & TTS</h2><div class="section-rule"></div>
+<p>Next →</p>
+<h2 id="s47">Ep 61: State Space Models</h2><div class="section-rule"></div>
+<h2 id="s48">Next: Episode 61 — State Space Models</h2><div class="section-rule"></div>
+<p>Self-attention scales quadratically with sequence length. Double the context, quadruple the compute. Mamba says there's a better way.</p>
+<p>This is part of a 98-episode series covering AI engineering from tokens to production deployment.</p>
+  </article>
+  <div class="ep-nav">
+    <a href="episode-59.html" class="ep-nav-card">
+      <span class="ep-nav-dir">← Previous</span>
+      <span class="ep-nav-title">Ep 59: Voice & TTS: How AI Turns Text Into Human Speech</span>
+    </a>
+    <a href="episode-61.html" class="ep-nav-card next">
+      <span class="ep-nav-dir">Next Episode →</span>
+      <span class="ep-nav-title">Ep 61: State Space Models: Mamba and the Transformer Alternati…</span>
+    </a>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <img class="footer-logo" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+      <div class="footer-tagline">98 Field Manual · Build with AI, not just use it · Free forever</div>
+    </div>
+    <div class="footer-links">
+      <a href="field-manual-index.html">All Episodes</a>
+      <a href="field-manual-index.html#g9">The Cutting Edge</a>
+      <a href="episode-59.html">← Ep 59</a>
+      <a href="episode-61.html">Ep 61 →</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+const prog=document.getElementById('prog');
+window.addEventListener('scroll',()=>{
+  const total=document.documentElement.scrollHeight-window.innerHeight;
+  prog.style.width=Math.min(100,(window.scrollY/total)*100)+'%';
+},{passive:true});
+
+// Build section nav dots from h2s
+const h2s=document.querySelectorAll('.prose h2');
+const sNav=document.getElementById('sectionNav');
+const dots=[];
+h2s.forEach((h,i)=>{
+  const btn=document.createElement('button');
+  btn.className='snav-dot';
+  btn.setAttribute('data-label',h.textContent.trim().substring(0,28));
+  btn.onclick=()=>h.scrollIntoView({behavior:'smooth',block:'start'});
+  sNav.appendChild(btn);
+  dots.push({btn,h});
+});
+
+const dotObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      const idx=dots.findIndex(d=>d.h===e.target);
+      if(idx>-1) dots.forEach((d,i)=>d.btn.classList.toggle('active',i===idx));
+    }
+  });
+},{rootMargin:'-30% 0px -60% 0px'});
+dots.forEach(d=>dotObs.observe(d.h));
+
+// Scroll reveal
+const revObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='translateY(0)';}});
+},{threshold:0.08});
+document.querySelectorAll('.toc,.callout,.table-wrap,.code-block,.ep-nav-card').forEach(el=>{
+  el.style.opacity='0';
+  el.style.transform='translateY(14px)';
+  el.style.transition='opacity 0.55s ease,transform 0.55s ease';
+  revObs.observe(el);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ep 65: VRAM Math: How to Calculate If a Model Fits</title>
+<meta name="description" content="Every AI engineer asks: will this model fit on my GPU? Here's how to calculate it yourself — in your head, in 30 seconds.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,300&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0d0d1a;--page:#ffffff;--paper:#f8f9ff;
+  --navy:#124093;--navy-dim:rgba(18,64,147,0.07);--navy-mid:rgba(18,64,147,0.15);
+  --red:#e2190e;--gold:#c8973a;--muted:#6b7280;--rule:#e5e7ef;--code-bg:#0d0d1f;
+  --title:'Roboto',sans-serif;--body:'Poppins',sans-serif;--mono:'DM Mono',monospace;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--page);color:var(--ink);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:#fff}
+::-webkit-scrollbar-thumb{background:var(--navy);border-radius:2px}
+
+/* NAV */
+nav.top{position:sticky;top:0;z-index:200;background:#fff;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(20px,5vw,60px);border-bottom:1px solid var(--rule);box-shadow:0 1px 12px rgba(0,0,0,0.05)}
+.logo-wrap{display:flex;align-items:center;text-decoration:none}
+.logo-img{height:38px;width:auto;object-fit:contain;display:block}
+.nav-right{display:flex;align-items:center;gap:6px}
+.nav-link{font-family:var(--body);font-size:11.5px;font-weight:500;color:var(--muted);text-decoration:none;padding:6px 14px;border-radius:6px;transition:all 0.2s}
+.nav-link:hover{color:var(--navy);background:var(--navy-dim)}
+.nav-cta{background:var(--navy)!important;color:#fff!important}
+.nav-cta:hover{background:#1a52c0!important;color:#fff!important}
+
+/* PROGRESS */
+.progress-bar-fixed{position:fixed;top:60px;left:0;right:0;height:2.5px;background:rgba(18,64,147,0.1);z-index:199}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--navy),#4f7ff7);width:0%;transition:width 0.1s;border-radius:0 2px 2px 0}
+
+/* HERO */
+.hero{background:#fff;position:relative;overflow:hidden;min-height:88vh;display:flex;flex-direction:column;justify-content:center}
+.hero-bg{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.hero-blob-1{position:absolute;top:-120px;right:-120px;width:700px;height:700px;background:radial-gradient(circle at 60% 40%,rgba(18,64,147,0.07) 0%,rgba(18,64,147,0.03) 40%,transparent 70%);border-radius:50%}
+.hero-blob-2{position:absolute;bottom:-80px;left:-80px;width:500px;height:500px;background:radial-gradient(circle,rgba(79,127,247,0.06) 0%,transparent 65%);border-radius:50%}
+.hero-lines{position:absolute;top:0;right:0;width:45%;height:100%;opacity:0.06}
+.hero-lines svg{width:100%;height:100%}
+.hero-tokens{position:absolute;top:0;right:0;width:46%;height:100%;display:flex;align-items:center;justify-content:center}
+.token-float-wrap{position:relative;width:360px;height:360px}
+.tf{position:absolute;font-family:var(--mono);font-size:13px;font-weight:500;padding:8px 16px;border-radius:8px;white-space:nowrap;animation:float-anim 6s ease-in-out infinite;box-shadow:0 4px 20px rgba(0,0,0,0.08)}
+.tf-1{top:20px;left:60px;background:rgba(18,64,147,0.09);color:#124093;border:1px solid rgba(18,64,147,0.18);animation-delay:0s}
+.tf-2{top:70px;right:20px;background:rgba(79,127,247,0.09);color:#2563eb;border:1px solid rgba(79,127,247,0.2);animation-delay:0.8s}
+.tf-3{top:140px;left:20px;background:rgba(16,185,129,0.08);color:#059669;border:1px solid rgba(16,185,129,0.18);animation-delay:1.6s}
+.tf-4{top:170px;right:50px;background:rgba(168,85,247,0.08);color:#7c3aed;border:1px solid rgba(168,85,247,0.18);animation-delay:0.4s}
+.tf-5{bottom:140px;left:80px;background:rgba(234,179,8,0.08);color:#b45309;border:1px solid rgba(234,179,8,0.2);animation-delay:1.2s}
+.tf-6{bottom:90px;right:30px;background:rgba(236,72,153,0.08);color:#db2777;border:1px solid rgba(236,72,153,0.2);animation-delay:2s}
+.tf-7{bottom:30px;left:40px;background:rgba(239,68,68,0.08);color:#dc2626;border:1px solid rgba(239,68,68,0.18);animation-delay:0.6s}
+.tf-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:110px;height:110px;background:var(--navy);border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;box-shadow:0 12px 40px rgba(18,64,147,0.3);animation:pulse-center 3s ease-in-out infinite}
+.tf-center .big{font-family:var(--title);font-size:28px;font-weight:900;color:#fff;line-height:1}
+.tf-center .small{font-family:var(--body);font-size:9px;font-weight:500;color:rgba(255,255,255,0.6);letter-spacing:1.5px;text-transform:uppercase}
+@keyframes float-anim{0%,100%{transform:translateY(0px)}50%{transform:translateY(-10px)}}
+@keyframes pulse-center{0%,100%{box-shadow:0 12px 40px rgba(18,64,147,0.3)}50%{box-shadow:0 12px 60px rgba(18,64,147,0.5)}}
+.hero-content{position:relative;z-index:2;width:54%;padding:clamp(48px,8vw,96px) clamp(24px,5vw,72px) clamp(48px,8vw,96px)}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:5px 14px;background:var(--navy-dim);border:1px solid rgba(18,64,147,0.18);border-radius:100px;margin-bottom:22px;font-family:var(--body);font-size:10px;font-weight:600;color:var(--navy);letter-spacing:1.2px;text-transform:uppercase}
+.hero-eyebrow .dot{width:5px;height:5px;background:var(--navy);border-radius:50%}
+.hero h1{font-family:var(--title);font-size:clamp(28px,4.5vw,52px);font-weight:900;color:var(--ink);line-height:1.08;letter-spacing:-1.2px;margin-bottom:20px}
+.hero h1 .line2{display:block;color:var(--navy)}
+.hero-sub{font-family:var(--body);font-size:clamp(13px,1.6vw,15px);font-weight:300;color:#4b5563;line-height:1.85;max-width:500px;margin-bottom:34px}
+.breadcrumb{display:flex;align-items:center;gap:7px;margin-bottom:28px;font-family:var(--mono);font-size:10px;color:#9ca3af}
+.breadcrumb a{color:inherit;text-decoration:none;transition:color 0.2s}
+.breadcrumb a:hover{color:var(--navy)}
+.breadcrumb .sep{color:#d1d5db}
+.breadcrumb .cur{color:#6b7280}
+.meta-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:14px 20px;background:var(--paper);border:1px solid var(--rule);border-radius:10px;margin-bottom:24px}
+.meta-item{font-family:var(--body);font-size:10.5px;font-weight:500;color:var(--muted);display:flex;align-items:center;gap:5px}
+.tags-row{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-family:var(--body);font-size:10px;font-weight:500;color:var(--navy);background:var(--navy-dim);padding:4px 11px;border-radius:100px;border:1px solid rgba(18,64,147,0.15)}
+@media(max-width:900px){.hero{min-height:auto;padding-bottom:48px}.hero-content{width:100%;padding:48px 24px 36px}.hero-tokens{display:none}.hero-lines{display:none}}
+
+/* SECTION NAV DOTS */
+.section-nav{position:fixed;right:clamp(12px,2vw,24px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:9px;z-index:100}
+.snav-dot{width:7px;height:7px;border-radius:50%;background:#d1d5db;border:none;padding:0;cursor:pointer;transition:all 0.3s;position:relative}
+.snav-dot::after{content:attr(data-label);position:absolute;right:16px;top:50%;transform:translateY(-50%);font-family:var(--body);font-size:9px;font-weight:500;color:var(--ink);background:#fff;padding:3px 9px;border-radius:4px;border:1px solid var(--rule);box-shadow:0 2px 8px rgba(0,0,0,0.06);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.2s}
+.snav-dot:hover::after{opacity:1}
+.snav-dot.active{background:var(--navy);transform:scale(1.5)}
+.snav-dot:hover:not(.active){background:rgba(18,64,147,0.4)}
+@media(max-width:768px){.section-nav{display:none}}
+
+/* LAYOUT */
+.layout{max-width:860px;margin:0 auto;padding:clamp(40px,6vw,68px) clamp(20px,5vw,56px) 80px}
+
+/* TOC */
+.toc{background:var(--paper);border:1px solid var(--rule);border-left:4px solid var(--navy);border-radius:10px;padding:22px 26px;margin-bottom:52px}
+.toc-title{font-family:var(--title);font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
+.toc-list{list-style:none;display:flex;flex-direction:column;gap:3px}
+.toc-list li a{display:flex;align-items:center;gap:12px;text-decoration:none;padding:6px 0;font-family:var(--body);font-size:13px;font-weight:400;color:var(--ink);transition:color 0.2s}
+.toc-list li a:hover{color:var(--navy)}
+.toc-num{font-family:var(--mono);font-size:9px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* PROSE */
+.prose{line-height:1.85}
+.prose h2{font-family:var(--title);font-size:clamp(18px,2.5vw,23px);font-weight:700;color:var(--ink);letter-spacing:-0.4px;margin:52px 0 8px;line-height:1.2;scroll-margin-top:80px;padding-left:18px;position:relative}
+.prose h2::before{content:'';position:absolute;left:0;top:5px;bottom:5px;width:3px;background:var(--navy);border-radius:2px}
+.prose h2:first-child{margin-top:0}
+.prose h3{font-family:var(--title);font-size:14px;font-weight:700;color:var(--ink);margin:26px 0 8px}
+.section-rule{width:36px;height:2px;background:var(--navy);border-radius:2px;margin:8px 0 22px 18px;opacity:0.4}
+.prose p{font-family:var(--body);font-size:clamp(13.5px,1.7vw,15px);line-height:1.88;color:#374151;margin-bottom:16px;font-weight:300}
+.prose p strong{font-weight:600;color:var(--ink)}
+.prose ul,.prose ol{list-style:none;padding:0;margin:4px 0 20px}
+.prose ul li,.prose ol li{font-family:var(--body);font-size:clamp(13.5px,1.7vw,14.5px);line-height:1.8;color:#374151;padding:4px 0 4px 26px;position:relative;font-weight:300}
+.prose ul li::before{content:'';position:absolute;left:5px;top:14px;width:5px;height:5px;background:var(--navy);border-radius:50%;opacity:0.55}
+.prose ol{counter-reset:li}
+.prose ol li{counter-increment:li}
+.prose ol li::before{content:counter(li);position:absolute;left:0;top:5px;font-family:var(--mono);font-size:8px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.ic{font-family:var(--mono);font-size:12.5px;background:var(--navy-dim);color:var(--navy);padding:1.5px 6px;border-radius:4px;border:1px solid rgba(18,64,147,0.15)}
+
+/* CODE */
+.code-block{background:var(--code-bg);border-radius:10px;margin:24px 0;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.12),0 0 0 1px rgba(18,64,147,0.1)}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.02)}
+.code-dots{display:flex;gap:5px}
+.cd{width:10px;height:10px;border-radius:50%}
+.cd-r{background:#ff5f56}.cd-y{background:#ffbd2e}.cd-g{background:#27c93f}
+.code-filename{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,0.25)}
+.code-lang{font-family:var(--mono);font-size:9px;color:rgba(91,140,247,0.6);letter-spacing:1px;text-transform:uppercase}
+.code-body{padding:20px 22px;overflow-x:auto}
+.code-body pre{margin:0}
+.code-body code{font-family:var(--mono);font-size:12.5px;line-height:1.9;color:#c9d4f5}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;margin:24px 0;border-radius:10px;border:1px solid var(--rule);box-shadow:0 2px 12px rgba(0,0,0,0.04)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:var(--ink)}
+thead th{padding:12px 16px;text-align:left;font-family:var(--body);font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,0.45)}
+thead th:first-child{color:#6b9fff}
+tbody tr{border-bottom:1px solid var(--rule);transition:background 0.15s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--paper)}
+tbody td{padding:10px 16px;font-family:var(--body);font-size:13px;color:#374151;font-weight:300;line-height:1.5}
+tbody td:first-child{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--navy)}
+
+/* CALLOUTS */
+.callout{border-radius:9px;padding:16px 20px;margin:24px 0;display:flex;gap:13px;align-items:flex-start}
+.callout-tip{background:rgba(18,64,147,0.05);border:1px solid rgba(18,64,147,0.16);border-left:3px solid var(--navy)}
+.callout-warn{background:rgba(220,38,38,0.04);border:1px solid rgba(220,38,38,0.14);border-left:3px solid #dc2626}
+.callout-note{background:rgba(200,151,58,0.05);border:1px solid rgba(200,151,58,0.2);border-left:3px solid var(--gold)}
+.callout-icon{font-size:16px;flex-shrink:0;margin-top:1px;line-height:1}
+.callout p{font-size:13.5px!important;line-height:1.7!important;color:#374151!important;margin:0!important}
+
+/* EP NAV */
+.ep-nav{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:64px;padding-top:32px;border-top:1px solid var(--rule)}
+@media(max-width:500px){.ep-nav{grid-template-columns:1fr}}
+.ep-nav-card{display:flex;flex-direction:column;text-decoration:none;padding:20px 22px;border:1px solid var(--rule);border-radius:10px;background:var(--paper);transition:all 0.25s;gap:5px}
+.ep-nav-card:hover{border-color:rgba(18,64,147,0.3);background:var(--navy-dim);transform:translateY(-2px);box-shadow:0 6px 20px rgba(18,64,147,0.08)}
+.ep-nav-dir{font-family:var(--body);font-size:9px;font-weight:600;color:var(--navy);letter-spacing:1px;text-transform:uppercase}
+.ep-nav-title{font-family:var(--title);font-size:13px;font-weight:600;color:var(--ink);line-height:1.4}
+.ep-nav-card.next{align-items:flex-end;text-align:right}
+
+/* FOOTER */
+footer{background:var(--ink);padding:44px clamp(20px,5vw,60px);border-top:3px solid var(--navy)}
+.footer-inner{max-width:860px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.footer-logo{height:32px;width:auto;object-fit:contain;filter:brightness(0) invert(1);opacity:0.7}
+.footer-tagline{font-family:var(--body);font-size:11px;color:rgba(255,255,255,0.22);font-style:italic;margin-top:4px;font-weight:300}
+.footer-links{display:flex;gap:20px;flex-wrap:wrap}
+.footer-links a{font-family:var(--body);font-size:11px;font-weight:400;color:rgba(255,255,255,0.3);text-decoration:none;transition:color 0.2s}
+.footer-links a:hover{color:rgba(255,255,255,0.75)}
+
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.hero-content>*{animation:fadeUp 0.65s cubic-bezier(0.22,1,0.36,1) both}
+.hero-content>*:nth-child(1){animation-delay:0.05s}
+.hero-content>*:nth-child(2){animation-delay:0.1s}
+.hero-content>*:nth-child(3){animation-delay:0.15s}
+.hero-content>*:nth-child(4){animation-delay:0.2s}
+.hero-content>*:nth-child(5){animation-delay:0.25s}
+.hero-content>*:nth-child(6){animation-delay:0.3s}
+.hero-content>*:nth-child(7){animation-delay:0.35s}
+@media(max-width:640px){.nav-link:not(.nav-cta){display:none}}
+</style>
+</head>
+<body>
+
+<div class="progress-bar-fixed"><div class="progress-fill" id="prog"></div></div>
+
+<nav class="top">
+  <a href="field-manual-index.html" class="logo-wrap">
+    <img class="logo-img" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+  </a>
+  <div class="nav-right">
+    <a href="field-manual-index.html" class="nav-link">All Episodes</a>
+    <a href="field-manual-index.html#g10" class="nav-link nav-cta">💻 GPU & Hardware</a>
+  </div>
+</nav>
+
+<nav class="section-nav" id="sectionNav"></nav>
+
+<header class="hero">
+  <div class="hero-bg">
+    <div class="hero-blob-1"></div>
+    <div class="hero-blob-2"></div>
+    <div class="hero-lines">
+      <svg viewBox="0 0 600 800" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+        <line x1="0" y1="200" x2="600" y2="0" stroke="#124093" stroke-width="1"/>
+        <line x1="0" y1="400" x2="600" y2="200" stroke="#124093" stroke-width="0.6"/>
+        <line x1="0" y1="600" x2="600" y2="400" stroke="#124093" stroke-width="0.4"/>
+        <circle cx="500" cy="150" r="120" stroke="#124093" stroke-width="0.8" fill="none"/>
+        <circle cx="500" cy="150" r="80" stroke="#124093" stroke-width="0.4" fill="none"/>
+        <circle cx="500" cy="150" r="40" stroke="#124093" stroke-width="0.3" fill="none"/>
+        <line x1="300" y1="0" x2="300" y2="800" stroke="#124093" stroke-width="0.4" stroke-dasharray="6,12"/>
+        <rect x="360" y="480" width="160" height="160" stroke="#124093" stroke-width="0.6" fill="none" transform="rotate(15 440 560)"/>
+      </svg>
+    </div>
+  </div>
+  <div class="hero-tokens" aria-hidden="true">
+    <div class="token-float-wrap">
+      <div class="tf tf-1">token</div>
+<div class="tf tf-2">model</div>
+<div class="tf tf-3">layer</div>
+<div class="tf tf-4">vector</div>
+<div class="tf tf-5">embed</div>
+<div class="tf tf-6">weight</div>
+<div class="tf tf-7">param</div>
+      <div class="tf-center">
+        <span class="big">VRAM</span>
+        <span class="small">EP 65</span>
+      </div>
+    </div>
+  </div>
+  <div class="hero-content">
+    <nav class="breadcrumb">
+      <a href="field-manual-index.html">Field Manual</a>
+      <span class="sep">›</span>
+      <a href="field-manual-index.html#g10">💻 GPU & Hardware</a>
+      <span class="sep">›</span>
+      <span class="cur">Episode 65</span>
+    </nav>
+    <div class="hero-eyebrow"><span class="dot"></span>MODULE 10 &nbsp;·&nbsp; GPU & Hardware</div>
+    <h1>VRAM Math: How to Calculate If a Model Fits</h1>
+    <p class="hero-sub">Every AI engineer asks: will this model fit on my GPU? Here's how to calculate it yourself — in your head, in 30 seconds.</p>
+    <div class="meta-row">
+      <div class="meta-item"><span>📅</span> Mar 2026</div>
+      <div class="meta-item"><span>⏱</span> 10 min read</div>
+      <div class="meta-item"><span>🎯</span> Episode 65 of 98</div>
+    </div>
+    <div class="tags-row"><span class="tag">VRAM</span><span class="tag">Memory</span><span class="tag">GPU</span><span class="tag">Calculation</span></div>
+  </div>
+</header>
+
+<main class="layout">
+  <div class="toc">
+  <div class="toc-title">In this episode</div>
+  <ul class="toc-list"><li><a href="#s1"><span class="toc-num">1</span>The Formula</a></li>
+<li><a href="#s2"><span class="toc-num">2</span>Where:</a></li>
+<li><a href="#s3"><span class="toc-num">3</span>Part 1: Model Weights</a></li>
+<li><a href="#s4"><span class="toc-num">4</span>Bytes per Parameter</a></li>
+<li><a href="#s5"><span class="toc-num">5</span>Precision	Bytes per Param	Formula</a></li>
+<li><a href="#s6"><span class="toc-num">6</span>FP32	4 bytes	params × 4</a></li>
+<li><a href="#s7"><span class="toc-num">7</span>FP16 / BF16	2 bytes	params × 2</a></li>
+<li><a href="#s8"><span class="toc-num">8</span>FP8	1 byte	params × 1</a></li>
+<li><a href="#s9"><span class="toc-num">9</span>INT8	1 byte	params × 1</a></li>
+<li><a href="#s10"><span class="toc-num">10</span>INT4 (Q4)	0.5 bytes	params × 0.5</a></li>
+<li><a href="#s11"><span class="toc-num">11</span>GPTQ/AWQ 4-bit	~0.55 bytes	params × 0.55 (quantization overhead)</a></li>
+<li><a href="#s12"><span class="toc-num">12</span>Quick Calculations</a></li>
+<li><a href="#s13"><span class="toc-num">13</span>FP16:  8B × 2 bytes = 16 GB</a></li>
+<li><a href="#s14"><span class="toc-num">14</span>INT8:  8B × 1 byte  = 8 GB</a></li>
+<li><a href="#s15"><span class="toc-num">15</span>INT4:  8B × 0.5     = 4 GB</a></li>
+<li><a href="#s16"><span class="toc-num">16</span>FP16:  70B × 2 bytes = 140 GB</a></li>
+<li><a href="#s17"><span class="toc-num">17</span>INT8:  70B × 1 byte  = 70 GB</a></li>
+<li><a href="#s18"><span class="toc-num">18</span>INT4:  70B × 0.5     = 35 GB</a></li>
+<li><a href="#s19"><span class="toc-num">19</span>FP16:  405B × 2 = 810 GB</a></li>
+<li><a href="#s20"><span class="toc-num">20</span>INT4:  405B × 0.5 = 202.5 GB</a></li>
+<li><a href="#s21"><span class="toc-num">21</span>FP16: VRAM (GB) ≈ Params (B) × 2</a></li>
+<li><a href="#s22"><span class="toc-num">22</span>INT4: VRAM (GB) ≈ Params (B) × 0.5</a></li>
+<li><a href="#s23"><span class="toc-num">23</span>INT8: VRAM (GB) ≈ Params (B) × 1</a></li>
+<li><a href="#s24"><span class="toc-num">24</span>Part 2: KV Cache Memory</a></li>
+<li><a href="#s25"><span class="toc-num">25</span>The KV Cache Formula</a></li>
+<li><a href="#s26"><span class="toc-num">26</span>Worked Example: Llama 3 70B</a></li>
+<li><a href="#s27"><span class="toc-num">27</span>Architecture:</a></li>
+<li><a href="#s28"><span class="toc-num">28</span>KV heads: 8 (GQA — Grouped Query Attention)</a></li>
+<li><a href="#s29"><span class="toc-num">29</span>KV Cache for 1 sequence of 4K tokens (FP16):</a></li>
+<li><a href="#s30"><span class="toc-num">30</span>KV Cache for 1 sequence of 128K tokens (FP16):</a></li>
+<li><a href="#s31"><span class="toc-num">31</span>KV Cache Scaling</a></li>
+<li><a href="#s32"><span class="toc-num">32</span>Batch Size Impact</a></li>
+<li><a href="#s33"><span class="toc-num">33</span>Part 3: Activations</a></li>
+<li><a href="#s34"><span class="toc-num">34</span>During Inference</a></li>
+<li><a href="#s35"><span class="toc-num">35</span>During Training</a></li>
+<li><a href="#s36"><span class="toc-num">36</span>Part 4: Putting It All Together</a></li>
+<li><a href="#s37"><span class="toc-num">37</span>Inference VRAM Budget</a></li>
+<li><a href="#s38"><span class="toc-num">38</span>KV cache:          1.25 GB (FP16, 4K tokens)</a></li>
+<li><a href="#s39"><span class="toc-num">39</span>Activations:       ~0.1 GB</a></li>
+<li><a href="#s40"><span class="toc-num">40</span>Overhead:          ~1.0 GB</a></li>
+<li><a href="#s41"><span class="toc-num">41</span>KV cache:          16 × 2.5 = 40.0 GB</a></li>
+<li><a href="#s42"><span class="toc-num">42</span>Activations:       ~2.0 GB</a></li>
+<li><a href="#s43"><span class="toc-num">43</span>Overhead:          ~1.0 GB</a></li>
+<li><a href="#s44"><span class="toc-num">44</span>Training VRAM Budget</a></li>
+<li><a href="#s45"><span class="toc-num">45</span>Activations: ~30 GB</a></li>
+<li><a href="#s46"><span class="toc-num">46</span>The Cheat Sheet</a></li>
+<li><a href="#s47"><span class="toc-num">47</span>Quick VRAM Estimates (Inference)</a></li>
+<li><a href="#s48"><span class="toc-num">48</span>Params	INT4	INT8	FP16</a></li>
+<li><a href="#s49"><span class="toc-num">49</span>GPU Memory Quick Reference</a></li>
+<li><a href="#s50"><span class="toc-num">50</span>GPU	VRAM	Bandwidth	Fits (INT4, batch=1)</a></li>
+<li><a href="#s51"><span class="toc-num">51</span>RTX 3060	12 GB	360 GB/s	Up to ~20B</a></li>
+<li><a href="#s52"><span class="toc-num">52</span>RTX 3090	24 GB	936 GB/s	Up to ~40B</a></li>
+<li><a href="#s53"><span class="toc-num">53</span>RTX 4090	24 GB	1,008 GB/s	Up to ~40B</a></li>
+<li><a href="#s54"><span class="toc-num">54</span>Common Mistakes</a></li>
+<li><a href="#s55"><span class="toc-num">55</span>Mistake 1: Forgetting KV Cache</a></li>
+<li><a href="#s56"><span class="toc-num">56</span>KV cache = 32 × 2.5 GB = 80 GB  ← EXCEEDS TOTAL VRAM</a></li>
+<li><a href="#s57"><span class="toc-num">57</span>Mistake 2: Confusing INT4 with FP16</a></li>
+<li><a href="#s58"><span class="toc-num">58</span>Mistake 3: Ignoring Quantization Overhead</a></li>
+<li><a href="#s59"><span class="toc-num">59</span>Practical Takeaways</a></li>
+<li><a href="#s60"><span class="toc-num">60</span>FP16 VRAM ≈ params × 2 — the simplest formula in AI engineering</a></li>
+<li><a href="#s61"><span class="toc-num">61</span>Ep 64: GPU Architecture Basics</a></li>
+<li><a href="#s62"><span class="toc-num">62</span>Ep 66: Multi-GPU Setups</a></li>
+<li><a href="#s63"><span class="toc-num">63</span>Next: Episode 66 — Multi-GPU Setups</a></li>
+</ul>
+</div>
+  <article class="prose" id="s0">
+<p>"Can I run Llama 3 70B on my GPU?"</p>
+<p>Every AI engineer asks this question. And most just Google it and hope someone posted a benchmark. But what if you could calculate it yourself — in your head, in 30 seconds?</p>
+<p>That's what this episode gives you. A practical formula for VRAM requirements that works for any model, any precision, any batch size. Once you learn this, you'll never wonder "will it fit?" again. You'll know.</p>
+<h2 id="s1">The Formula</h2><div class="section-rule"></div>
+<p>Here's the master formula:</p>
+<p>Total VRAM = Model Weights + KV Cache + Activations + Overhead</p>
+<h2 id="s2">Where:</h2><div class="section-rule"></div>
+<p>Model Weights = Parameters × Bytes per Parameter</p>
+<p>KV Cache      = 2 × Layers × Hidden_dim × Seq_len × Batch_size × Bytes</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Activations   = ~10-20% of model weights (during inference)
+Overhead      = CUDA context + framework buffers (~500MB-1GB)</code></pre></div>
+</div>
+<p>Let's break each piece down.</p>
+<div class="callout callout-tip"><span class="callout-icon">⚡</span><p></p></div>
+<h2 id="s3">Part 1: Model Weights</h2><div class="section-rule"></div>
+<p>This is the big one — and the simplest to calculate.</p>
+<h2 id="s4">Bytes per Parameter</h2><div class="section-rule"></div>
+<h2 id="s5">Precision	Bytes per Param	Formula</h2><div class="section-rule"></div>
+<h2 id="s6">FP32	4 bytes	params × 4</h2><div class="section-rule"></div>
+<h2 id="s7">FP16 / BF16	2 bytes	params × 2</h2><div class="section-rule"></div>
+<h2 id="s8">FP8	1 byte	params × 1</h2><div class="section-rule"></div>
+<h2 id="s9">INT8	1 byte	params × 1</h2><div class="section-rule"></div>
+<h2 id="s10">INT4 (Q4)	0.5 bytes	params × 0.5</h2><div class="section-rule"></div>
+<h2 id="s11">GPTQ/AWQ 4-bit	~0.55 bytes	params × 0.55 (quantization overhead)</h2><div class="section-rule"></div>
+<h2 id="s12">Quick Calculations</h2><div class="section-rule"></div>
+<p>Llama 3 8B:</p>
+<h2 id="s13">FP16:  8B × 2 bytes = 16 GB</h2><div class="section-rule"></div>
+<h2 id="s14">INT8:  8B × 1 byte  = 8 GB</h2><div class="section-rule"></div>
+<h2 id="s15">INT4:  8B × 0.5     = 4 GB</h2><div class="section-rule"></div>
+<p>Llama 3 70B:</p>
+<h2 id="s16">FP16:  70B × 2 bytes = 140 GB</h2><div class="section-rule"></div>
+<h2 id="s17">INT8:  70B × 1 byte  = 70 GB</h2><div class="section-rule"></div>
+<h2 id="s18">INT4:  70B × 0.5     = 35 GB</h2><div class="section-rule"></div>
+<p>Llama 3 405B:</p>
+<h2 id="s19">FP16:  405B × 2 = 810 GB</h2><div class="section-rule"></div>
+<h2 id="s20">INT4:  405B × 0.5 = 202.5 GB</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>The mental shortcut: For FP16, the VRAM in GB is roughly 2× the parameter count in billions. For INT4, it's roughly half the parameter count.</code></pre></div>
+</div>
+<h2 id="s21">FP16: VRAM (GB) ≈ Params (B) × 2</h2><div class="section-rule"></div>
+<h2 id="s22">INT4: VRAM (GB) ≈ Params (B) × 0.5</h2><div class="section-rule"></div>
+<h2 id="s23">INT8: VRAM (GB) ≈ Params (B) × 1</h2><div class="section-rule"></div>
+<p>Does It Fit?</p>
+<div class="table-wrap"><table><thead><tr><th>Model</th><th>FP16</th><th>INT8</th><th>INT4</th><th>RTX 4090 (24GB)</th><th>A100 (80GB)</th><th>H100 (80GB)</th></tr></thead><tbody><tr><td>8B</td><td>16 GB</td><td>8 GB</td><td>4 GB</td><td>✅ FP16</td><td>✅</td><td>✅</td></tr><tr><td>13B</td><td>26 GB</td><td>13 GB</td><td>6.5 GB</td><td>✅ INT8</td><td>✅</td><td>✅</td></tr><tr><td>34B</td><td>68 GB</td><td>34 GB</td><td>17 GB</td><td>✅ INT4</td><td>✅</td><td>✅</td></tr><tr><td>70B</td><td>140 GB</td><td>70 GB</td><td>35 GB</td><td>❌</td><td>✅ INT8</td><td>✅ INT8</td></tr><tr><td>405B</td><td>810 GB</td><td>405 GB</td><td>202 GB</td><td>❌</td><td>❌</td><td>❌ (need multi)</td></tr></tbody></table></div>
+<p>🔧</p>
+<h2 id="s24">Part 2: KV Cache Memory</h2><div class="section-rule"></div>
+<p>The KV Cache stores the key and value vectors for every token in the context window, for every layer, for every attention head. During generation, this cache grows with each token and can consume more VRAM than the model weights for long contexts.</p>
+<h2 id="s25">The KV Cache Formula</h2><div class="section-rule"></div>
+<p>KV Cache (bytes) = 2 × num_layers × hidden_dim × seq_length × batch_size × bytes_per_value</p>
+<p>The "2" is for K (keys) and V (values) — both are cached.</p>
+<h2 id="s26">Worked Example: Llama 3 70B</h2><div class="section-rule"></div>
+<h2 id="s27">Architecture:</h2><div class="section-rule"></div>
+<p>Layers: 80</p>
+<p>Hidden dim: 8192</p>
+<p>Attention heads: 64</p>
+<h2 id="s28">KV heads: 8 (GQA — Grouped Query Attention)</h2><div class="section-rule"></div>
+<p>Head dim: 128</p>
+<p>With GQA, the effective KV hidden dim = num_kv_heads × head_dim = 8 × 128 = 1024</p>
+<h2 id="s29">KV Cache for 1 sequence of 4K tokens (FP16):</h2><div class="section-rule"></div>
+<p>= 2 × 80 layers × 1024 × 4096 tokens × 2 bytes</p>
+<p>= 2 × 80 × 1024 × 4096 × 2</p>
+<p>= 1,342,177,280 bytes</p>
+<p>≈ 1.25 GB</p>
+<h2 id="s30">KV Cache for 1 sequence of 128K tokens (FP16):</h2><div class="section-rule"></div>
+<p>= 2 × 80 × 1024 × 131072 × 2</p>
+<p>≈ 40 GB  ← Half the VRAM just for one sequence's KV cache!</p>
+<h2 id="s31">KV Cache Scaling</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>Sequence Length</th><th>Llama 3 70B KV Cache (FP16)</th><th>Llama 3 8B KV Cache (FP16)</th></tr></thead><tbody><tr><td>2K tokens</td><td>0.625 GB</td><td>0.125 GB</td></tr><tr><td>4K tokens</td><td>1.25 GB</td><td>0.25 GB</td></tr><tr><td>8K tokens</td><td>2.5 GB</td><td>0.5 GB</td></tr><tr><td>32K tokens</td><td>10 GB</td><td>2 GB</td></tr><tr><td>128K tokens</td><td>40 GB</td><td>8 GB</td></tr></tbody></table></div>
+<p>Key insight: GQA (Grouped Query Attention) saves enormous KV cache memory. Without GQA, Llama 3 70B would use 8x more KV cache (64 KV heads instead of 8). That's why GQA is standard in modern architectures.</p>
+<h2 id="s32">Batch Size Impact</h2><div class="section-rule"></div>
+<p>Each request in a batch needs its own KV cache. This multiplies linearly:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Batch size 1:  1 × 1.25 GB = 1.25 GB
+Batch size 8:  8 × 1.25 GB = 10 GB
+Batch size 32: 32 × 1.25 GB = 40 GB
+Batch size 64: 64 × 1.25 GB = 80 GB  ← Exceeds the entire VRAM!</code></pre></div>
+</div>
+<p>This is why serving AI at high throughput requires careful VRAM budgeting. The model weights are fixed, but KV cache scales with both sequence length AND concurrent users.</p>
+<p>📊</p>
+<h2 id="s33">Part 3: Activations</h2><div class="section-rule"></div>
+<p>Activations are the intermediate values computed during the forward pass — the output of each layer before it feeds into the next.</p>
+<h2 id="s34">During Inference</h2><div class="section-rule"></div>
+<p>Activations are relatively small during inference because you only need the current layer's output:</p>
+<p>Activation memory ≈ batch_size × seq_len × hidden_dim × bytes</p>
+<p>For Llama 3 70B, 1 sequence, 4K tokens:</p>
+<p>≈ 1 × 4096 × 8192 × 2 bytes ≈ 64 MB  (small!)</p>
+<h2 id="s35">During Training</h2><div class="section-rule"></div>
+<p>Activations during training are massive because you need to store all intermediate values for backpropagation:</p>
+<p>Training activation memory ≈ num_layers × batch_size × seq_len × hidden_dim × bytes × factor</p>
+<p>The "factor" accounts for multiple intermediate values per layer:</p>
+<ul><li>Attention scores</li><li>QKV projections</li><li>FFN intermediate activations</li><li>Layer norm values</li></ul>
+<p>For Llama 3 70B training:</p>
+<p>≈ 80 × 1 × 4096 × 8192 × 2 × 10 ≈ 50+ GB per sample</p>
+<p>This is why training requires far more VRAM than inference and why techniques like gradient checkpointing (recomputing activations instead of storing them) are essential.</p>
+<h2 id="s36">Part 4: Putting It All Together</h2><div class="section-rule"></div>
+<h2 id="s37">Inference VRAM Budget</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Llama 3 70B, INT4, batch_size=1, 4K context:
+Model weights:     70B × 0.5 = 35.0 GB</code></pre></div>
+</div>
+<h2 id="s38">KV cache:          1.25 GB (FP16, 4K tokens)</h2><div class="section-rule"></div>
+<h2 id="s39">Activations:       ~0.1 GB</h2><div class="section-rule"></div>
+<h2 id="s40">Overhead:          ~1.0 GB</h2><div class="section-rule"></div>
+<p>─────────────────────────────</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Total:             ~37.4 GB    → Fits on A100 80GB ✅
+→ Fits on 2× RTX 4090 48GB ✅
+Llama 3 70B, FP16, batch_size=16, 8K context:
+Model weights:     70B × 2 = 140.0 GB</code></pre></div>
+</div>
+<h2 id="s41">KV cache:          16 × 2.5 = 40.0 GB</h2><div class="section-rule"></div>
+<h2 id="s42">Activations:       ~2.0 GB</h2><div class="section-rule"></div>
+<h2 id="s43">Overhead:          ~1.0 GB</h2><div class="section-rule"></div>
+<p>─────────────────────────────</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Total:             ~183 GB     → Needs 3× A100 80GB
+→ Or 2× H200 141GB</code></pre></div>
+</div>
+<h2 id="s44">Training VRAM Budget</h2><div class="section-rule"></div>
+<p>Training requires far more — you need:</p>
+<p>Model weights (in FP32 for master copy)</p>
+<p>Optimizer states (Adam stores 2 extra copies: momentum + variance)</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Gradients (same size as weights)
+Activations (stored for backpropagation)</code></pre></div>
+</div>
+<p>Training VRAM (rough estimate):</p>
+<p>≈ 4 × model_weights_FP32 + activations</p>
+<p>For a 7B model:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Weights (FP32): 7B × 4 = 28 GB
+Optimizer state: 7B × 8 = 56 GB (Adam: 2 × FP32 copies)
+Gradients: 7B × 4 = 28 GB</code></pre></div>
+</div>
+<h2 id="s45">Activations: ~30 GB</h2><div class="section-rule"></div>
+<p>─────────────────────────</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Total: ~142 GB → Needs 2× A100 80GB</code></pre></div>
+</div>
+<p>Rule of thumb for training: You need roughly 18-20 bytes per parameter for full fine-tuning with Adam optimizer. So a 7B model needs ~130-140 GB.</p>
+<div class="callout callout-tip"><span class="callout-icon">💡</span><p></p></div>
+<h2 id="s46">The Cheat Sheet</h2><div class="section-rule"></div>
+<p>Print this. Tattoo it. Whatever works:</p>
+<h2 id="s47">Quick VRAM Estimates (Inference)</h2><div class="section-rule"></div>
+<h2 id="s48">Params	INT4	INT8	FP16</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>1B</th><th>0.5 GB</th><th>1 GB</th><th>2 GB</th></tr></thead><tbody><tr><td>3B</td><td>1.5 GB</td><td>3 GB</td><td>6 GB</td></tr><tr><td>7B</td><td>3.5 GB</td><td>7 GB</td><td>14 GB</td></tr><tr><td>8B</td><td>4 GB</td><td>8 GB</td><td>16 GB</td></tr><tr><td>13B</td><td>6.5 GB</td><td>13 GB</td><td>26 GB</td></tr><tr><td>34B</td><td>17 GB</td><td>34 GB</td><td>68 GB</td></tr><tr><td>70B</td><td>35 GB</td><td>70 GB</td><td>140 GB</td></tr><tr><td>405B</td><td>202 GB</td><td>405 GB</td><td>810 GB</td></tr></tbody></table></div>
+<p>Add 10-30% for KV cache and overhead at typical batch sizes.</p>
+<h2 id="s49">GPU Memory Quick Reference</h2><div class="section-rule"></div>
+<h2 id="s50">GPU	VRAM	Bandwidth	Fits (INT4, batch=1)</h2><div class="section-rule"></div>
+<h2 id="s51">RTX 3060	12 GB	360 GB/s	Up to ~20B</h2><div class="section-rule"></div>
+<h2 id="s52">RTX 3090	24 GB	936 GB/s	Up to ~40B</h2><div class="section-rule"></div>
+<h2 id="s53">RTX 4090	24 GB	1,008 GB/s	Up to ~40B</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>A100</th><th>80 GB</th><th>2,039 GB/s</th><th>Up to ~130B</th></tr></thead><tbody><tr><td>H100</td><td>80 GB</td><td>3,350 GB/s</td><td>Up to ~130B</td></tr><tr><td>H200</td><td>141 GB</td><td>4,800 GB/s</td><td>Up to ~250B</td></tr><tr><td>Mac M4 Max</td><td>128 GB*</td><td>546 GB/s</td><td>Up to ~220B</td></tr><tr><td>Mac M4 Ultra</td><td>512 GB*</td><td>819 GB/s</td><td>Up to ~900B</td></tr></tbody></table></div>
+<p>*Mac uses unified memory (shared CPU/GPU), which means the full amount is available for models.</p>
+<p>🔬</p>
+<h2 id="s54">Common Mistakes</h2><div class="section-rule"></div>
+<h2 id="s55">Mistake 1: Forgetting KV Cache</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>"70B in INT4 is 35 GB, fits on my A100 80GB!"</code></pre></div>
+</div>
+<p>Yes, but with batch_size=32 and 8K context:</p>
+<h2 id="s56">KV cache = 32 × 2.5 GB = 80 GB  ← EXCEEDS TOTAL VRAM</h2><div class="section-rule"></div>
+<p>Your model fits but you can't serve any traffic.</p>
+<h2 id="s57">Mistake 2: Confusing INT4 with FP16</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>"I downloaded the Llama 3 70B FP16 model, it should be 35 GB..."
+No. FP16 = 2 bytes per param = 140 GB.
+INT4 = 0.5 bytes per param = 35 GB.</code></pre></div>
+</div>
+<p>You downloaded 140 GB. It won't fit.</p>
+<h2 id="s58">Mistake 3: Ignoring Quantization Overhead</h2><div class="section-rule"></div>
+<p>Real INT4 models (GPTQ, AWQ) store per-group quantization scales and zeros, adding ~10% overhead:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Theoretical INT4: 70B × 0.5 = 35.0 GB</code></pre></div>
+</div>
+<p>Actual GPTQ-4bit: 70B × 0.55 ≈ 38.5 GB</p>
+<p>🛡️</p>
+<h2 id="s59">Practical Takeaways</h2><div class="section-rule"></div>
+<h2 id="s60">FP16 VRAM ≈ params × 2 — the simplest formula in AI engineering</h2><div class="section-rule"></div>
+<p>KV cache can exceed model weights — especially with long contexts and large batches</p>
+<p>GQA saves KV cache memory — 8 KV heads vs 64 can mean 8x less cache</p>
+<p>Training needs ~18-20 bytes per parameter — 10x more than inference</p>
+<p>Always add 10-30% for overhead — CUDA context, framework buffers, fragmentation</p>
+<p>Batch size × sequence length determines serving cost — not just model size</p>
+<p>📦</p>
+<p>What's Next?</p>
+<p>Episode 66: Multi-GPU Setups — When one GPU isn't enough, how do you split a model across multiple GPUs? Tensor parallelism, pipeline parallelism, data parallelism — and when you need each one.</p>
+<p>← Previous</p>
+<h2 id="s61">Ep 64: GPU Architecture Basics</h2><div class="section-rule"></div>
+<p>Next →</p>
+<h2 id="s62">Ep 66: Multi-GPU Setups</h2><div class="section-rule"></div>
+<h2 id="s63">Next: Episode 66 — Multi-GPU Setups</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Llama 3 405B in FP16 is 810 GB. The biggest GPU has 192 GB. You need at least 5 GPUs. Here's how model parallelism works.</code></pre></div>
+</div>
+<p>This is part of a 98-episode series covering AI engineering from tokens to production deployment.</p>
+  </article>
+  <div class="ep-nav">
+    <a href="episode-64.html" class="ep-nav-card">
+      <span class="ep-nav-dir">← Previous</span>
+      <span class="ep-nav-title">Ep 64: GPU Architecture Basics: Why GPUs Are AI's Engine</span>
+    </a>
+    <a href="episode-66.html" class="ep-nav-card next">
+      <span class="ep-nav-dir">Next Episode →</span>
+      <span class="ep-nav-title">Ep 66: Multi-GPU Setups: Splitting Models Across GPUs</span>
+    </a>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <img class="footer-logo" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+      <div class="footer-tagline">98 Field Manual · Build with AI, not just use it · Free forever</div>
+    </div>
+    <div class="footer-links">
+      <a href="field-manual-index.html">All Episodes</a>
+      <a href="field-manual-index.html#g10">GPU & Hardware</a>
+      <a href="episode-64.html">← Ep 64</a>
+      <a href="episode-66.html">Ep 66 →</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+const prog=document.getElementById('prog');
+window.addEventListener('scroll',()=>{
+  const total=document.documentElement.scrollHeight-window.innerHeight;
+  prog.style.width=Math.min(100,(window.scrollY/total)*100)+'%';
+},{passive:true});
+
+// Build section nav dots from h2s
+const h2s=document.querySelectorAll('.prose h2');
+const sNav=document.getElementById('sectionNav');
+const dots=[];
+h2s.forEach((h,i)=>{
+  const btn=document.createElement('button');
+  btn.className='snav-dot';
+  btn.setAttribute('data-label',h.textContent.trim().substring(0,28));
+  btn.onclick=()=>h.scrollIntoView({behavior:'smooth',block:'start'});
+  sNav.appendChild(btn);
+  dots.push({btn,h});
+});
+
+const dotObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      const idx=dots.findIndex(d=>d.h===e.target);
+      if(idx>-1) dots.forEach((d,i)=>d.btn.classList.toggle('active',i===idx));
+    }
+  });
+},{rootMargin:'-30% 0px -60% 0px'});
+dots.forEach(d=>dotObs.observe(d.h));
+
+// Scroll reveal
+const revObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='translateY(0)';}});
+},{threshold:0.08});
+document.querySelectorAll('.toc,.callout,.table-wrap,.code-block,.ep-nav-card').forEach(el=>{
+  el.style.opacity='0';
+  el.style.transform='translateY(14px)';
+  el.style.transition='opacity 0.55s ease,transform 0.55s ease';
+  revObs.observe(el);
+});
+</script>
+</body>
+</html>

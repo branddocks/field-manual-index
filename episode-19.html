@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ep 19: Chunking Strategies: Why How You Split Documents Changes Everything</title>
+<meta name="description" content="You've got a 50-page PDF. You can't embed it as one vector. How you split it changes everything about retrieval quality.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,300&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0d0d1a;--page:#ffffff;--paper:#f8f9ff;
+  --navy:#124093;--navy-dim:rgba(18,64,147,0.07);--navy-mid:rgba(18,64,147,0.15);
+  --red:#e2190e;--gold:#c8973a;--muted:#6b7280;--rule:#e5e7ef;--code-bg:#0d0d1f;
+  --title:'Roboto',sans-serif;--body:'Poppins',sans-serif;--mono:'DM Mono',monospace;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--page);color:var(--ink);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:#fff}
+::-webkit-scrollbar-thumb{background:var(--navy);border-radius:2px}
+
+/* NAV */
+nav.top{position:sticky;top:0;z-index:200;background:#fff;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(20px,5vw,60px);border-bottom:1px solid var(--rule);box-shadow:0 1px 12px rgba(0,0,0,0.05)}
+.logo-wrap{display:flex;align-items:center;text-decoration:none}
+.logo-img{height:38px;width:auto;object-fit:contain;display:block}
+.nav-right{display:flex;align-items:center;gap:6px}
+.nav-link{font-family:var(--body);font-size:11.5px;font-weight:500;color:var(--muted);text-decoration:none;padding:6px 14px;border-radius:6px;transition:all 0.2s}
+.nav-link:hover{color:var(--navy);background:var(--navy-dim)}
+.nav-cta{background:var(--navy)!important;color:#fff!important}
+.nav-cta:hover{background:#1a52c0!important;color:#fff!important}
+
+/* PROGRESS */
+.progress-bar-fixed{position:fixed;top:60px;left:0;right:0;height:2.5px;background:rgba(18,64,147,0.1);z-index:199}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--navy),#4f7ff7);width:0%;transition:width 0.1s;border-radius:0 2px 2px 0}
+
+/* HERO */
+.hero{background:#fff;position:relative;overflow:hidden;min-height:88vh;display:flex;flex-direction:column;justify-content:center}
+.hero-bg{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.hero-blob-1{position:absolute;top:-120px;right:-120px;width:700px;height:700px;background:radial-gradient(circle at 60% 40%,rgba(18,64,147,0.07) 0%,rgba(18,64,147,0.03) 40%,transparent 70%);border-radius:50%}
+.hero-blob-2{position:absolute;bottom:-80px;left:-80px;width:500px;height:500px;background:radial-gradient(circle,rgba(79,127,247,0.06) 0%,transparent 65%);border-radius:50%}
+.hero-lines{position:absolute;top:0;right:0;width:45%;height:100%;opacity:0.06}
+.hero-lines svg{width:100%;height:100%}
+.hero-tokens{position:absolute;top:0;right:0;width:46%;height:100%;display:flex;align-items:center;justify-content:center}
+.token-float-wrap{position:relative;width:360px;height:360px}
+.tf{position:absolute;font-family:var(--mono);font-size:13px;font-weight:500;padding:8px 16px;border-radius:8px;white-space:nowrap;animation:float-anim 6s ease-in-out infinite;box-shadow:0 4px 20px rgba(0,0,0,0.08)}
+.tf-1{top:20px;left:60px;background:rgba(18,64,147,0.09);color:#124093;border:1px solid rgba(18,64,147,0.18);animation-delay:0s}
+.tf-2{top:70px;right:20px;background:rgba(79,127,247,0.09);color:#2563eb;border:1px solid rgba(79,127,247,0.2);animation-delay:0.8s}
+.tf-3{top:140px;left:20px;background:rgba(16,185,129,0.08);color:#059669;border:1px solid rgba(16,185,129,0.18);animation-delay:1.6s}
+.tf-4{top:170px;right:50px;background:rgba(168,85,247,0.08);color:#7c3aed;border:1px solid rgba(168,85,247,0.18);animation-delay:0.4s}
+.tf-5{bottom:140px;left:80px;background:rgba(234,179,8,0.08);color:#b45309;border:1px solid rgba(234,179,8,0.2);animation-delay:1.2s}
+.tf-6{bottom:90px;right:30px;background:rgba(236,72,153,0.08);color:#db2777;border:1px solid rgba(236,72,153,0.2);animation-delay:2s}
+.tf-7{bottom:30px;left:40px;background:rgba(239,68,68,0.08);color:#dc2626;border:1px solid rgba(239,68,68,0.18);animation-delay:0.6s}
+.tf-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:110px;height:110px;background:var(--navy);border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;box-shadow:0 12px 40px rgba(18,64,147,0.3);animation:pulse-center 3s ease-in-out infinite}
+.tf-center .big{font-family:var(--title);font-size:28px;font-weight:900;color:#fff;line-height:1}
+.tf-center .small{font-family:var(--body);font-size:9px;font-weight:500;color:rgba(255,255,255,0.6);letter-spacing:1.5px;text-transform:uppercase}
+@keyframes float-anim{0%,100%{transform:translateY(0px)}50%{transform:translateY(-10px)}}
+@keyframes pulse-center{0%,100%{box-shadow:0 12px 40px rgba(18,64,147,0.3)}50%{box-shadow:0 12px 60px rgba(18,64,147,0.5)}}
+.hero-content{position:relative;z-index:2;width:54%;padding:clamp(48px,8vw,96px) clamp(24px,5vw,72px) clamp(48px,8vw,96px)}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:5px 14px;background:var(--navy-dim);border:1px solid rgba(18,64,147,0.18);border-radius:100px;margin-bottom:22px;font-family:var(--body);font-size:10px;font-weight:600;color:var(--navy);letter-spacing:1.2px;text-transform:uppercase}
+.hero-eyebrow .dot{width:5px;height:5px;background:var(--navy);border-radius:50%}
+.hero h1{font-family:var(--title);font-size:clamp(28px,4.5vw,52px);font-weight:900;color:var(--ink);line-height:1.08;letter-spacing:-1.2px;margin-bottom:20px}
+.hero h1 .line2{display:block;color:var(--navy)}
+.hero-sub{font-family:var(--body);font-size:clamp(13px,1.6vw,15px);font-weight:300;color:#4b5563;line-height:1.85;max-width:500px;margin-bottom:34px}
+.breadcrumb{display:flex;align-items:center;gap:7px;margin-bottom:28px;font-family:var(--mono);font-size:10px;color:#9ca3af}
+.breadcrumb a{color:inherit;text-decoration:none;transition:color 0.2s}
+.breadcrumb a:hover{color:var(--navy)}
+.breadcrumb .sep{color:#d1d5db}
+.breadcrumb .cur{color:#6b7280}
+.meta-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:14px 20px;background:var(--paper);border:1px solid var(--rule);border-radius:10px;margin-bottom:24px}
+.meta-item{font-family:var(--body);font-size:10.5px;font-weight:500;color:var(--muted);display:flex;align-items:center;gap:5px}
+.tags-row{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-family:var(--body);font-size:10px;font-weight:500;color:var(--navy);background:var(--navy-dim);padding:4px 11px;border-radius:100px;border:1px solid rgba(18,64,147,0.15)}
+@media(max-width:900px){.hero{min-height:auto;padding-bottom:48px}.hero-content{width:100%;padding:48px 24px 36px}.hero-tokens{display:none}.hero-lines{display:none}}
+
+/* SECTION NAV DOTS */
+.section-nav{position:fixed;right:clamp(12px,2vw,24px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:9px;z-index:100}
+.snav-dot{width:7px;height:7px;border-radius:50%;background:#d1d5db;border:none;padding:0;cursor:pointer;transition:all 0.3s;position:relative}
+.snav-dot::after{content:attr(data-label);position:absolute;right:16px;top:50%;transform:translateY(-50%);font-family:var(--body);font-size:9px;font-weight:500;color:var(--ink);background:#fff;padding:3px 9px;border-radius:4px;border:1px solid var(--rule);box-shadow:0 2px 8px rgba(0,0,0,0.06);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.2s}
+.snav-dot:hover::after{opacity:1}
+.snav-dot.active{background:var(--navy);transform:scale(1.5)}
+.snav-dot:hover:not(.active){background:rgba(18,64,147,0.4)}
+@media(max-width:768px){.section-nav{display:none}}
+
+/* LAYOUT */
+.layout{max-width:860px;margin:0 auto;padding:clamp(40px,6vw,68px) clamp(20px,5vw,56px) 80px}
+
+/* TOC */
+.toc{background:var(--paper);border:1px solid var(--rule);border-left:4px solid var(--navy);border-radius:10px;padding:22px 26px;margin-bottom:52px}
+.toc-title{font-family:var(--title);font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
+.toc-list{list-style:none;display:flex;flex-direction:column;gap:3px}
+.toc-list li a{display:flex;align-items:center;gap:12px;text-decoration:none;padding:6px 0;font-family:var(--body);font-size:13px;font-weight:400;color:var(--ink);transition:color 0.2s}
+.toc-list li a:hover{color:var(--navy)}
+.toc-num{font-family:var(--mono);font-size:9px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* PROSE */
+.prose{line-height:1.85}
+.prose h2{font-family:var(--title);font-size:clamp(18px,2.5vw,23px);font-weight:700;color:var(--ink);letter-spacing:-0.4px;margin:52px 0 8px;line-height:1.2;scroll-margin-top:80px;padding-left:18px;position:relative}
+.prose h2::before{content:'';position:absolute;left:0;top:5px;bottom:5px;width:3px;background:var(--navy);border-radius:2px}
+.prose h2:first-child{margin-top:0}
+.prose h3{font-family:var(--title);font-size:14px;font-weight:700;color:var(--ink);margin:26px 0 8px}
+.section-rule{width:36px;height:2px;background:var(--navy);border-radius:2px;margin:8px 0 22px 18px;opacity:0.4}
+.prose p{font-family:var(--body);font-size:clamp(13.5px,1.7vw,15px);line-height:1.88;color:#374151;margin-bottom:16px;font-weight:300}
+.prose p strong{font-weight:600;color:var(--ink)}
+.prose ul,.prose ol{list-style:none;padding:0;margin:4px 0 20px}
+.prose ul li,.prose ol li{font-family:var(--body);font-size:clamp(13.5px,1.7vw,14.5px);line-height:1.8;color:#374151;padding:4px 0 4px 26px;position:relative;font-weight:300}
+.prose ul li::before{content:'';position:absolute;left:5px;top:14px;width:5px;height:5px;background:var(--navy);border-radius:50%;opacity:0.55}
+.prose ol{counter-reset:li}
+.prose ol li{counter-increment:li}
+.prose ol li::before{content:counter(li);position:absolute;left:0;top:5px;font-family:var(--mono);font-size:8px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.ic{font-family:var(--mono);font-size:12.5px;background:var(--navy-dim);color:var(--navy);padding:1.5px 6px;border-radius:4px;border:1px solid rgba(18,64,147,0.15)}
+
+/* CODE */
+.code-block{background:var(--code-bg);border-radius:10px;margin:24px 0;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.12),0 0 0 1px rgba(18,64,147,0.1)}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.02)}
+.code-dots{display:flex;gap:5px}
+.cd{width:10px;height:10px;border-radius:50%}
+.cd-r{background:#ff5f56}.cd-y{background:#ffbd2e}.cd-g{background:#27c93f}
+.code-filename{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,0.25)}
+.code-lang{font-family:var(--mono);font-size:9px;color:rgba(91,140,247,0.6);letter-spacing:1px;text-transform:uppercase}
+.code-body{padding:20px 22px;overflow-x:auto}
+.code-body pre{margin:0}
+.code-body code{font-family:var(--mono);font-size:12.5px;line-height:1.9;color:#c9d4f5}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;margin:24px 0;border-radius:10px;border:1px solid var(--rule);box-shadow:0 2px 12px rgba(0,0,0,0.04)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:var(--ink)}
+thead th{padding:12px 16px;text-align:left;font-family:var(--body);font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,0.45)}
+thead th:first-child{color:#6b9fff}
+tbody tr{border-bottom:1px solid var(--rule);transition:background 0.15s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--paper)}
+tbody td{padding:10px 16px;font-family:var(--body);font-size:13px;color:#374151;font-weight:300;line-height:1.5}
+tbody td:first-child{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--navy)}
+
+/* CALLOUTS */
+.callout{border-radius:9px;padding:16px 20px;margin:24px 0;display:flex;gap:13px;align-items:flex-start}
+.callout-tip{background:rgba(18,64,147,0.05);border:1px solid rgba(18,64,147,0.16);border-left:3px solid var(--navy)}
+.callout-warn{background:rgba(220,38,38,0.04);border:1px solid rgba(220,38,38,0.14);border-left:3px solid #dc2626}
+.callout-note{background:rgba(200,151,58,0.05);border:1px solid rgba(200,151,58,0.2);border-left:3px solid var(--gold)}
+.callout-icon{font-size:16px;flex-shrink:0;margin-top:1px;line-height:1}
+.callout p{font-size:13.5px!important;line-height:1.7!important;color:#374151!important;margin:0!important}
+
+/* EP NAV */
+.ep-nav{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:64px;padding-top:32px;border-top:1px solid var(--rule)}
+@media(max-width:500px){.ep-nav{grid-template-columns:1fr}}
+.ep-nav-card{display:flex;flex-direction:column;text-decoration:none;padding:20px 22px;border:1px solid var(--rule);border-radius:10px;background:var(--paper);transition:all 0.25s;gap:5px}
+.ep-nav-card:hover{border-color:rgba(18,64,147,0.3);background:var(--navy-dim);transform:translateY(-2px);box-shadow:0 6px 20px rgba(18,64,147,0.08)}
+.ep-nav-dir{font-family:var(--body);font-size:9px;font-weight:600;color:var(--navy);letter-spacing:1px;text-transform:uppercase}
+.ep-nav-title{font-family:var(--title);font-size:13px;font-weight:600;color:var(--ink);line-height:1.4}
+.ep-nav-card.next{align-items:flex-end;text-align:right}
+
+/* FOOTER */
+footer{background:var(--ink);padding:44px clamp(20px,5vw,60px);border-top:3px solid var(--navy)}
+.footer-inner{max-width:860px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.footer-logo{height:32px;width:auto;object-fit:contain;filter:brightness(0) invert(1);opacity:0.7}
+.footer-tagline{font-family:var(--body);font-size:11px;color:rgba(255,255,255,0.22);font-style:italic;margin-top:4px;font-weight:300}
+.footer-links{display:flex;gap:20px;flex-wrap:wrap}
+.footer-links a{font-family:var(--body);font-size:11px;font-weight:400;color:rgba(255,255,255,0.3);text-decoration:none;transition:color 0.2s}
+.footer-links a:hover{color:rgba(255,255,255,0.75)}
+
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.hero-content>*{animation:fadeUp 0.65s cubic-bezier(0.22,1,0.36,1) both}
+.hero-content>*:nth-child(1){animation-delay:0.05s}
+.hero-content>*:nth-child(2){animation-delay:0.1s}
+.hero-content>*:nth-child(3){animation-delay:0.15s}
+.hero-content>*:nth-child(4){animation-delay:0.2s}
+.hero-content>*:nth-child(5){animation-delay:0.25s}
+.hero-content>*:nth-child(6){animation-delay:0.3s}
+.hero-content>*:nth-child(7){animation-delay:0.35s}
+@media(max-width:640px){.nav-link:not(.nav-cta){display:none}}
+</style>
+</head>
+<body>
+
+<div class="progress-bar-fixed"><div class="progress-fill" id="prog"></div></div>
+
+<nav class="top">
+  <a href="field-manual-index.html" class="logo-wrap">
+    <img class="logo-img" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+  </a>
+  <div class="nav-right">
+    <a href="field-manual-index.html" class="nav-link">All Episodes</a>
+    <a href="field-manual-index.html#g3" class="nav-link nav-cta">🔍 Embeddings & Vector Search</a>
+  </div>
+</nav>
+
+<nav class="section-nav" id="sectionNav"></nav>
+
+<header class="hero">
+  <div class="hero-bg">
+    <div class="hero-blob-1"></div>
+    <div class="hero-blob-2"></div>
+    <div class="hero-lines">
+      <svg viewBox="0 0 600 800" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+        <line x1="0" y1="200" x2="600" y2="0" stroke="#124093" stroke-width="1"/>
+        <line x1="0" y1="400" x2="600" y2="200" stroke="#124093" stroke-width="0.6"/>
+        <line x1="0" y1="600" x2="600" y2="400" stroke="#124093" stroke-width="0.4"/>
+        <circle cx="500" cy="150" r="120" stroke="#124093" stroke-width="0.8" fill="none"/>
+        <circle cx="500" cy="150" r="80" stroke="#124093" stroke-width="0.4" fill="none"/>
+        <circle cx="500" cy="150" r="40" stroke="#124093" stroke-width="0.3" fill="none"/>
+        <line x1="300" y1="0" x2="300" y2="800" stroke="#124093" stroke-width="0.4" stroke-dasharray="6,12"/>
+        <rect x="360" y="480" width="160" height="160" stroke="#124093" stroke-width="0.6" fill="none" transform="rotate(15 440 560)"/>
+      </svg>
+    </div>
+  </div>
+  <div class="hero-tokens" aria-hidden="true">
+    <div class="token-float-wrap">
+      <div class="tf tf-1">token</div>
+<div class="tf tf-2">model</div>
+<div class="tf tf-3">layer</div>
+<div class="tf tf-4">vector</div>
+<div class="tf tf-5">embed</div>
+<div class="tf tf-6">weight</div>
+<div class="tf tf-7">param</div>
+      <div class="tf-center">
+        <span class="big">CHUN</span>
+        <span class="small">EP 19</span>
+      </div>
+    </div>
+  </div>
+  <div class="hero-content">
+    <nav class="breadcrumb">
+      <a href="field-manual-index.html">Field Manual</a>
+      <span class="sep">›</span>
+      <a href="field-manual-index.html#g3">🔍 Embeddings & Vector Search</a>
+      <span class="sep">›</span>
+      <span class="cur">Episode 19</span>
+    </nav>
+    <div class="hero-eyebrow"><span class="dot"></span>MODULE 3 &nbsp;·&nbsp; Embeddings & Vector Search</div>
+    <h1>Chunking Strategies: Why How You Split Documents Changes Everything</h1>
+    <p class="hero-sub">You've got a 50-page PDF. You can't embed it as one vector. How you split it changes everything about retrieval quality.</p>
+    <div class="meta-row">
+      <div class="meta-item"><span>📅</span> Mar 2026</div>
+      <div class="meta-item"><span>⏱</span> 10 min read</div>
+      <div class="meta-item"><span>🎯</span> Episode 19 of 98</div>
+    </div>
+    <div class="tags-row"><span class="tag">Chunking</span><span class="tag">RAG</span><span class="tag">Document Processing</span><span class="tag">Embeddings</span></div>
+  </div>
+</header>
+
+<main class="layout">
+  <div class="toc">
+  <div class="toc-title">In this episode</div>
+  <ul class="toc-list"><li><a href="#s1"><span class="toc-num">1</span>Why Chunk Size Matters So Much</a></li>
+<li><a href="#s2"><span class="toc-num">2</span>Strategy 1: Fixed-Size Chunking</a></li>
+<li><a href="#s3"><span class="toc-num">3</span>Pros:</a></li>
+<li><a href="#s4"><span class="toc-num">4</span>Dead simple to implement</a></li>
+<li><a href="#s5"><span class="toc-num">5</span>Predictable chunk sizes</a></li>
+<li><a href="#s6"><span class="toc-num">6</span>Works for any text format</a></li>
+<li><a href="#s7"><span class="toc-num">7</span>Cons:</a></li>
+<li><a href="#s8"><span class="toc-num">8</span>No respect for document structure</a></li>
+<li><a href="#s9"><span class="toc-num">9</span>Strategy 2: Recursive Character Splitting</a></li>
+<li><a href="#s10"><span class="toc-num">10</span>LangChain's RecursiveCharacterTextSplitter logic:</a></li>
+<li><a href="#s11"><span class="toc-num">11</span>Algorithm:</a></li>
+<li><a href="#s12"><span class="toc-num">12</span>1. Try splitting on "\n\n" (paragraphs)</a></li>
+<li><a href="#s13"><span class="toc-num">13</span>2. If chunks are still too big, split on "\n"</a></li>
+<li><a href="#s14"><span class="toc-num">14</span>3. If still too big, split on ". "</a></li>
+<li><a href="#s15"><span class="toc-num">15</span>4. Keep going until chunks fit under the limit</a></li>
+<li><a href="#s16"><span class="toc-num">16</span>Pros:</a></li>
+<li><a href="#s17"><span class="toc-num">17</span>Respects natural text boundaries</a></li>
+<li><a href="#s18"><span class="toc-num">18</span>Much better than fixed-size for most content</a></li>
+<li><a href="#s19"><span class="toc-num">19</span>Highly configurable separators</a></li>
+<li><a href="#s20"><span class="toc-num">20</span>Cons:</a></li>
+<li><a href="#s21"><span class="toc-num">21</span>Can still split related content across chunks</a></li>
+<li><a href="#s22"><span class="toc-num">22</span>Strategy 3: Semantic Chunking</a></li>
+<li><a href="#s23"><span class="toc-num">23</span>How it works:</a></li>
+<li><a href="#s24"><span class="toc-num">24</span>Result:</a></li>
+<li><a href="#s25"><span class="toc-num">25</span>Pros:</a></li>
+<li><a href="#s26"><span class="toc-num">26</span>Chunks align with actual topic boundaries</a></li>
+<li><a href="#s27"><span class="toc-num">27</span>Variable-length chunks that match content structure</a></li>
+<li><a href="#s28"><span class="toc-num">28</span>Cons:</a></li>
+<li><a href="#s29"><span class="toc-num">29</span>Slower ingestion pipeline</a></li>
+<li><a href="#s30"><span class="toc-num">30</span>Can produce very uneven chunk sizes</a></li>
+<li><a href="#s31"><span class="toc-num">31</span>Strategy 4: Document Structure-Based</a></li>
+<li><a href="#s32"><span class="toc-num">32</span>For Markdown</a></li>
+<li><a href="#s33"><span class="toc-num">33</span>Each chunk includes its header hierarchy as metadata:</a></li>
+<li><a href="#s34"><span class="toc-num">34</span>{ "h1": "Kubernetes Guide", "h2": "Pod Configuration", "content": "..." }</a></li>
+<li><a href="#s35"><span class="toc-num">35</span>For HTML:</a></li>
+<li><a href="#s36"><span class="toc-num">36</span>Pros:</a></li>
+<li><a href="#s37"><span class="toc-num">37</span>Leverages human-authored structure</a></li>
+<li><a href="#s38"><span class="toc-num">38</span>Most natural chunking for documentation</a></li>
+<li><a href="#s39"><span class="toc-num">39</span>Cons:</a></li>
+<li><a href="#s40"><span class="toc-num">40</span>Only works for well-structured documents</a></li>
+<li><a href="#s41"><span class="toc-num">41</span>The Overlap Problem</a></li>
+<li><a href="#s42"><span class="toc-num">42</span>Overlap fixes this:</a></li>
+<li><a href="#s43"><span class="toc-num">43</span>Overlap	Effect</a></li>
+<li><a href="#s44"><span class="toc-num">44</span>Chunk Size: The Numbers</a></li>
+<li><a href="#s45"><span class="toc-num">45</span>Based on common practice and benchmarks:</a></li>
+<li><a href="#s46"><span class="toc-num">46</span>Chunk Size	Best For	Trade-off</a></li>
+<li><a href="#s47"><span class="toc-num">47</span>Quick experiment to find optimal chunk size</a></li>
+<li><a href="#s48"><span class="toc-num">48</span>Advanced: Multi-Level Chunking</a></li>
+<li><a href="#s49"><span class="toc-num">49</span>Practical Takeaways</a></li>
+<li><a href="#s50"><span class="toc-num">50</span>Ep 18: Vector Databases</a></li>
+<li><a href="#s51"><span class="toc-num">51</span>Ep 20: Hybrid Search</a></li>
+<li><a href="#s52"><span class="toc-num">52</span>Next: Episode 20 — Hybrid Search</a></li>
+</ul>
+</div>
+  <article class="prose" id="s0">
+<p>You've got a 50-page PDF about Kubernetes. You want to search it with embeddings. But you can't embed the whole document as one vector — the embedding model has a token limit (usually 512-8192 tokens), and even if it didn't, cramming 50 pages into one vector washes out all the specific details.</p>
+<p>So you chunk it. Split the document into smaller pieces. Embed each chunk. Store them in your vector database.</p>
+<p>Simple, right? Except: chunk too big and your retrieval is vague. Chunk too small and you lose context. Chunk at the wrong boundaries and you split a sentence in half. The chunking strategy you pick is the single biggest lever for RAG quality — more impactful than your embedding model, your vector database, or your LLM.</p>
+<h2 id="s1">Why Chunk Size Matters So Much</h2><div class="section-rule"></div>
+<p>Imagine searching for "how to set resource limits for Kubernetes pods."</p>
+<p>Chunk too large (2000 tokens): The chunk contains resource limits, plus networking, plus storage volumes, plus health checks. The embedding captures the general topic (Kubernetes) but not the specific subtopic (resource limits). Your search returns vaguely relevant chunks.</p>
+<p>Chunk too small (50 tokens): The chunk contains "Set the memory limit using resources.limits.memory: 512Mi in the pod spec." Perfect specificity — but zero context. The LLM doesn't know which pod, which deployment, or why.</p>
+<p>Chunk just right (200-500 tokens): The chunk covers resource limits comprehensively — CPU and memory limits, requests vs limits, what happens when limits are exceeded — with enough context to be self-explanatory.</p>
+<p>This is the chunking Goldilocks problem. And there's no universal "right" answer — it depends on your content and your queries.</p>
+<div class="callout callout-tip"><span class="callout-icon">⚡</span><p></p></div>
+<h2 id="s2">Strategy 1: Fixed-Size Chunking</h2><div class="section-rule"></div>
+<p>The simplest approach. Split text every N characters or N tokens.</p>
+<p>python</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>def fixed_size_chunks(text, chunk_size=500, overlap=50):
+chunks = []
+    for i in range(0, len(text), chunk_size - overlap):
+        chunk = text[i:i + chunk_size]
+        chunks.append(chunk)
+    return chunks
+text = "Your very long document text here..."
+chunks = fixed_size_chunks(text, chunk_size=500, overlap=50)</code></pre></div>
+</div>
+<h2 id="s3">Pros:</h2><div class="section-rule"></div>
+<h2 id="s4">Dead simple to implement</h2><div class="section-rule"></div>
+<h2 id="s5">Predictable chunk sizes</h2><div class="section-rule"></div>
+<h2 id="s6">Works for any text format</h2><div class="section-rule"></div>
+<h2 id="s7">Cons:</h2><div class="section-rule"></div>
+<p>Splits mid-sentence, mid-paragraph, mid-thought</p>
+<h2 id="s8">No respect for document structure</h2><div class="section-rule"></div>
+<p>A chunk might start with "...continued from previous section" — meaningless in isolation</p>
+<p>When to use: Quick prototyping, unstructured text with no clear section boundaries.</p>
+<p>🔧</p>
+<h2 id="s9">Strategy 2: Recursive Character Splitting</h2><div class="section-rule"></div>
+<p>The LangChain default. Try to split on natural boundaries, falling back to smaller separators:</p>
+<p>python</p>
+<h2 id="s10">LangChain's RecursiveCharacterTextSplitter logic:</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>separators = [
+"\n\n",    # Double newline (paragraph breaks) — try first
+    "\n",      # Single newline (line breaks)
+    ". ",      # Sentence endings
+    " ",       # Word boundaries
+    ""         # Individual characters (last resort)</code></pre></div>
+</div>
+<p>]</p>
+<h2 id="s11">Algorithm:</h2><div class="section-rule"></div>
+<h2 id="s12">1. Try splitting on "\n\n" (paragraphs)</h2><div class="section-rule"></div>
+<h2 id="s13">2. If chunks are still too big, split on "\n"</h2><div class="section-rule"></div>
+<h2 id="s14">3. If still too big, split on ". "</h2><div class="section-rule"></div>
+<h2 id="s15">4. Keep going until chunks fit under the limit</h2><div class="section-rule"></div>
+<p>python</p>
+<p>from langchain.text_splitter import RecursiveCharacterTextSplitter</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>splitter = RecursiveCharacterTextSplitter(
+chunk_size=500,
+    chunk_overlap=50,
+    separators=["\n\n", "\n", ". ", " ", ""]</code></pre></div>
+</div>
+<p>)</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>chunks = splitter.split_text(document_text)</code></pre></div>
+</div>
+<h2 id="s16">Pros:</h2><div class="section-rule"></div>
+<h2 id="s17">Respects natural text boundaries</h2><div class="section-rule"></div>
+<h2 id="s18">Much better than fixed-size for most content</h2><div class="section-rule"></div>
+<h2 id="s19">Highly configurable separators</h2><div class="section-rule"></div>
+<h2 id="s20">Cons:</h2><div class="section-rule"></div>
+<p>Still purely character-based — doesn't understand meaning</p>
+<h2 id="s21">Can still split related content across chunks</h2><div class="section-rule"></div>
+<p>When to use: The safe default for most RAG applications. Start here.</p>
+<p>📊</p>
+<h2 id="s22">Strategy 3: Semantic Chunking</h2><div class="section-rule"></div>
+<p>Split based on meaning changes, not character counts. Use embeddings to detect when the topic shifts.</p>
+<p>python</p>
+<p>from langchain_experimental.text_splitter import SemanticChunker</p>
+<p>from langchain_openai import OpenAIEmbeddings</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>splitter = SemanticChunker(
+OpenAIEmbeddings(),
+    breakpoint_threshold_type="percentile",
+    breakpoint_threshold_amount=95</code></pre></div>
+</div>
+<p>)</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>chunks = splitter.split_text(document_text)</code></pre></div>
+</div>
+<h2 id="s23">How it works:</h2><div class="section-rule"></div>
+<p>Sentence 1: "Kubernetes uses pods as the smallest deployable unit."</p>
+<p>Sentence 2: "Each pod can contain one or more containers."</p>
+<p>Sentence 3: "Pods share networking and storage."</p>
+<p>← Similarity between sentences 3 and 4: 0.42 (LOW — topic change!) →</p>
+<p>Sentence 4: "To deploy a service, you need to create a Service resource."</p>
+<p>Sentence 5: "Services provide stable endpoints for pods."</p>
+<h2 id="s24">Result:</h2><div class="section-rule"></div>
+<p>Chunk 1: Sentences 1-3 (about pods)</p>
+<p>Chunk 2: Sentences 4-5 (about services)</p>
+<h2 id="s25">Pros:</h2><div class="section-rule"></div>
+<h2 id="s26">Chunks align with actual topic boundaries</h2><div class="section-rule"></div>
+<h2 id="s27">Variable-length chunks that match content structure</h2><div class="section-rule"></div>
+<p>Semantically coherent chunks = better retrieval</p>
+<h2 id="s28">Cons:</h2><div class="section-rule"></div>
+<p>Requires running embeddings on every sentence (expensive during ingestion)</p>
+<h2 id="s29">Slower ingestion pipeline</h2><div class="section-rule"></div>
+<h2 id="s30">Can produce very uneven chunk sizes</h2><div class="section-rule"></div>
+<p>When to use: High-quality RAG where retrieval precision matters more than ingestion speed.</p>
+<h2 id="s31">Strategy 4: Document Structure-Based</h2><div class="section-rule"></div>
+<p>Use the document's own structure — headers, sections, code blocks — as chunk boundaries.</p>
+<p>python</p>
+<h2 id="s32">For Markdown</h2><div class="section-rule"></div>
+<p>from langchain.text_splitter import MarkdownHeaderTextSplitter</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>headers_to_split = [
+("#", "h1"),
+    ("##", "h2"),
+    ("###", "h3"),</code></pre></div>
+</div>
+<p>]</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split)
+chunks = splitter.split_text(markdown_text)</code></pre></div>
+</div>
+<h2 id="s33">Each chunk includes its header hierarchy as metadata:</h2><div class="section-rule"></div>
+<h2 id="s34">{ "h1": "Kubernetes Guide", "h2": "Pod Configuration", "content": "..." }</h2><div class="section-rule"></div>
+<h2 id="s35">For HTML:</h2><div class="section-rule"></div>
+<p>python</p>
+<p>from langchain.text_splitter import HTMLHeaderTextSplitter</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>splitter = HTMLHeaderTextSplitter(
+headers_to_split_on=[("h1", "h1"), ("h2", "h2"), ("h3", "h3")]</code></pre></div>
+</div>
+<p>)</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>chunks = splitter.split_text(html_content)</code></pre></div>
+</div>
+<h2 id="s36">Pros:</h2><div class="section-rule"></div>
+<h2 id="s37">Leverages human-authored structure</h2><div class="section-rule"></div>
+<p>Headers become metadata (great for filtering)</p>
+<h2 id="s38">Most natural chunking for documentation</h2><div class="section-rule"></div>
+<h2 id="s39">Cons:</h2><div class="section-rule"></div>
+<h2 id="s40">Only works for well-structured documents</h2><div class="section-rule"></div>
+<p>Sections can still be too large (need secondary splitting)</p>
+<p>Doesn't work for unstructured text</p>
+<p>When to use: Documentation, technical manuals, knowledge bases — anything with headers.</p>
+<div class="callout callout-tip"><span class="callout-icon">💡</span><p></p></div>
+<h2 id="s41">The Overlap Problem</h2><div class="section-rule"></div>
+<p>Without overlap, context is lost at chunk boundaries:</p>
+<p>Chunk 1: "...Kubernetes resource limits define the maximum CPU and memory</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>a container can use. The default namespace has"</code></pre></div>
+</div>
+<p>Chunk 2: "no resource quotas applied. You should always set limits</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>in production to prevent noisy neighbor problems..."</code></pre></div>
+</div>
+<p>The critical sentence "The default namespace has no resource quotas applied" is split across two chunks. Neither chunk contains the full thought.</p>
+<h2 id="s42">Overlap fixes this:</h2><div class="section-rule"></div>
+<p>Chunk 1: "...resource limits define the maximum CPU and memory</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>a container can use. The default namespace has
+          no resource quotas applied."
+                                    ↑ overlap zone</code></pre></div>
+</div>
+<p>Chunk 2: "The default namespace has no resource quotas applied.</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>You should always set limits in production to prevent
+          noisy neighbor problems..."
+          ↑ overlap zone starts here</code></pre></div>
+</div>
+<p>How Much Overlap?</p>
+<h2 id="s43">Overlap	Effect</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>0%</th><th>Maximum information density, risk of split context</th></tr></thead><tbody><tr><td>10-15%</td><td>Good balance for most use cases</td></tr><tr><td>20-30%</td><td>Safe for important documents, more storage</td></tr><tr><td>50%+</td><td>Overkill, too much redundancy</td></tr></tbody></table></div>
+<p>Rule of thumb: 10-15% of chunk size. For a 500-token chunk, use 50-75 tokens of overlap.</p>
+<p>🔬</p>
+<h2 id="s44">Chunk Size: The Numbers</h2><div class="section-rule"></div>
+<h2 id="s45">Based on common practice and benchmarks:</h2><div class="section-rule"></div>
+<h2 id="s46">Chunk Size	Best For	Trade-off</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>100-200 tokens</th><th>FAQ, Q&A pairs</th><th>Very specific but lacks context</th></tr></thead><tbody><tr><td>200-500 tokens</td><td>General RAG</td><td>Best balance for most use cases</td></tr><tr><td>500-1000 tokens</td><td>Long-form content, articles</td><td>More context but less precise retrieval</td></tr><tr><td>1000+ tokens</td><td>Summarization, analysis</td><td>Rich context but vague embeddings</td></tr></tbody></table></div>
+<p>The empirical winner for most RAG: 256-512 tokens with 10-15% overlap. But always test with YOUR data and YOUR queries.</p>
+<p>python</p>
+<h2 id="s47">Quick experiment to find optimal chunk size</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>chunk_sizes = [128, 256, 512, 1024]</code></pre></div>
+</div>
+<p>for size in chunk_sizes:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>chunks = split_document(doc, chunk_size=size, overlap=int(size * 0.1))
+    results = search(query, chunks)
+    relevance = evaluate_results(results, ground_truth)
+    print(f"Size: {size:4d}  Chunks: {len(chunks):4d}  Relevance: {relevance:.3f}")</code></pre></div>
+</div>
+<p>🛡️</p>
+<h2 id="s48">Advanced: Multi-Level Chunking</h2><div class="section-rule"></div>
+<p>The best RAG systems don't use just one chunk size. They use parent-child chunking:</p>
+<p>Parent chunk (1000 tokens):</p>
+<p>"This section covers Kubernetes resource management.</p>
+<p>Resource limits define the maximum CPU and memory...</p>
+<p>Resource requests define the minimum guaranteed...</p>
+<p>LimitRange objects set defaults for a namespace..."</p>
+<p>Child chunks (200 tokens each):</p>
+<p>Child 1: "Resource limits define the maximum CPU and memory..."</p>
+<p>Child 2: "Resource requests define the minimum guaranteed..."</p>
+<p>Child 3: "LimitRange objects set defaults for a namespace..."</p>
+<p>Search against child chunks (specific), but return parent chunks (contextual). Best of both worlds. We'll cover this in detail in Episode 25: Retrieval Strategies.</p>
+<p>📦</p>
+<h2 id="s49">Practical Takeaways</h2><div class="section-rule"></div>
+<p>Chunking is the #1 lever for RAG quality — spend more time here than on model selection</p>
+<p>Start with RecursiveCharacterTextSplitter — it's the safe default (256-512 tokens, 10% overlap)</p>
+<p>Use document structure when available — Markdown/HTML headers make natural chunk boundaries</p>
+<p>Always use overlap — 10-15% prevents losing context at boundaries</p>
+<p>Test chunk sizes with your actual queries — there's no universal optimum</p>
+<p>Consider semantic chunking for high-value data — more expensive but better retrieval</p>
+<p>🚀</p>
+<p>What's Next?</p>
+<p>Episode 20: Hybrid Search — Vector search finds semantically similar results, but sometimes you need exact keyword matches. "Error code KB-4092" won't work with cosine similarity. Hybrid search combines the best of both worlds.</p>
+<p>← Previous</p>
+<h2 id="s50">Ep 18: Vector Databases</h2><div class="section-rule"></div>
+<p>Next →</p>
+<h2 id="s51">Ep 20: Hybrid Search</h2><div class="section-rule"></div>
+<h2 id="s52">Next: Episode 20 — Hybrid Search</h2><div class="section-rule"></div>
+<p>User searches 'error KB-4092'. Vector search returns semantically relevant results. None mention the actual error code.</p>
+<p>This is part of a 98-episode series covering AI engineering from tokens to production deployment.</p>
+  </article>
+  <div class="ep-nav">
+    <a href="episode-18.html" class="ep-nav-card">
+      <span class="ep-nav-dir">← Previous</span>
+      <span class="ep-nav-title">Ep 18: Vector Databases: Where Embeddings Live and How They Wo…</span>
+    </a>
+    <a href="episode-20.html" class="ep-nav-card next">
+      <span class="ep-nav-dir">Next Episode →</span>
+      <span class="ep-nav-title">Ep 20: Hybrid Search: When Pure Vector Search Isn't Enough</span>
+    </a>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <img class="footer-logo" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+      <div class="footer-tagline">98 Field Manual · Build with AI, not just use it · Free forever</div>
+    </div>
+    <div class="footer-links">
+      <a href="field-manual-index.html">All Episodes</a>
+      <a href="field-manual-index.html#g3">Embeddings & Vector Search</a>
+      <a href="episode-18.html">← Ep 18</a>
+      <a href="episode-20.html">Ep 20 →</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+const prog=document.getElementById('prog');
+window.addEventListener('scroll',()=>{
+  const total=document.documentElement.scrollHeight-window.innerHeight;
+  prog.style.width=Math.min(100,(window.scrollY/total)*100)+'%';
+},{passive:true});
+
+// Build section nav dots from h2s
+const h2s=document.querySelectorAll('.prose h2');
+const sNav=document.getElementById('sectionNav');
+const dots=[];
+h2s.forEach((h,i)=>{
+  const btn=document.createElement('button');
+  btn.className='snav-dot';
+  btn.setAttribute('data-label',h.textContent.trim().substring(0,28));
+  btn.onclick=()=>h.scrollIntoView({behavior:'smooth',block:'start'});
+  sNav.appendChild(btn);
+  dots.push({btn,h});
+});
+
+const dotObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      const idx=dots.findIndex(d=>d.h===e.target);
+      if(idx>-1) dots.forEach((d,i)=>d.btn.classList.toggle('active',i===idx));
+    }
+  });
+},{rootMargin:'-30% 0px -60% 0px'});
+dots.forEach(d=>dotObs.observe(d.h));
+
+// Scroll reveal
+const revObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='translateY(0)';}});
+},{threshold:0.08});
+document.querySelectorAll('.toc,.callout,.table-wrap,.code-block,.ep-nav-card').forEach(el=>{
+  el.style.opacity='0';
+  el.style.transform='translateY(14px)';
+  el.style.transition='opacity 0.55s ease,transform 0.55s ease';
+  revObs.observe(el);
+});
+</script>
+</body>
+</html>

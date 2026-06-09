@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ep 8: CPU vs GPU Inference: Why Your Graphics Card Matters More Than Your Processor</title>
+<meta name="description" content="A friend bought an RTX 4090 for ₹1,60,000. His wife thought it was for gaming. It wasn't. He runs Llama 3.1 70B on it.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,300&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0d0d1a;--page:#ffffff;--paper:#f8f9ff;
+  --navy:#124093;--navy-dim:rgba(18,64,147,0.07);--navy-mid:rgba(18,64,147,0.15);
+  --red:#e2190e;--gold:#c8973a;--muted:#6b7280;--rule:#e5e7ef;--code-bg:#0d0d1f;
+  --title:'Roboto',sans-serif;--body:'Poppins',sans-serif;--mono:'DM Mono',monospace;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--page);color:var(--ink);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:#fff}
+::-webkit-scrollbar-thumb{background:var(--navy);border-radius:2px}
+
+/* NAV */
+nav.top{position:sticky;top:0;z-index:200;background:#fff;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(20px,5vw,60px);border-bottom:1px solid var(--rule);box-shadow:0 1px 12px rgba(0,0,0,0.05)}
+.logo-wrap{display:flex;align-items:center;text-decoration:none}
+.logo-img{height:38px;width:auto;object-fit:contain;display:block}
+.nav-right{display:flex;align-items:center;gap:6px}
+.nav-link{font-family:var(--body);font-size:11.5px;font-weight:500;color:var(--muted);text-decoration:none;padding:6px 14px;border-radius:6px;transition:all 0.2s}
+.nav-link:hover{color:var(--navy);background:var(--navy-dim)}
+.nav-cta{background:var(--navy)!important;color:#fff!important}
+.nav-cta:hover{background:#1a52c0!important;color:#fff!important}
+
+/* PROGRESS */
+.progress-bar-fixed{position:fixed;top:60px;left:0;right:0;height:2.5px;background:rgba(18,64,147,0.1);z-index:199}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--navy),#4f7ff7);width:0%;transition:width 0.1s;border-radius:0 2px 2px 0}
+
+/* HERO */
+.hero{background:#fff;position:relative;overflow:hidden;min-height:88vh;display:flex;flex-direction:column;justify-content:center}
+.hero-bg{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.hero-blob-1{position:absolute;top:-120px;right:-120px;width:700px;height:700px;background:radial-gradient(circle at 60% 40%,rgba(18,64,147,0.07) 0%,rgba(18,64,147,0.03) 40%,transparent 70%);border-radius:50%}
+.hero-blob-2{position:absolute;bottom:-80px;left:-80px;width:500px;height:500px;background:radial-gradient(circle,rgba(79,127,247,0.06) 0%,transparent 65%);border-radius:50%}
+.hero-lines{position:absolute;top:0;right:0;width:45%;height:100%;opacity:0.06}
+.hero-lines svg{width:100%;height:100%}
+.hero-tokens{position:absolute;top:0;right:0;width:46%;height:100%;display:flex;align-items:center;justify-content:center}
+.token-float-wrap{position:relative;width:360px;height:360px}
+.tf{position:absolute;font-family:var(--mono);font-size:13px;font-weight:500;padding:8px 16px;border-radius:8px;white-space:nowrap;animation:float-anim 6s ease-in-out infinite;box-shadow:0 4px 20px rgba(0,0,0,0.08)}
+.tf-1{top:20px;left:60px;background:rgba(18,64,147,0.09);color:#124093;border:1px solid rgba(18,64,147,0.18);animation-delay:0s}
+.tf-2{top:70px;right:20px;background:rgba(79,127,247,0.09);color:#2563eb;border:1px solid rgba(79,127,247,0.2);animation-delay:0.8s}
+.tf-3{top:140px;left:20px;background:rgba(16,185,129,0.08);color:#059669;border:1px solid rgba(16,185,129,0.18);animation-delay:1.6s}
+.tf-4{top:170px;right:50px;background:rgba(168,85,247,0.08);color:#7c3aed;border:1px solid rgba(168,85,247,0.18);animation-delay:0.4s}
+.tf-5{bottom:140px;left:80px;background:rgba(234,179,8,0.08);color:#b45309;border:1px solid rgba(234,179,8,0.2);animation-delay:1.2s}
+.tf-6{bottom:90px;right:30px;background:rgba(236,72,153,0.08);color:#db2777;border:1px solid rgba(236,72,153,0.2);animation-delay:2s}
+.tf-7{bottom:30px;left:40px;background:rgba(239,68,68,0.08);color:#dc2626;border:1px solid rgba(239,68,68,0.18);animation-delay:0.6s}
+.tf-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:110px;height:110px;background:var(--navy);border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;box-shadow:0 12px 40px rgba(18,64,147,0.3);animation:pulse-center 3s ease-in-out infinite}
+.tf-center .big{font-family:var(--title);font-size:28px;font-weight:900;color:#fff;line-height:1}
+.tf-center .small{font-family:var(--body);font-size:9px;font-weight:500;color:rgba(255,255,255,0.6);letter-spacing:1.5px;text-transform:uppercase}
+@keyframes float-anim{0%,100%{transform:translateY(0px)}50%{transform:translateY(-10px)}}
+@keyframes pulse-center{0%,100%{box-shadow:0 12px 40px rgba(18,64,147,0.3)}50%{box-shadow:0 12px 60px rgba(18,64,147,0.5)}}
+.hero-content{position:relative;z-index:2;width:54%;padding:clamp(48px,8vw,96px) clamp(24px,5vw,72px) clamp(48px,8vw,96px)}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:5px 14px;background:var(--navy-dim);border:1px solid rgba(18,64,147,0.18);border-radius:100px;margin-bottom:22px;font-family:var(--body);font-size:10px;font-weight:600;color:var(--navy);letter-spacing:1.2px;text-transform:uppercase}
+.hero-eyebrow .dot{width:5px;height:5px;background:var(--navy);border-radius:50%}
+.hero h1{font-family:var(--title);font-size:clamp(28px,4.5vw,52px);font-weight:900;color:var(--ink);line-height:1.08;letter-spacing:-1.2px;margin-bottom:20px}
+.hero h1 .line2{display:block;color:var(--navy)}
+.hero-sub{font-family:var(--body);font-size:clamp(13px,1.6vw,15px);font-weight:300;color:#4b5563;line-height:1.85;max-width:500px;margin-bottom:34px}
+.breadcrumb{display:flex;align-items:center;gap:7px;margin-bottom:28px;font-family:var(--mono);font-size:10px;color:#9ca3af}
+.breadcrumb a{color:inherit;text-decoration:none;transition:color 0.2s}
+.breadcrumb a:hover{color:var(--navy)}
+.breadcrumb .sep{color:#d1d5db}
+.breadcrumb .cur{color:#6b7280}
+.meta-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:14px 20px;background:var(--paper);border:1px solid var(--rule);border-radius:10px;margin-bottom:24px}
+.meta-item{font-family:var(--body);font-size:10.5px;font-weight:500;color:var(--muted);display:flex;align-items:center;gap:5px}
+.tags-row{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-family:var(--body);font-size:10px;font-weight:500;color:var(--navy);background:var(--navy-dim);padding:4px 11px;border-radius:100px;border:1px solid rgba(18,64,147,0.15)}
+@media(max-width:900px){.hero{min-height:auto;padding-bottom:48px}.hero-content{width:100%;padding:48px 24px 36px}.hero-tokens{display:none}.hero-lines{display:none}}
+
+/* SECTION NAV DOTS */
+.section-nav{position:fixed;right:clamp(12px,2vw,24px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:9px;z-index:100}
+.snav-dot{width:7px;height:7px;border-radius:50%;background:#d1d5db;border:none;padding:0;cursor:pointer;transition:all 0.3s;position:relative}
+.snav-dot::after{content:attr(data-label);position:absolute;right:16px;top:50%;transform:translateY(-50%);font-family:var(--body);font-size:9px;font-weight:500;color:var(--ink);background:#fff;padding:3px 9px;border-radius:4px;border:1px solid var(--rule);box-shadow:0 2px 8px rgba(0,0,0,0.06);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.2s}
+.snav-dot:hover::after{opacity:1}
+.snav-dot.active{background:var(--navy);transform:scale(1.5)}
+.snav-dot:hover:not(.active){background:rgba(18,64,147,0.4)}
+@media(max-width:768px){.section-nav{display:none}}
+
+/* LAYOUT */
+.layout{max-width:860px;margin:0 auto;padding:clamp(40px,6vw,68px) clamp(20px,5vw,56px) 80px}
+
+/* TOC */
+.toc{background:var(--paper);border:1px solid var(--rule);border-left:4px solid var(--navy);border-radius:10px;padding:22px 26px;margin-bottom:52px}
+.toc-title{font-family:var(--title);font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
+.toc-list{list-style:none;display:flex;flex-direction:column;gap:3px}
+.toc-list li a{display:flex;align-items:center;gap:12px;text-decoration:none;padding:6px 0;font-family:var(--body);font-size:13px;font-weight:400;color:var(--ink);transition:color 0.2s}
+.toc-list li a:hover{color:var(--navy)}
+.toc-num{font-family:var(--mono);font-size:9px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* PROSE */
+.prose{line-height:1.85}
+.prose h2{font-family:var(--title);font-size:clamp(18px,2.5vw,23px);font-weight:700;color:var(--ink);letter-spacing:-0.4px;margin:52px 0 8px;line-height:1.2;scroll-margin-top:80px;padding-left:18px;position:relative}
+.prose h2::before{content:'';position:absolute;left:0;top:5px;bottom:5px;width:3px;background:var(--navy);border-radius:2px}
+.prose h2:first-child{margin-top:0}
+.prose h3{font-family:var(--title);font-size:14px;font-weight:700;color:var(--ink);margin:26px 0 8px}
+.section-rule{width:36px;height:2px;background:var(--navy);border-radius:2px;margin:8px 0 22px 18px;opacity:0.4}
+.prose p{font-family:var(--body);font-size:clamp(13.5px,1.7vw,15px);line-height:1.88;color:#374151;margin-bottom:16px;font-weight:300}
+.prose p strong{font-weight:600;color:var(--ink)}
+.prose ul,.prose ol{list-style:none;padding:0;margin:4px 0 20px}
+.prose ul li,.prose ol li{font-family:var(--body);font-size:clamp(13.5px,1.7vw,14.5px);line-height:1.8;color:#374151;padding:4px 0 4px 26px;position:relative;font-weight:300}
+.prose ul li::before{content:'';position:absolute;left:5px;top:14px;width:5px;height:5px;background:var(--navy);border-radius:50%;opacity:0.55}
+.prose ol{counter-reset:li}
+.prose ol li{counter-increment:li}
+.prose ol li::before{content:counter(li);position:absolute;left:0;top:5px;font-family:var(--mono);font-size:8px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.ic{font-family:var(--mono);font-size:12.5px;background:var(--navy-dim);color:var(--navy);padding:1.5px 6px;border-radius:4px;border:1px solid rgba(18,64,147,0.15)}
+
+/* CODE */
+.code-block{background:var(--code-bg);border-radius:10px;margin:24px 0;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.12),0 0 0 1px rgba(18,64,147,0.1)}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.02)}
+.code-dots{display:flex;gap:5px}
+.cd{width:10px;height:10px;border-radius:50%}
+.cd-r{background:#ff5f56}.cd-y{background:#ffbd2e}.cd-g{background:#27c93f}
+.code-filename{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,0.25)}
+.code-lang{font-family:var(--mono);font-size:9px;color:rgba(91,140,247,0.6);letter-spacing:1px;text-transform:uppercase}
+.code-body{padding:20px 22px;overflow-x:auto}
+.code-body pre{margin:0}
+.code-body code{font-family:var(--mono);font-size:12.5px;line-height:1.9;color:#c9d4f5}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;margin:24px 0;border-radius:10px;border:1px solid var(--rule);box-shadow:0 2px 12px rgba(0,0,0,0.04)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:var(--ink)}
+thead th{padding:12px 16px;text-align:left;font-family:var(--body);font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,0.45)}
+thead th:first-child{color:#6b9fff}
+tbody tr{border-bottom:1px solid var(--rule);transition:background 0.15s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--paper)}
+tbody td{padding:10px 16px;font-family:var(--body);font-size:13px;color:#374151;font-weight:300;line-height:1.5}
+tbody td:first-child{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--navy)}
+
+/* CALLOUTS */
+.callout{border-radius:9px;padding:16px 20px;margin:24px 0;display:flex;gap:13px;align-items:flex-start}
+.callout-tip{background:rgba(18,64,147,0.05);border:1px solid rgba(18,64,147,0.16);border-left:3px solid var(--navy)}
+.callout-warn{background:rgba(220,38,38,0.04);border:1px solid rgba(220,38,38,0.14);border-left:3px solid #dc2626}
+.callout-note{background:rgba(200,151,58,0.05);border:1px solid rgba(200,151,58,0.2);border-left:3px solid var(--gold)}
+.callout-icon{font-size:16px;flex-shrink:0;margin-top:1px;line-height:1}
+.callout p{font-size:13.5px!important;line-height:1.7!important;color:#374151!important;margin:0!important}
+
+/* EP NAV */
+.ep-nav{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:64px;padding-top:32px;border-top:1px solid var(--rule)}
+@media(max-width:500px){.ep-nav{grid-template-columns:1fr}}
+.ep-nav-card{display:flex;flex-direction:column;text-decoration:none;padding:20px 22px;border:1px solid var(--rule);border-radius:10px;background:var(--paper);transition:all 0.25s;gap:5px}
+.ep-nav-card:hover{border-color:rgba(18,64,147,0.3);background:var(--navy-dim);transform:translateY(-2px);box-shadow:0 6px 20px rgba(18,64,147,0.08)}
+.ep-nav-dir{font-family:var(--body);font-size:9px;font-weight:600;color:var(--navy);letter-spacing:1px;text-transform:uppercase}
+.ep-nav-title{font-family:var(--title);font-size:13px;font-weight:600;color:var(--ink);line-height:1.4}
+.ep-nav-card.next{align-items:flex-end;text-align:right}
+
+/* FOOTER */
+footer{background:var(--ink);padding:44px clamp(20px,5vw,60px);border-top:3px solid var(--navy)}
+.footer-inner{max-width:860px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.footer-logo{height:32px;width:auto;object-fit:contain;filter:brightness(0) invert(1);opacity:0.7}
+.footer-tagline{font-family:var(--body);font-size:11px;color:rgba(255,255,255,0.22);font-style:italic;margin-top:4px;font-weight:300}
+.footer-links{display:flex;gap:20px;flex-wrap:wrap}
+.footer-links a{font-family:var(--body);font-size:11px;font-weight:400;color:rgba(255,255,255,0.3);text-decoration:none;transition:color 0.2s}
+.footer-links a:hover{color:rgba(255,255,255,0.75)}
+
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.hero-content>*{animation:fadeUp 0.65s cubic-bezier(0.22,1,0.36,1) both}
+.hero-content>*:nth-child(1){animation-delay:0.05s}
+.hero-content>*:nth-child(2){animation-delay:0.1s}
+.hero-content>*:nth-child(3){animation-delay:0.15s}
+.hero-content>*:nth-child(4){animation-delay:0.2s}
+.hero-content>*:nth-child(5){animation-delay:0.25s}
+.hero-content>*:nth-child(6){animation-delay:0.3s}
+.hero-content>*:nth-child(7){animation-delay:0.35s}
+@media(max-width:640px){.nav-link:not(.nav-cta){display:none}}
+</style>
+</head>
+<body>
+
+<div class="progress-bar-fixed"><div class="progress-fill" id="prog"></div></div>
+
+<nav class="top">
+  <a href="field-manual-index.html" class="logo-wrap">
+    <img class="logo-img" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+  </a>
+  <div class="nav-right">
+    <a href="field-manual-index.html" class="nav-link">All Episodes</a>
+    <a href="field-manual-index.html#g2" class="nav-link nav-cta">⚡ Running Models & Inference</a>
+  </div>
+</nav>
+
+<nav class="section-nav" id="sectionNav"></nav>
+
+<header class="hero">
+  <div class="hero-bg">
+    <div class="hero-blob-1"></div>
+    <div class="hero-blob-2"></div>
+    <div class="hero-lines">
+      <svg viewBox="0 0 600 800" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+        <line x1="0" y1="200" x2="600" y2="0" stroke="#124093" stroke-width="1"/>
+        <line x1="0" y1="400" x2="600" y2="200" stroke="#124093" stroke-width="0.6"/>
+        <line x1="0" y1="600" x2="600" y2="400" stroke="#124093" stroke-width="0.4"/>
+        <circle cx="500" cy="150" r="120" stroke="#124093" stroke-width="0.8" fill="none"/>
+        <circle cx="500" cy="150" r="80" stroke="#124093" stroke-width="0.4" fill="none"/>
+        <circle cx="500" cy="150" r="40" stroke="#124093" stroke-width="0.3" fill="none"/>
+        <line x1="300" y1="0" x2="300" y2="800" stroke="#124093" stroke-width="0.4" stroke-dasharray="6,12"/>
+        <rect x="360" y="480" width="160" height="160" stroke="#124093" stroke-width="0.6" fill="none" transform="rotate(15 440 560)"/>
+      </svg>
+    </div>
+  </div>
+  <div class="hero-tokens" aria-hidden="true">
+    <div class="token-float-wrap">
+      <div class="tf tf-1">token</div>
+<div class="tf tf-2">model</div>
+<div class="tf tf-3">layer</div>
+<div class="tf tf-4">vector</div>
+<div class="tf tf-5">embed</div>
+<div class="tf tf-6">weight</div>
+<div class="tf tf-7">param</div>
+      <div class="tf-center">
+        <span class="big">CPU</span>
+        <span class="small">EP 08</span>
+      </div>
+    </div>
+  </div>
+  <div class="hero-content">
+    <nav class="breadcrumb">
+      <a href="field-manual-index.html">Field Manual</a>
+      <span class="sep">›</span>
+      <a href="field-manual-index.html#g2">⚡ Running Models & Inference</a>
+      <span class="sep">›</span>
+      <span class="cur">Episode 8</span>
+    </nav>
+    <div class="hero-eyebrow"><span class="dot"></span>MODULE 2 &nbsp;·&nbsp; Running Models & Inference</div>
+    <h1>CPU vs GPU Inference: Why Your Graphics Card Matters More Than Your Processor</h1>
+    <p class="hero-sub">A friend bought an RTX 4090 for ₹1,60,000. His wife thought it was for gaming. It wasn't. He runs Llama 3.1 70B on it.</p>
+    <div class="meta-row">
+      <div class="meta-item"><span>📅</span> Mar 2026</div>
+      <div class="meta-item"><span>⏱</span> 10 min read</div>
+      <div class="meta-item"><span>🎯</span> Episode 8 of 98</div>
+    </div>
+    <div class="tags-row"><span class="tag">GPU</span><span class="tag">CPU</span><span class="tag">Inference</span><span class="tag">Hardware</span></div>
+  </div>
+</header>
+
+<main class="layout">
+  <div class="toc">
+  <div class="toc-title">In this episode</div>
+  <ul class="toc-list"><li><a href="#s1"><span class="toc-num">1</span>CPU (M2 Pro)	GPU (RTX 4090)</a></li>
+<li><a href="#s2"><span class="toc-num">2</span>Why AI Needs Parallel Math</a></li>
+<li><a href="#s3"><span class="toc-num">3</span>CPU approach:  [core1: mul] [core2: mul] ... [core12: mul]</a></li>
+<li><a href="#s4"><span class="toc-num">4</span>GPU approach:  [core1: mul] [core2: mul] ... [core16384: mul]</a></li>
+<li><a href="#s5"><span class="toc-num">5</span>CUDA Cores: What They Actually Are</a></li>
+<li><a href="#s6"><span class="toc-num">6</span>Core Type	What It Does	Speed</a></li>
+<li><a href="#s7"><span class="toc-num">7</span>CUDA Core	General parallel math (add, multiply)	1x</a></li>
+<li><a href="#s8"><span class="toc-num">8</span>The GPU Lineup for AI</a></li>
+<li><a href="#s9"><span class="toc-num">9</span>GPU	VRAM	Bandwidth	FP16 TFLOPS	Price</a></li>
+<li><a href="#s10"><span class="toc-num">10</span>RTX 3060	12GB	360 GB/s	25.3	₹25,000</a></li>
+<li><a href="#s11"><span class="toc-num">11</span>RTX 4060 Ti	16GB	288 GB/s	22.1	₹35,000</a></li>
+<li><a href="#s12"><span class="toc-num">12</span>RTX 4090	24GB	1,008 GB/s	82.6	₹1,60,000</a></li>
+<li><a href="#s13"><span class="toc-num">13</span>The Real Bottleneck: Memory Bandwidth</a></li>
+<li><a href="#s14"><span class="toc-num">14</span>RTX 4090:  140 GB / 1,008 GB/s = 139 ms per token ≈ 7 tok/s</a></li>
+<li><a href="#s15"><span class="toc-num">15</span>VRAM: The Hard Limit</a></li>
+<li><a href="#s16"><span class="toc-num">16</span>VRAM usage = model weights + KV cache + activations + overhead</a></li>
+<li><a href="#s17"><span class="toc-num">17</span>When CPU Is Actually Fine</a></li>
+<li><a href="#s18"><span class="toc-num">18</span>Model Size	CPU OK?	GPU Recommended?	Why</a></li>
+<li><a href="#s19"><span class="toc-num">19</span>CPU sweet spots:</a></li>
+<li><a href="#s20"><span class="toc-num">20</span>The Apple Silicon Exception</a></li>
+<li><a href="#s21"><span class="toc-num">21</span>M2 Max (96GB):</a></li>
+<li><a href="#s22"><span class="toc-num">22</span>RTX 4090 (24GB):</a></li>
+<li><a href="#s23"><span class="toc-num">23</span>Putting It All Together: Decision Matrix</a></li>
+<li><a href="#s24"><span class="toc-num">24</span>Cost Comparison: Cloud GPU vs CPU</a></li>
+<li><a href="#s25"><span class="toc-num">25</span>Instance	Specs	Hourly Cost	70B Q4 Speed</a></li>
+<li><a href="#s26"><span class="toc-num">26</span>AWS c7g.4xlarge (CPU)	16 vCPU, 32GB	$0.58/hr	~1 tok/s</a></li>
+<li><a href="#s27"><span class="toc-num">27</span>AWS g5.xlarge (GPU)	A10G 24GB	$1.01/hr	~15 tok/s</a></li>
+<li><a href="#s28"><span class="toc-num">28</span>AWS p4d.24xlarge (GPU)	8× A100 80GB	$32.77/hr	~100 tok/s</a></li>
+<li><a href="#s29"><span class="toc-num">29</span>Try It Yourself — Measure Your Hardware</a></li>
+<li><a href="#s30"><span class="toc-num">30</span>Install llama.cpp (covered in Episode 10)</a></li>
+<li><a href="#s31"><span class="toc-num">31</span>Then benchmark your hardware:</a></li>
+<li><a href="#s32"><span class="toc-num">32</span>CPU-only inference</a></li>
+<li><a href="#s33"><span class="toc-num">33</span>GPU inference (offload all layers)</a></li>
+<li><a href="#s34"><span class="toc-num">34</span>Partial GPU offload (if model doesn't fit in VRAM)</a></li>
+<li><a href="#s35"><span class="toc-num">35</span>Practical Takeaways</a></li>
+<li><a href="#s36"><span class="toc-num">36</span>Ep 7: Why LLMs Hallucinate</a></li>
+<li><a href="#s37"><span class="toc-num">37</span>Ep 9: Quantization</a></li>
+<li><a href="#s38"><span class="toc-num">38</span>Next: Episode 9 — Quantization</a></li>
+</ul>
+</div>
+  <article class="prose" id="s0">
+<p>A friend bought an RTX 4090 for ₹1,60,000. His wife thought it was for gaming. It wasn't. He runs Llama 3.1 70B on it.</p>
+<p>Another friend tried running the same model on his ₹80,000 laptop with a Ryzen 9 and 32GB RAM. No GPU. It works — at 0.8 tokens per second. That's roughly one word every 1.2 seconds. Reading the response is faster than waiting for it.</p>
+<p>Why is a "graphics card" 50x faster at AI than a top-tier processor? And when is CPU actually fine?</p>
+<p>The Fundamental Difference: Few Smart Workers vs. Many Simple Workers</p>
+<p>A CPU is like having 8 extremely skilled engineers. Each one can handle complex logic, branching decisions, and varied tasks. Brilliant generalists.</p>
+<p>A GPU is like having 16,000 factory workers. Each one can only do one simple math operation. But they all work simultaneously.</p>
+<h2 id="s1">CPU (M2 Pro)	GPU (RTX 4090)</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>Cores</th><th>12</th><th>16,384 CUDA cores</th></tr></thead><tbody><tr><td>Clock speed</td><td>3.5 GHz</td><td>2.5 GHz</td></tr><tr><td>Good at</td><td>Complex, varied logic</td><td>Same operation on tons of data</td></tr><tr><td>Memory</td><td>Shared system RAM (up to 192GB)</td><td>Dedicated VRAM (24GB)</td></tr><tr><td>Memory bandwidth</td><td>~200 GB/s (M2 Pro)</td><td>~1,000 GB/s</td></tr></tbody></table></div>
+<p>That last row — memory bandwidth — is the real story. Not cores. Not clock speed. Memory bandwidth.</p>
+<div class="callout callout-tip"><span class="callout-icon">⚡</span><p></p></div>
+<h2 id="s2">Why AI Needs Parallel Math</h2><div class="section-rule"></div>
+<p>Matrix multiplication. That's 90%+ of what happens during inference.</p>
+<p>From Episode 3, you know a model is billions of numbers (parameters) organized in matrices. Running inference means multiplying your input vector by these matrices, layer by layer.</p>
+<p>A single matrix multiplication for a 70B model:</p>
+<p>Input: [1 × 8192] vector</p>
+<p>Weight matrix: [8192 × 8192]</p>
+<p>Output: [1 × 8192] vector</p>
+<p>Operations needed: 8192 × 8192 = 67 million multiply-adds</p>
+<p>And that's ONE layer. A 70B model has 80 layers, each with multiple matrix multiplications. Every single token requires billions of arithmetic operations.</p>
+<p>A CPU does these billions of operations mostly sequentially — a few at a time across 8-12 cores. A GPU does them in massive parallel batches across 16,000+ cores. Each core is dumber, but there are thousands of them hitting the same problem simultaneously.</p>
+<h2 id="s3">CPU approach:  [core1: mul] [core2: mul] ... [core12: mul]</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Then next batch... then next... (millions of batches)</code></pre></div>
+</div>
+<h2 id="s4">GPU approach:  [core1: mul] [core2: mul] ... [core16384: mul]</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Then next batch... (thousands of batches)</code></pre></div>
+</div>
+<p>🔧</p>
+<h2 id="s5">CUDA Cores: What They Actually Are</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>CUDA (Compute Unified Device Architecture) is NVIDIA's parallel computing platform. CUDA cores are the individual processing units on an NVIDIA GPU.</code></pre></div>
+</div>
+<p>But not all CUDA cores are equal. Modern GPUs also have Tensor Cores — specialized circuits designed specifically for matrix multiplication:</p>
+<h2 id="s6">Core Type	What It Does	Speed</h2><div class="section-rule"></div>
+<h2 id="s7">CUDA Core	General parallel math (add, multiply)	1x</h2><div class="section-rule"></div>
+<p>Tensor Core	Matrix multiply-accumulate (MMA)	8-16x for AI workloads</p>
+<p>An RTX 4090 has 16,384 CUDA cores AND 512 Tensor Cores. For AI inference, the Tensor Cores do most of the heavy lifting.</p>
+<h2 id="s8">The GPU Lineup for AI</h2><div class="section-rule"></div>
+<h2 id="s9">GPU	VRAM	Bandwidth	FP16 TFLOPS	Price</h2><div class="section-rule"></div>
+<h2 id="s10">RTX 3060	12GB	360 GB/s	25.3	₹25,000</h2><div class="section-rule"></div>
+<h2 id="s11">RTX 4060 Ti	16GB	288 GB/s	22.1	₹35,000</h2><div class="section-rule"></div>
+<h2 id="s12">RTX 4090	24GB	1,008 GB/s	82.6	₹1,60,000</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>A100</th><th>80GB</th><th>2,039 GB/s</th><th>312</th><th>₹8,00,000+</th></tr></thead><tbody><tr><td>H100</td><td>80GB</td><td>3,350 GB/s</td><td>990</td><td>₹25,00,000+</td></tr></tbody></table></div>
+<p>For local inference, the RTX 4090 is the sweet spot. For production, it's A100 or H100.</p>
+<p>📊</p>
+<h2 id="s13">The Real Bottleneck: Memory Bandwidth</h2><div class="section-rule"></div>
+<p>Here's the counterintuitive truth: inference is usually limited by memory speed, not compute speed.</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Why? The model weights need to be read from memory for every single token generated. A 70B model in FP16 is ~140 GB. For each token, the GPU needs to read through those 140 GB of weights.</code></pre></div>
+</div>
+<p>Token generation time ≈ model_size / memory_bandwidth</p>
+<h2 id="s14">RTX 4090:  140 GB / 1,008 GB/s = 139 ms per token ≈ 7 tok/s</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>A100:      140 GB / 2,039 GB/s =  69 ms per token ≈ 14 tok/s
+H100:      140 GB / 3,350 GB/s =  42 ms per token ≈ 24 tok/s
+CPU (DDR5): 140 GB / 200 GB/s = 700 ms per token ≈ 1.4 tok/s (M2 Pro)</code></pre></div>
+</div>
+<p>That's why the CPU is 10x slower — not because of compute, but because system RAM is 10x slower than VRAM. The arithmetic is fast enough on both. Getting the data to the arithmetic units is the bottleneck.</p>
+<p>This is called being memory-bandwidth bound — and it's the default state for single-user inference.</p>
+<h2 id="s15">VRAM: The Hard Limit</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>VRAM (Video RAM) is the GPU's dedicated memory. Unlike system RAM, it's right next to the GPU cores — that's why it's so fast.</code></pre></div>
+</div>
+<p>But it's limited. And everything needs to fit:</p>
+<h2 id="s16">VRAM usage = model weights + KV cache + activations + overhead</h2><div class="section-rule"></div>
+<p>For Llama 3.1 70B on 24GB GPU:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Model weights (FP16): 140 GB  ← DOESN'T FIT.</code></pre></div>
+</div>
+<p>Model weights (Q4):    35 GB  ← Still doesn't fit in 24GB.</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Model weights (Q4):    35 GB across 2× RTX 4090 = 17.5 GB each ✓</code></pre></div>
+</div>
+<p>This is why quantization matters (next episode). If you can't fit the model in VRAM, you have two choices:</p>
+<p>Quantize — reduce precision, shrink the model</p>
+<p>Offload to CPU — spill layers to system RAM (much slower)</p>
+<p>Use multiple GPUs — split the model across devices</p>
+<p>Option 2 is why CPU inference "works" but is painfully slow. The model lives in system RAM, and system RAM is 10x slower than VRAM.</p>
+<div class="callout callout-tip"><span class="callout-icon">💡</span><p></p></div>
+<h2 id="s17">When CPU Is Actually Fine</h2><div class="section-rule"></div>
+<p>GPU isn't always necessary. Here's the honest breakdown:</p>
+<h2 id="s18">Model Size	CPU OK?	GPU Recommended?	Why</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>< 3B params</th><th>✅ Yes</th><th>Nice to have</th><th>Small enough, CPU handles it at ~10-20 tok/s</th></tr></thead><tbody><tr><td>3-7B params</td><td>⚠️ Usable</td><td>✅ Yes</td><td>CPU gives 3-8 tok/s, GPU gives 30-50 tok/s</td></tr><tr><td>7-13B params</td><td>⚠️ Slow</td><td>✅ Yes</td><td>CPU gives 1-4 tok/s, barely usable</td></tr><tr><td>13-70B params</td><td>❌ Painful</td><td>✅ Required</td><td>CPU gives <1 tok/s, GPU gives 5-20 tok/s</td></tr><tr><td>70B+ params</td><td>❌ No</td><td>✅✅ Multiple GPUs</td><td>Won't fit in one GPU even quantized</td></tr></tbody></table></div>
+<h2 id="s19">CPU sweet spots:</h2><div class="section-rule"></div>
+<p>Tiny models for edge devices — running a 1B model on a Raspberry Pi for local text classification</p>
+<p>Batch processing where latency doesn't matter — process 10,000 documents overnight on a 48-core server</p>
+<p>Apple Silicon Macs — M1/M2/M3/M4 have unified memory with decent bandwidth (~68 GB/s for base M1 up to 800+ GB/s for M4 Ultra), blurring the CPU/GPU line</p>
+<p>Quick experimentation — just want to test a prompt, don't care about speed</p>
+<h2 id="s20">The Apple Silicon Exception</h2><div class="section-rule"></div>
+<p>Apple's M-series chips deserve special mention. They have unified memory — the CPU and GPU share the same RAM pool. An M2 Max with 96GB unified memory can load a 70B quantized model entirely in "GPU-accessible" memory.</p>
+<h2 id="s21">M2 Max (96GB):</h2><div class="section-rule"></div>
+<p>Memory bandwidth: ~400 GB/s</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Llama 3.1 70B Q4: ~35 GB → fits in memory</code></pre></div>
+</div>
+<p>Inference speed: ~10-15 tok/s</p>
+<h2 id="s22">RTX 4090 (24GB):</h2><div class="section-rule"></div>
+<p>Can't even fit the 35GB model without offloading!</p>
+<p>For local inference, high-memory Apple Silicon is surprisingly competitive. Not as fast per-token as a datacenter GPU, but it can handle models that don't fit on consumer NVIDIA cards.</p>
+<p>🔬</p>
+<h2 id="s23">Putting It All Together: Decision Matrix</h2><div class="section-rule"></div>
+<p>Do you need real-time responses (< 100ms)?</p>
+<p>├── Yes → GPU required (or high-end Apple Silicon)</p>
+<p>└── No → How big is the model?</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>├── &lt; 7B → CPU is fine, GPU is faster
+    ├── 7-30B → GPU strongly recommended
+    └── 30B+ → GPU required, possibly multiple</code></pre></div>
+</div>
+<h2 id="s24">Cost Comparison: Cloud GPU vs CPU</h2><div class="section-rule"></div>
+<h2 id="s25">Instance	Specs	Hourly Cost	70B Q4 Speed</h2><div class="section-rule"></div>
+<h2 id="s26">AWS c7g.4xlarge (CPU)	16 vCPU, 32GB	$0.58/hr	~1 tok/s</h2><div class="section-rule"></div>
+<h2 id="s27">AWS g5.xlarge (GPU)	A10G 24GB	$1.01/hr	~15 tok/s</h2><div class="section-rule"></div>
+<h2 id="s28">AWS p4d.24xlarge (GPU)	8× A100 80GB	$32.77/hr	~100 tok/s</h2><div class="section-rule"></div>
+<p>The GPU instance is 15x faster at only 1.7x the cost. Per-token, GPU is almost 10x cheaper than CPU.</p>
+<p>🛡️</p>
+<h2 id="s29">Try It Yourself — Measure Your Hardware</h2><div class="section-rule"></div>
+<p>bash</p>
+<h2 id="s30">Install llama.cpp (covered in Episode 10)</h2><div class="section-rule"></div>
+<h2 id="s31">Then benchmark your hardware:</h2><div class="section-rule"></div>
+<h2 id="s32">CPU-only inference</h2><div class="section-rule"></div>
+<p>./llama-bench -m model.gguf -t 8 -ngl 0</p>
+<h2 id="s33">GPU inference (offload all layers)</h2><div class="section-rule"></div>
+<p>./llama-bench -m model.gguf -ngl 99</p>
+<h2 id="s34">Partial GPU offload (if model doesn't fit in VRAM)</h2><div class="section-rule"></div>
+<p>./llama-bench -m model.gguf -ngl 20  # 20 layers on GPU</p>
+<p>The -ngl flag (number of GPU layers) is your main tuning knob. More layers on GPU = faster, until you run out of VRAM.</p>
+<p>📦</p>
+<h2 id="s35">Practical Takeaways</h2><div class="section-rule"></div>
+<p>GPUs are faster because of memory bandwidth, not just more cores — getting data to the compute units is the bottleneck</p>
+<p>VRAM is the hard constraint — if the model doesn't fit, you're offloading to slow system RAM</p>
+<p>Tensor Cores do the real AI work — regular CUDA cores are secondary for inference</p>
+<p>CPU is fine for small models (< 7B) — don't overthink hardware for quick experiments</p>
+<p>Apple Silicon blurs the line — unified memory with decent bandwidth makes Macs surprisingly good for local AI</p>
+<p>Per-token, GPU is much cheaper than CPU — even though GPU instances cost more per hour</p>
+<p>🚀</p>
+<p>What's Next?</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Episode 9: Quantization — We keep saying "70B model = 140 GB." But people run it on 24 GB cards. How? By squeezing each parameter from 16 bits down to 4 bits. What does that trade away? When does quality break? GGUF, GPTQ, AWQ — the alphabet soup decoded.</code></pre></div>
+</div>
+<p>← Previous</p>
+<h2 id="s36">Ep 7: Why LLMs Hallucinate</h2><div class="section-rule"></div>
+<p>Next →</p>
+<h2 id="s37">Ep 9: Quantization</h2><div class="section-rule"></div>
+<h2 id="s38">Next: Episode 9 — Quantization</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Llama 3.1 70B needs 140 GB in FP16. Your GPU has 24 GB. Math says it doesn't fit. Quantization says hold my beer.</code></pre></div>
+</div>
+<p>This is part of a 98-episode series covering AI engineering from tokens to production deployment.</p>
+  </article>
+  <div class="ep-nav">
+    <a href="episode-07.html" class="ep-nav-card">
+      <span class="ep-nav-dir">← Previous</span>
+      <span class="ep-nav-title">Ep 7: Why LLMs Hallucinate: Confidence Without Correctness</span>
+    </a>
+    <a href="episode-09.html" class="ep-nav-card next">
+      <span class="ep-nav-dir">Next Episode →</span>
+      <span class="ep-nav-title">Ep 9: Quantization: Running 70B Models on Your Laptop</span>
+    </a>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <img class="footer-logo" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+      <div class="footer-tagline">98 Field Manual · Build with AI, not just use it · Free forever</div>
+    </div>
+    <div class="footer-links">
+      <a href="field-manual-index.html">All Episodes</a>
+      <a href="field-manual-index.html#g2">Running Models & Inference</a>
+      <a href="episode-07.html">← Ep 7</a>
+      <a href="episode-09.html">Ep 9 →</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+const prog=document.getElementById('prog');
+window.addEventListener('scroll',()=>{
+  const total=document.documentElement.scrollHeight-window.innerHeight;
+  prog.style.width=Math.min(100,(window.scrollY/total)*100)+'%';
+},{passive:true});
+
+// Build section nav dots from h2s
+const h2s=document.querySelectorAll('.prose h2');
+const sNav=document.getElementById('sectionNav');
+const dots=[];
+h2s.forEach((h,i)=>{
+  const btn=document.createElement('button');
+  btn.className='snav-dot';
+  btn.setAttribute('data-label',h.textContent.trim().substring(0,28));
+  btn.onclick=()=>h.scrollIntoView({behavior:'smooth',block:'start'});
+  sNav.appendChild(btn);
+  dots.push({btn,h});
+});
+
+const dotObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      const idx=dots.findIndex(d=>d.h===e.target);
+      if(idx>-1) dots.forEach((d,i)=>d.btn.classList.toggle('active',i===idx));
+    }
+  });
+},{rootMargin:'-30% 0px -60% 0px'});
+dots.forEach(d=>dotObs.observe(d.h));
+
+// Scroll reveal
+const revObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='translateY(0)';}});
+},{threshold:0.08});
+document.querySelectorAll('.toc,.callout,.table-wrap,.code-block,.ep-nav-card').forEach(el=>{
+  el.style.opacity='0';
+  el.style.transform='translateY(14px)';
+  el.style.transition='opacity 0.55s ease,transform 0.55s ease';
+  revObs.observe(el);
+});
+</script>
+</body>
+</html>

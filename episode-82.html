@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ep 82: Webhooks & Event-Driven AI: Async Architectures That Scale</title>
+<meta name="description" content="Request/response works for chatbots. Production AI systems aren't chatbots. They need event-driven architectures.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,300&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0d0d1a;--page:#ffffff;--paper:#f8f9ff;
+  --navy:#124093;--navy-dim:rgba(18,64,147,0.07);--navy-mid:rgba(18,64,147,0.15);
+  --red:#e2190e;--gold:#c8973a;--muted:#6b7280;--rule:#e5e7ef;--code-bg:#0d0d1f;
+  --title:'Roboto',sans-serif;--body:'Poppins',sans-serif;--mono:'DM Mono',monospace;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--page);color:var(--ink);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:#fff}
+::-webkit-scrollbar-thumb{background:var(--navy);border-radius:2px}
+
+/* NAV */
+nav.top{position:sticky;top:0;z-index:200;background:#fff;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(20px,5vw,60px);border-bottom:1px solid var(--rule);box-shadow:0 1px 12px rgba(0,0,0,0.05)}
+.logo-wrap{display:flex;align-items:center;text-decoration:none}
+.logo-img{height:38px;width:auto;object-fit:contain;display:block}
+.nav-right{display:flex;align-items:center;gap:6px}
+.nav-link{font-family:var(--body);font-size:11.5px;font-weight:500;color:var(--muted);text-decoration:none;padding:6px 14px;border-radius:6px;transition:all 0.2s}
+.nav-link:hover{color:var(--navy);background:var(--navy-dim)}
+.nav-cta{background:var(--navy)!important;color:#fff!important}
+.nav-cta:hover{background:#1a52c0!important;color:#fff!important}
+
+/* PROGRESS */
+.progress-bar-fixed{position:fixed;top:60px;left:0;right:0;height:2.5px;background:rgba(18,64,147,0.1);z-index:199}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--navy),#4f7ff7);width:0%;transition:width 0.1s;border-radius:0 2px 2px 0}
+
+/* HERO */
+.hero{background:#fff;position:relative;overflow:hidden;min-height:88vh;display:flex;flex-direction:column;justify-content:center}
+.hero-bg{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.hero-blob-1{position:absolute;top:-120px;right:-120px;width:700px;height:700px;background:radial-gradient(circle at 60% 40%,rgba(18,64,147,0.07) 0%,rgba(18,64,147,0.03) 40%,transparent 70%);border-radius:50%}
+.hero-blob-2{position:absolute;bottom:-80px;left:-80px;width:500px;height:500px;background:radial-gradient(circle,rgba(79,127,247,0.06) 0%,transparent 65%);border-radius:50%}
+.hero-lines{position:absolute;top:0;right:0;width:45%;height:100%;opacity:0.06}
+.hero-lines svg{width:100%;height:100%}
+.hero-tokens{position:absolute;top:0;right:0;width:46%;height:100%;display:flex;align-items:center;justify-content:center}
+.token-float-wrap{position:relative;width:360px;height:360px}
+.tf{position:absolute;font-family:var(--mono);font-size:13px;font-weight:500;padding:8px 16px;border-radius:8px;white-space:nowrap;animation:float-anim 6s ease-in-out infinite;box-shadow:0 4px 20px rgba(0,0,0,0.08)}
+.tf-1{top:20px;left:60px;background:rgba(18,64,147,0.09);color:#124093;border:1px solid rgba(18,64,147,0.18);animation-delay:0s}
+.tf-2{top:70px;right:20px;background:rgba(79,127,247,0.09);color:#2563eb;border:1px solid rgba(79,127,247,0.2);animation-delay:0.8s}
+.tf-3{top:140px;left:20px;background:rgba(16,185,129,0.08);color:#059669;border:1px solid rgba(16,185,129,0.18);animation-delay:1.6s}
+.tf-4{top:170px;right:50px;background:rgba(168,85,247,0.08);color:#7c3aed;border:1px solid rgba(168,85,247,0.18);animation-delay:0.4s}
+.tf-5{bottom:140px;left:80px;background:rgba(234,179,8,0.08);color:#b45309;border:1px solid rgba(234,179,8,0.2);animation-delay:1.2s}
+.tf-6{bottom:90px;right:30px;background:rgba(236,72,153,0.08);color:#db2777;border:1px solid rgba(236,72,153,0.2);animation-delay:2s}
+.tf-7{bottom:30px;left:40px;background:rgba(239,68,68,0.08);color:#dc2626;border:1px solid rgba(239,68,68,0.18);animation-delay:0.6s}
+.tf-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:110px;height:110px;background:var(--navy);border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;box-shadow:0 12px 40px rgba(18,64,147,0.3);animation:pulse-center 3s ease-in-out infinite}
+.tf-center .big{font-family:var(--title);font-size:28px;font-weight:900;color:#fff;line-height:1}
+.tf-center .small{font-family:var(--body);font-size:9px;font-weight:500;color:rgba(255,255,255,0.6);letter-spacing:1.5px;text-transform:uppercase}
+@keyframes float-anim{0%,100%{transform:translateY(0px)}50%{transform:translateY(-10px)}}
+@keyframes pulse-center{0%,100%{box-shadow:0 12px 40px rgba(18,64,147,0.3)}50%{box-shadow:0 12px 60px rgba(18,64,147,0.5)}}
+.hero-content{position:relative;z-index:2;width:54%;padding:clamp(48px,8vw,96px) clamp(24px,5vw,72px) clamp(48px,8vw,96px)}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:5px 14px;background:var(--navy-dim);border:1px solid rgba(18,64,147,0.18);border-radius:100px;margin-bottom:22px;font-family:var(--body);font-size:10px;font-weight:600;color:var(--navy);letter-spacing:1.2px;text-transform:uppercase}
+.hero-eyebrow .dot{width:5px;height:5px;background:var(--navy);border-radius:50%}
+.hero h1{font-family:var(--title);font-size:clamp(28px,4.5vw,52px);font-weight:900;color:var(--ink);line-height:1.08;letter-spacing:-1.2px;margin-bottom:20px}
+.hero h1 .line2{display:block;color:var(--navy)}
+.hero-sub{font-family:var(--body);font-size:clamp(13px,1.6vw,15px);font-weight:300;color:#4b5563;line-height:1.85;max-width:500px;margin-bottom:34px}
+.breadcrumb{display:flex;align-items:center;gap:7px;margin-bottom:28px;font-family:var(--mono);font-size:10px;color:#9ca3af}
+.breadcrumb a{color:inherit;text-decoration:none;transition:color 0.2s}
+.breadcrumb a:hover{color:var(--navy)}
+.breadcrumb .sep{color:#d1d5db}
+.breadcrumb .cur{color:#6b7280}
+.meta-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:14px 20px;background:var(--paper);border:1px solid var(--rule);border-radius:10px;margin-bottom:24px}
+.meta-item{font-family:var(--body);font-size:10.5px;font-weight:500;color:var(--muted);display:flex;align-items:center;gap:5px}
+.tags-row{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-family:var(--body);font-size:10px;font-weight:500;color:var(--navy);background:var(--navy-dim);padding:4px 11px;border-radius:100px;border:1px solid rgba(18,64,147,0.15)}
+@media(max-width:900px){.hero{min-height:auto;padding-bottom:48px}.hero-content{width:100%;padding:48px 24px 36px}.hero-tokens{display:none}.hero-lines{display:none}}
+
+/* SECTION NAV DOTS */
+.section-nav{position:fixed;right:clamp(12px,2vw,24px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:9px;z-index:100}
+.snav-dot{width:7px;height:7px;border-radius:50%;background:#d1d5db;border:none;padding:0;cursor:pointer;transition:all 0.3s;position:relative}
+.snav-dot::after{content:attr(data-label);position:absolute;right:16px;top:50%;transform:translateY(-50%);font-family:var(--body);font-size:9px;font-weight:500;color:var(--ink);background:#fff;padding:3px 9px;border-radius:4px;border:1px solid var(--rule);box-shadow:0 2px 8px rgba(0,0,0,0.06);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.2s}
+.snav-dot:hover::after{opacity:1}
+.snav-dot.active{background:var(--navy);transform:scale(1.5)}
+.snav-dot:hover:not(.active){background:rgba(18,64,147,0.4)}
+@media(max-width:768px){.section-nav{display:none}}
+
+/* LAYOUT */
+.layout{max-width:860px;margin:0 auto;padding:clamp(40px,6vw,68px) clamp(20px,5vw,56px) 80px}
+
+/* TOC */
+.toc{background:var(--paper);border:1px solid var(--rule);border-left:4px solid var(--navy);border-radius:10px;padding:22px 26px;margin-bottom:52px}
+.toc-title{font-family:var(--title);font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
+.toc-list{list-style:none;display:flex;flex-direction:column;gap:3px}
+.toc-list li a{display:flex;align-items:center;gap:12px;text-decoration:none;padding:6px 0;font-family:var(--body);font-size:13px;font-weight:400;color:var(--ink);transition:color 0.2s}
+.toc-list li a:hover{color:var(--navy)}
+.toc-num{font-family:var(--mono);font-size:9px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* PROSE */
+.prose{line-height:1.85}
+.prose h2{font-family:var(--title);font-size:clamp(18px,2.5vw,23px);font-weight:700;color:var(--ink);letter-spacing:-0.4px;margin:52px 0 8px;line-height:1.2;scroll-margin-top:80px;padding-left:18px;position:relative}
+.prose h2::before{content:'';position:absolute;left:0;top:5px;bottom:5px;width:3px;background:var(--navy);border-radius:2px}
+.prose h2:first-child{margin-top:0}
+.prose h3{font-family:var(--title);font-size:14px;font-weight:700;color:var(--ink);margin:26px 0 8px}
+.section-rule{width:36px;height:2px;background:var(--navy);border-radius:2px;margin:8px 0 22px 18px;opacity:0.4}
+.prose p{font-family:var(--body);font-size:clamp(13.5px,1.7vw,15px);line-height:1.88;color:#374151;margin-bottom:16px;font-weight:300}
+.prose p strong{font-weight:600;color:var(--ink)}
+.prose ul,.prose ol{list-style:none;padding:0;margin:4px 0 20px}
+.prose ul li,.prose ol li{font-family:var(--body);font-size:clamp(13.5px,1.7vw,14.5px);line-height:1.8;color:#374151;padding:4px 0 4px 26px;position:relative;font-weight:300}
+.prose ul li::before{content:'';position:absolute;left:5px;top:14px;width:5px;height:5px;background:var(--navy);border-radius:50%;opacity:0.55}
+.prose ol{counter-reset:li}
+.prose ol li{counter-increment:li}
+.prose ol li::before{content:counter(li);position:absolute;left:0;top:5px;font-family:var(--mono);font-size:8px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.ic{font-family:var(--mono);font-size:12.5px;background:var(--navy-dim);color:var(--navy);padding:1.5px 6px;border-radius:4px;border:1px solid rgba(18,64,147,0.15)}
+
+/* CODE */
+.code-block{background:var(--code-bg);border-radius:10px;margin:24px 0;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.12),0 0 0 1px rgba(18,64,147,0.1)}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.02)}
+.code-dots{display:flex;gap:5px}
+.cd{width:10px;height:10px;border-radius:50%}
+.cd-r{background:#ff5f56}.cd-y{background:#ffbd2e}.cd-g{background:#27c93f}
+.code-filename{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,0.25)}
+.code-lang{font-family:var(--mono);font-size:9px;color:rgba(91,140,247,0.6);letter-spacing:1px;text-transform:uppercase}
+.code-body{padding:20px 22px;overflow-x:auto}
+.code-body pre{margin:0}
+.code-body code{font-family:var(--mono);font-size:12.5px;line-height:1.9;color:#c9d4f5}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;margin:24px 0;border-radius:10px;border:1px solid var(--rule);box-shadow:0 2px 12px rgba(0,0,0,0.04)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:var(--ink)}
+thead th{padding:12px 16px;text-align:left;font-family:var(--body);font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,0.45)}
+thead th:first-child{color:#6b9fff}
+tbody tr{border-bottom:1px solid var(--rule);transition:background 0.15s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--paper)}
+tbody td{padding:10px 16px;font-family:var(--body);font-size:13px;color:#374151;font-weight:300;line-height:1.5}
+tbody td:first-child{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--navy)}
+
+/* CALLOUTS */
+.callout{border-radius:9px;padding:16px 20px;margin:24px 0;display:flex;gap:13px;align-items:flex-start}
+.callout-tip{background:rgba(18,64,147,0.05);border:1px solid rgba(18,64,147,0.16);border-left:3px solid var(--navy)}
+.callout-warn{background:rgba(220,38,38,0.04);border:1px solid rgba(220,38,38,0.14);border-left:3px solid #dc2626}
+.callout-note{background:rgba(200,151,58,0.05);border:1px solid rgba(200,151,58,0.2);border-left:3px solid var(--gold)}
+.callout-icon{font-size:16px;flex-shrink:0;margin-top:1px;line-height:1}
+.callout p{font-size:13.5px!important;line-height:1.7!important;color:#374151!important;margin:0!important}
+
+/* EP NAV */
+.ep-nav{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:64px;padding-top:32px;border-top:1px solid var(--rule)}
+@media(max-width:500px){.ep-nav{grid-template-columns:1fr}}
+.ep-nav-card{display:flex;flex-direction:column;text-decoration:none;padding:20px 22px;border:1px solid var(--rule);border-radius:10px;background:var(--paper);transition:all 0.25s;gap:5px}
+.ep-nav-card:hover{border-color:rgba(18,64,147,0.3);background:var(--navy-dim);transform:translateY(-2px);box-shadow:0 6px 20px rgba(18,64,147,0.08)}
+.ep-nav-dir{font-family:var(--body);font-size:9px;font-weight:600;color:var(--navy);letter-spacing:1px;text-transform:uppercase}
+.ep-nav-title{font-family:var(--title);font-size:13px;font-weight:600;color:var(--ink);line-height:1.4}
+.ep-nav-card.next{align-items:flex-end;text-align:right}
+
+/* FOOTER */
+footer{background:var(--ink);padding:44px clamp(20px,5vw,60px);border-top:3px solid var(--navy)}
+.footer-inner{max-width:860px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.footer-logo{height:32px;width:auto;object-fit:contain;filter:brightness(0) invert(1);opacity:0.7}
+.footer-tagline{font-family:var(--body);font-size:11px;color:rgba(255,255,255,0.22);font-style:italic;margin-top:4px;font-weight:300}
+.footer-links{display:flex;gap:20px;flex-wrap:wrap}
+.footer-links a{font-family:var(--body);font-size:11px;font-weight:400;color:rgba(255,255,255,0.3);text-decoration:none;transition:color 0.2s}
+.footer-links a:hover{color:rgba(255,255,255,0.75)}
+
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.hero-content>*{animation:fadeUp 0.65s cubic-bezier(0.22,1,0.36,1) both}
+.hero-content>*:nth-child(1){animation-delay:0.05s}
+.hero-content>*:nth-child(2){animation-delay:0.1s}
+.hero-content>*:nth-child(3){animation-delay:0.15s}
+.hero-content>*:nth-child(4){animation-delay:0.2s}
+.hero-content>*:nth-child(5){animation-delay:0.25s}
+.hero-content>*:nth-child(6){animation-delay:0.3s}
+.hero-content>*:nth-child(7){animation-delay:0.35s}
+@media(max-width:640px){.nav-link:not(.nav-cta){display:none}}
+</style>
+</head>
+<body>
+
+<div class="progress-bar-fixed"><div class="progress-fill" id="prog"></div></div>
+
+<nav class="top">
+  <a href="field-manual-index.html" class="logo-wrap">
+    <img class="logo-img" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+  </a>
+  <div class="nav-right">
+    <a href="field-manual-index.html" class="nav-link">All Episodes</a>
+    <a href="field-manual-index.html#g12" class="nav-link nav-cta">📡 Protocols & Standards</a>
+  </div>
+</nav>
+
+<nav class="section-nav" id="sectionNav"></nav>
+
+<header class="hero">
+  <div class="hero-bg">
+    <div class="hero-blob-1"></div>
+    <div class="hero-blob-2"></div>
+    <div class="hero-lines">
+      <svg viewBox="0 0 600 800" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+        <line x1="0" y1="200" x2="600" y2="0" stroke="#124093" stroke-width="1"/>
+        <line x1="0" y1="400" x2="600" y2="200" stroke="#124093" stroke-width="0.6"/>
+        <line x1="0" y1="600" x2="600" y2="400" stroke="#124093" stroke-width="0.4"/>
+        <circle cx="500" cy="150" r="120" stroke="#124093" stroke-width="0.8" fill="none"/>
+        <circle cx="500" cy="150" r="80" stroke="#124093" stroke-width="0.4" fill="none"/>
+        <circle cx="500" cy="150" r="40" stroke="#124093" stroke-width="0.3" fill="none"/>
+        <line x1="300" y1="0" x2="300" y2="800" stroke="#124093" stroke-width="0.4" stroke-dasharray="6,12"/>
+        <rect x="360" y="480" width="160" height="160" stroke="#124093" stroke-width="0.6" fill="none" transform="rotate(15 440 560)"/>
+      </svg>
+    </div>
+  </div>
+  <div class="hero-tokens" aria-hidden="true">
+    <div class="token-float-wrap">
+      <div class="tf tf-1">token</div>
+<div class="tf tf-2">model</div>
+<div class="tf tf-3">layer</div>
+<div class="tf tf-4">vector</div>
+<div class="tf tf-5">embed</div>
+<div class="tf tf-6">weight</div>
+<div class="tf tf-7">param</div>
+      <div class="tf-center">
+        <span class="big">WEBH</span>
+        <span class="small">EP 82</span>
+      </div>
+    </div>
+  </div>
+  <div class="hero-content">
+    <nav class="breadcrumb">
+      <a href="field-manual-index.html">Field Manual</a>
+      <span class="sep">›</span>
+      <a href="field-manual-index.html#g12">📡 Protocols & Standards</a>
+      <span class="sep">›</span>
+      <span class="cur">Episode 82</span>
+    </nav>
+    <div class="hero-eyebrow"><span class="dot"></span>MODULE 12 &nbsp;·&nbsp; Protocols & Standards</div>
+    <h1>Webhooks & Event-Driven AI: Async Architectures That Scale</h1>
+    <p class="hero-sub">Request/response works for chatbots. Production AI systems aren't chatbots. They need event-driven architectures.</p>
+    <div class="meta-row">
+      <div class="meta-item"><span>📅</span> Mar 2026</div>
+      <div class="meta-item"><span>⏱</span> 10 min read</div>
+      <div class="meta-item"><span>🎯</span> Episode 82 of 98</div>
+    </div>
+    <div class="tags-row"><span class="tag">Webhooks</span><span class="tag">Event-Driven</span><span class="tag">Async</span><span class="tag">Architecture</span></div>
+  </div>
+</header>
+
+<main class="layout">
+  <div class="toc">
+  <div class="toc-title">In this episode</div>
+  <ul class="toc-list"><li><a href="#s1"><span class="toc-num">1</span>The Problem with Synchronous AI</a></li>
+<li><a href="#s2"><span class="toc-num">2</span>Most AI applications start synchronous:</a></li>
+<li><a href="#s3"><span class="toc-num">3</span>The simple way — synchronous, blocking</a></li>
+<li><a href="#s4"><span class="toc-num">4</span>This breaks at scale:</a></li>
+<li><a href="#s5"><span class="toc-num">5</span>Concurrent Users	Response Time	Problem</a></li>
+<li><a href="#s6"><span class="toc-num">6</span>Event-Driven Architecture: The Solution</a></li>
+<li><a href="#s7"><span class="toc-num">7</span>Decouple the trigger from the processing:</a></li>
+<li><a href="#s8"><span class="toc-num">8</span>Webhooks: Events Pushing to You</a></li>
+<li><a href="#s9"><span class="toc-num">9</span>Your webhook endpoint</a></li>
+<li><a href="#s10"><span class="toc-num">10</span>Webhook Best Practices</a></li>
+<li><a href="#s11"><span class="toc-num">11</span>Practice	Why</a></li>
+<li><a href="#s12"><span class="toc-num">12</span>Message Queues: The Backbone</a></li>
+<li><a href="#s13"><span class="toc-num">13</span>Redis Queue (Simple)</a></li>
+<li><a href="#s14"><span class="toc-num">14</span>Producer: webhook handler</a></li>
+<li><a href="#s15"><span class="toc-num">15</span>Consumer: AI worker</a></li>
+<li><a href="#s16"><span class="toc-num">16</span>Run workers</a></li>
+<li><a href="#s17"><span class="toc-num">17</span>Producer</a></li>
+<li><a href="#s18"><span class="toc-num">18</span>Consumer</a></li>
+<li><a href="#s19"><span class="toc-num">19</span>Queue Comparison for AI Workloads</a></li>
+<li><a href="#s20"><span class="toc-num">20</span>Feature	Redis Queue	RabbitMQ	AWS SQS	Kafka</a></li>
+<li><a href="#s21"><span class="toc-num">21</span>Complexity	Simple	Medium	Low (managed)	High</a></li>
+<li><a href="#s22"><span class="toc-num">22</span>Durability	Optional	Yes	Yes	Yes</a></li>
+<li><a href="#s23"><span class="toc-num">23</span>Ordering	FIFO	FIFO	Approx FIFO	Partition-ordered</a></li>
+<li><a href="#s24"><span class="toc-num">24</span>Dead letter queue	Plugin	Built-in	Built-in	Manual</a></li>
+<li><a href="#s25"><span class="toc-num">25</span>Architecture Patterns for Event-Driven AI</a></li>
+<li><a href="#s26"><span class="toc-num">26</span>Pattern 1: Fan-Out</a></li>
+<li><a href="#s27"><span class="toc-num">27</span>One event triggers multiple AI processes:</a></li>
+<li><a href="#s28"><span class="toc-num">28</span>New document uploaded</a></li>
+<li><a href="#s29"><span class="toc-num">29</span>Pattern 2: Pipeline</a></li>
+<li><a href="#s30"><span class="toc-num">30</span>Events flow through a chain of AI processors:</a></li>
+<li><a href="#s31"><span class="toc-num">31</span>Stage 1: Translate</a></li>
+<li><a href="#s32"><span class="toc-num">32</span>Stage 2: Summarize</a></li>
+<li><a href="#s33"><span class="toc-num">33</span>Stage 3: Extract entities</a></li>
+<li><a href="#s34"><span class="toc-num">34</span>Pattern 3: Saga (With Compensation)</a></li>
+<li><a href="#s35"><span class="toc-num">35</span>Complex workflows where failures need rollback:</a></li>
+<li><a href="#s36"><span class="toc-num">36</span>Real-World Example: AI Email Assistant</a></li>
+<li><a href="#s37"><span class="toc-num">37</span>Architecture:</a></li>
+<li><a href="#s38"><span class="toc-num">38</span>Gmail webhook → API → Redis Queue → AI Workers → Actions</a></li>
+<li><a href="#s39"><span class="toc-num">39</span>1. Webhook receiver</a></li>
+<li><a href="#s40"><span class="toc-num">40</span>2. Fetch and classify worker</a></li>
+<li><a href="#s41"><span class="toc-num">41</span>3. Specialized workers</a></li>
+<li><a href="#s42"><span class="toc-num">42</span>Scaling Workers</a></li>
+<li><a href="#s43"><span class="toc-num">43</span>Scale AI workers based on queue depth</a></li>
+<li><a href="#s44"><span class="toc-num">44</span>Kubernetes HPA (Horizontal Pod Autoscaler)</a></li>
+<li><a href="#s45"><span class="toc-num">45</span>Queue Depth	Workers	Processing Capacity</a></li>
+<li><a href="#s46"><span class="toc-num">46</span>Try It Yourself</a></li>
+<li><a href="#s47"><span class="toc-num">47</span>Quick event-driven AI pipeline with Redis Queue</a></li>
+<li><a href="#s48"><span class="toc-num">48</span>Install: pip install rq redis openai</a></li>
+<li><a href="#s49"><span class="toc-num">49</span>worker.py</a></li>
+<li><a href="#s50"><span class="toc-num">50</span>producer.py</a></li>
+<li><a href="#s51"><span class="toc-num">51</span>Simulate webhook events</a></li>
+<li><a href="#s52"><span class="toc-num">52</span>Run: python producer.py  (queue tasks)</a></li>
+<li><a href="#s53"><span class="toc-num">53</span>Run: rq worker           (process tasks)</a></li>
+<li><a href="#s54"><span class="toc-num">54</span>Practical Takeaways</a></li>
+<li><a href="#s55"><span class="toc-num">55</span>Ep 83: Semantic Caching</a></li>
+<li><a href="#s56"><span class="toc-num">56</span>Next: Episode 83 — Semantic Caching</a></li>
+</ul>
+</div>
+  <article class="prose" id="s0">
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Your AI chatbot works great in a request/response loop. User sends message → model responds → done. But production AI systems aren't chatbots.</code></pre></div>
+</div>
+<p>They're triggered by events: a new email arrives, a customer signs up, a document is uploaded, a sensor fires, a cron job ticks. The AI doesn't sit waiting for user input. It reacts.</p>
+<p>And when 10,000 events arrive in the same second — Diwali sale going live, Black Friday traffic spike, system-wide alert — your synchronous request/response architecture collapses.</p>
+<p>Event-driven AI solves this. Webhooks trigger processing. Message queues handle backpressure. Workers scale independently. The AI processes events at its own pace, never dropping a single one.</p>
+<h2 id="s1">The Problem with Synchronous AI</h2><div class="section-rule"></div>
+<h2 id="s2">Most AI applications start synchronous:</h2><div class="section-rule"></div>
+<p>python</p>
+<h2 id="s3">The simple way — synchronous, blocking</h2><div class="section-rule"></div>
+<p>@app.route("/api/analyze", methods=["POST"])</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>def analyze():
+text = request.json["text"]
+    result = call_llm(text)  # Takes 2-5 seconds
+    save_to_db(result)       # Takes 100ms
+    send_email(result)       # Takes 500ms
+    return jsonify(result)   # Total: 3-6 seconds blocking</code></pre></div>
+</div>
+<h2 id="s4">This breaks at scale:</h2><div class="section-rule"></div>
+<h2 id="s5">Concurrent Users	Response Time	Problem</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>10</th><th>3 sec</th><th>Fine</th></tr></thead><tbody><tr><td>100</td><td>15 sec</td><td>Slow — thread pool exhausted</td></tr><tr><td>1,000</td><td>Timeout</td><td>Dead — all workers blocked on LLM calls</td></tr><tr><td>10,000</td><td>502</td><td>Load balancer gives up</td></tr></tbody></table></div>
+<p>Every request ties up a server thread waiting for the LLM. If the LLM takes 5 seconds and you have 20 workers, you can handle 4 requests/second. That's it.</p>
+<div class="callout callout-tip"><span class="callout-icon">⚡</span><p></p></div>
+<h2 id="s6">Event-Driven Architecture: The Solution</h2><div class="section-rule"></div>
+<h2 id="s7">Decouple the trigger from the processing:</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Synchronous (before):</code></pre></div>
+</div>
+<p>User → API → LLM → DB → Email → Response (5 seconds, blocking)</p>
+<p>Event-driven (after):</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>User → API → Queue → Response (50ms, non-blocking)
+↓
+         Worker → LLM → DB → Email (5 seconds, but async)</code></pre></div>
+</div>
+<p>The user gets an immediate response. The heavy processing happens in the background. If 10,000 events arrive at once, they queue up and get processed as capacity allows.</p>
+<p>🔧</p>
+<h2 id="s8">Webhooks: Events Pushing to You</h2><div class="section-rule"></div>
+<p>A webhook is an HTTP callback — instead of polling "any new data?", the service pushes events to your URL:</p>
+<p>python</p>
+<h2 id="s9">Your webhook endpoint</h2><div class="section-rule"></div>
+<p>@app.route("/webhooks/stripe", methods=["POST"])</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>def stripe_webhook():
+event = request.json
+if event["type"] == "payment_intent.succeeded":
+        # Customer paid — trigger AI processing
+        customer = event["data"]["object"]["customer"]
+        queue.enqueue("generate_receipt", customer_id=customer)
+        queue.enqueue("personalize_followup", customer_id=customer)
+elif event["type"] == "dispute.created":
+        # Dispute — AI analyzes and drafts response
+        dispute = event["data"]["object"]
+        queue.enqueue("analyze_dispute", dispute_id=dispute["id"])
+return jsonify({"status": "ok"}), 200  # Respond fast!</code></pre></div>
+</div>
+<h2 id="s10">Webhook Best Practices</h2><div class="section-rule"></div>
+<h2 id="s11">Practice	Why</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>Return 200 quickly (< 5 sec)</th><th>Sender will retry on timeout</th></tr></thead><tbody><tr><td>Validate signatures</td><td>Prevent spoofed events</td></tr><tr><td>Idempotent processing</td><td>Events can arrive more than once</td></tr><tr><td>Queue for processing</td><td>Don't do heavy work in the handler</td></tr><tr><td>Store raw events</td><td>Debug and replay later</td></tr></tbody></table></div>
+<p>python</p>
+<p>import hmac</p>
+<p>import hashlib</p>
+<p>def verify_webhook(payload, signature, secret):</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>"""Verify webhook signature to prevent spoofing."""
+    expected = hmac.new(
+        secret.encode(),
+        payload,
+        hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(expected, signature)</code></pre></div>
+</div>
+<p>@app.route("/webhooks/github", methods=["POST"])</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>def github_webhook():
+signature = request.headers.get("X-Hub-Signature-256")
+    if not verify_webhook(request.data, signature, GITHUB_SECRET):
+        return "Unauthorized", 401
+event = request.json
+    event_type = request.headers.get("X-GitHub-Event")
+# Store raw event (for replay/debugging)
+    db.events.insert_one({
+        "source": "github",
+        "type": event_type,
+        "payload": event,
+        "received_at": datetime.utcnow(),
+        "processed": False
+    })
+# Queue for AI processing
+    if event_type == "pull_request" and event["action"] == "opened":
+        queue.enqueue("ai_code_review", pr_url=event["pull_request"]["url"])
+return "", 200</code></pre></div>
+</div>
+<p>📊</p>
+<h2 id="s12">Message Queues: The Backbone</h2><div class="section-rule"></div>
+<p>Message queues decouple producers (webhook handlers) from consumers (AI workers):</p>
+<h2 id="s13">Redis Queue (Simple)</h2><div class="section-rule"></div>
+<p>python</p>
+<p>from rq import Queue</p>
+<p>from redis import Redis</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>redis = Redis()
+queue = Queue(connection=redis)</code></pre></div>
+</div>
+<h2 id="s14">Producer: webhook handler</h2><div class="section-rule"></div>
+<p>def handle_new_email(email_data):</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>queue.enqueue(
+        process_email_with_ai,
+        email_data,
+        job_timeout="5m",      # AI processing timeout
+        retry=3,               # Retry on failure
+        result_ttl=3600        # Keep result for 1 hour
+    )</code></pre></div>
+</div>
+<h2 id="s15">Consumer: AI worker</h2><div class="section-rule"></div>
+<p>def process_email_with_ai(email_data):</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># Classify the email
+    classification = llm_classify(email_data["subject"], email_data["body"])</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># Route based on classification
+    if classification == "urgent":
+        send_notification(email_data["from"], "urgent")
+    elif classification == "support":
+        draft = llm_draft_response(email_data)
+        save_draft(email_data["id"], draft)
+    elif classification == "spam":
+        mark_spam(email_data["id"])</code></pre></div>
+</div>
+<p>bash</p>
+<h2 id="s16">Run workers</h2><div class="section-rule"></div>
+<p>rq worker --burst  # Process all queued jobs and exit</p>
+<p>rq worker          # Long-running worker</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>RabbitMQ (Production-Grade)</code></pre></div>
+</div>
+<p>python</p>
+<p>import pika</p>
+<p>import json</p>
+<h2 id="s17">Producer</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+channel = connection.channel()</code></pre></div>
+</div>
+<p>channel.queue_declare(queue='ai_tasks', durable=True)</p>
+<p>def publish_task(task_type, data):</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>channel.basic_publish(
+        exchange='',
+        routing_key='ai_tasks',
+        body=json.dumps({"type": task_type, "data": data}),
+        properties=pika.BasicProperties(delivery_mode=2)  # Persistent
+    )</code></pre></div>
+</div>
+<h2 id="s18">Consumer</h2><div class="section-rule"></div>
+<p>def callback(ch, method, properties, body):</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>task = json.loads(body)</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>try:
+        if task["type"] == "summarize":
+            result = llm_summarize(task["data"]["text"])
+            save_result(task["data"]["id"], result)
+        elif task["type"] == "translate":
+            result = llm_translate(task["data"]["text"], task["data"]["target_lang"])
+            save_result(task["data"]["id"], result)</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>ch.basic_ack(delivery_tag=method.delivery_tag)  # Acknowledge success
+    except Exception as e:
+        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)  # Retry</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>channel.basic_qos(prefetch_count=1)  # One message at a time per worker</code></pre></div>
+</div>
+<p>channel.basic_consume(queue='ai_tasks', on_message_callback=callback)</p>
+<p>channel.start_consuming()</p>
+<h2 id="s19">Queue Comparison for AI Workloads</h2><div class="section-rule"></div>
+<h2 id="s20">Feature	Redis Queue	RabbitMQ	AWS SQS	Kafka</h2><div class="section-rule"></div>
+<h2 id="s21">Complexity	Simple	Medium	Low (managed)	High</h2><div class="section-rule"></div>
+<h2 id="s22">Durability	Optional	Yes	Yes	Yes</h2><div class="section-rule"></div>
+<h2 id="s23">Ordering	FIFO	FIFO	Approx FIFO	Partition-ordered</h2><div class="section-rule"></div>
+<h2 id="s24">Dead letter queue	Plugin	Built-in	Built-in	Manual</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>Throughput</th><th>100K/s</th><th>50K/s</th><th>3K/s/queue</th><th>1M+/s</th></tr></thead><tbody><tr><td>Best for</td><td>Dev/small scale</td><td>Production</td><td>Serverless</td><td>High-volume streams</td></tr></tbody></table></div>
+<h2 id="s25">Architecture Patterns for Event-Driven AI</h2><div class="section-rule"></div>
+<h2 id="s26">Pattern 1: Fan-Out</h2><div class="section-rule"></div>
+<h2 id="s27">One event triggers multiple AI processes:</h2><div class="section-rule"></div>
+<h2 id="s28">New document uploaded</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>├──→ Queue: "summarize" → Summarization worker → Summary saved
+    ├──→ Queue: "extract"   → Entity extraction worker → Entities saved
+    ├──→ Queue: "embed"     → Embedding worker → Vector stored
+    └──→ Queue: "classify"  → Classification worker → Tags saved</code></pre></div>
+</div>
+<p>python</p>
+<p>def handle_document_upload(doc_id, content):</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>"""Fan-out: one event, multiple AI tasks."""
+    queue.enqueue("summarize", doc_id=doc_id, content=content)
+    queue.enqueue("extract_entities", doc_id=doc_id, content=content)
+    queue.enqueue("generate_embedding", doc_id=doc_id, content=content)
+    queue.enqueue("classify_document", doc_id=doc_id, content=content)</code></pre></div>
+</div>
+<h2 id="s29">Pattern 2: Pipeline</h2><div class="section-rule"></div>
+<h2 id="s30">Events flow through a chain of AI processors:</h2><div class="section-rule"></div>
+<p>Raw text → Translate → Summarize → Extract entities → Store</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>↓            ↓              ↓
+           Queue 1      Queue 2        Queue 3</code></pre></div>
+</div>
+<p>python</p>
+<h2 id="s31">Stage 1: Translate</h2><div class="section-rule"></div>
+<p>def translate_worker(task):</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>translated = llm_translate(task["text"], "english")
+    queue.enqueue("summarize", text=translated, original_id=task["id"])</code></pre></div>
+</div>
+<h2 id="s32">Stage 2: Summarize</h2><div class="section-rule"></div>
+<p>def summarize_worker(task):</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>summary = llm_summarize(task["text"])
+    queue.enqueue("extract_entities", text=summary, original_id=task["original_id"])</code></pre></div>
+</div>
+<h2 id="s33">Stage 3: Extract entities</h2><div class="section-rule"></div>
+<p>def extract_worker(task):</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>entities = llm_extract(task["text"])
+    save_result(task["original_id"], entities=entities)</code></pre></div>
+</div>
+<h2 id="s34">Pattern 3: Saga (With Compensation)</h2><div class="section-rule"></div>
+<h2 id="s35">Complex workflows where failures need rollback:</h2><div class="section-rule"></div>
+<p>python</p>
+<p>class OrderProcessingSaga:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>"""Multi-step AI workflow with compensation on failure."""</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>async def execute(self, order):
+        try:
+            # Step 1: AI validates the order
+            validation = await queue.enqueue("validate_order", order)
+            if not validation["valid"]:
+                return {"error": validation["reason"]}</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># Step 2: AI generates recommendations
+            recs = await queue.enqueue("generate_recommendations", order)</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># Step 3: AI prices the bundle
+            pricing = await queue.enqueue("calculate_pricing", order, recs)</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># Step 4: Confirm order
+            confirmation = await queue.enqueue("confirm_order", order, pricing)</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>return confirmation</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>except StepFailed as e:
+            # Compensate: undo completed steps
+            if e.step &gt;= 3:
+                await queue.enqueue("reverse_pricing", order)
+            if e.step &gt;= 2:
+                await queue.enqueue("clear_recommendations", order)
+            raise</code></pre></div>
+</div>
+<div class="callout callout-tip"><span class="callout-icon">💡</span><p></p></div>
+<h2 id="s36">Real-World Example: AI Email Assistant</h2><div class="section-rule"></div>
+<p>Putting it all together — an event-driven AI email processing system:</p>
+<p>python</p>
+<h2 id="s37">Architecture:</h2><div class="section-rule"></div>
+<h2 id="s38">Gmail webhook → API → Redis Queue → AI Workers → Actions</h2><div class="section-rule"></div>
+<h2 id="s39">1. Webhook receiver</h2><div class="section-rule"></div>
+<p>@app.route("/webhooks/gmail", methods=["POST"])</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>def gmail_webhook():
+notification = request.json
+    # Gmail sends push notifications about new emails
+    history_id = notification["historyId"]
+# Quickly acknowledge and queue
+    queue.enqueue("fetch_and_process_email", history_id=history_id)
+    return "", 200</code></pre></div>
+</div>
+<h2 id="s40">2. Fetch and classify worker</h2><div class="section-rule"></div>
+<p>def fetch_and_process_email(history_id):</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>emails = gmail_api.get_new_emails(since=history_id)</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>for email in emails:
+        # Classify with AI
+        category = llm_classify(email["subject"], email["snippet"])</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># Route to specialized queues
+        routing = {
+            "urgent": "urgent_email_queue",
+            "support": "support_email_queue",
+            "newsletter": "newsletter_queue",
+            "spam": None  # Drop
+        }</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>target_queue = routing.get(category)
+        if target_queue:
+            queue.enqueue(target_queue, email_id=email["id"], category=category)</code></pre></div>
+</div>
+<h2 id="s41">3. Specialized workers</h2><div class="section-rule"></div>
+<p>def urgent_email_worker(email_id, category):</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>email = gmail_api.get_email(email_id)
+    summary = llm_summarize(email["body"], max_words=50)
+    send_push_notification(f"🚨 Urgent: {summary}")</code></pre></div>
+</div>
+<p>def support_email_worker(email_id, category):</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>email = gmail_api.get_email(email_id)
+    draft = llm_draft_response(
+        email["body"],
+        tone="professional",
+        include_faq=True
+    )
+    gmail_api.create_draft(reply_to=email_id, body=draft)
+    send_notification(f"📝 Draft reply created for: {email['subject']}")</code></pre></div>
+</div>
+<p>🔬</p>
+<h2 id="s42">Scaling Workers</h2><div class="section-rule"></div>
+<p>The beauty of event-driven: scale each component independently:</p>
+<p>bash</p>
+<h2 id="s43">Scale AI workers based on queue depth</h2><div class="section-rule"></div>
+<h2 id="s44">Kubernetes HPA (Horizontal Pod Autoscaler)</h2><div class="section-rule"></div>
+<p>apiVersion: autoscaling/v2</p>
+<p>kind: HorizontalPodAutoscaler</p>
+<p>metadata:</p>
+<p>name: ai-worker-hpa</p>
+<p>spec:</p>
+<p>scaleTargetRef:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>kind: Deployment
+    name: ai-worker</code></pre></div>
+</div>
+<p>minReplicas: 2</p>
+<p>maxReplicas: 20</p>
+<p>metrics:</p>
+<ul><li>type: External</li></ul>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>external:
+      metric:
+        name: redis_queue_length
+        selector:
+          matchLabels:
+            queue: ai_tasks
+      target:
+        type: AverageValue
+        averageValue: "10"  # Scale up when &gt; 10 msgs per worker</code></pre></div>
+</div>
+<h2 id="s45">Queue Depth	Workers	Processing Capacity</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>< 20</th><th>2</th><th>2 LLM calls/sec</th></tr></thead><tbody><tr><td>20-100</td><td>5</td><td>5 LLM calls/sec</td></tr><tr><td>100-500</td><td>10</td><td>10 LLM calls/sec</td></tr><tr><td>500+</td><td>20</td><td>20 LLM calls/sec</td></tr></tbody></table></div>
+<p>Workers scale with demand. No over-provisioning during quiet hours. No drops during spikes.</p>
+<p>🛡️</p>
+<h2 id="s46">Try It Yourself</h2><div class="section-rule"></div>
+<p>python</p>
+<h2 id="s47">Quick event-driven AI pipeline with Redis Queue</h2><div class="section-rule"></div>
+<h2 id="s48">Install: pip install rq redis openai</h2><div class="section-rule"></div>
+<h2 id="s49">worker.py</h2><div class="section-rule"></div>
+<p>from rq import Worker, Queue</p>
+<p>from redis import Redis</p>
+<p>from openai import OpenAI</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>redis = Redis()
+client = OpenAI()</code></pre></div>
+</div>
+<p>def ai_summarize(text, doc_id):</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>"""AI summarization worker."""
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "Summarize in 2-3 sentences."},
+            {"role": "user", "content": text}
+        ]
+    )
+    summary = response.choices[0].message.content
+    redis.hset(f"doc:{doc_id}", "summary", summary)
+    print(f"Summarized doc {doc_id}: {summary[:50]}...")
+    return summary</code></pre></div>
+</div>
+<h2 id="s50">producer.py</h2><div class="section-rule"></div>
+<p>from rq import Queue</p>
+<p>from redis import Redis</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>queue = Queue(connection=Redis())</code></pre></div>
+</div>
+<h2 id="s51">Simulate webhook events</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>documents = [
+{"id": 1, "text": "Long article about climate change..."},
+    {"id": 2, "text": "Research paper on transformer architectures..."},
+    {"id": 3, "text": "News article about Indian elections..."},</code></pre></div>
+</div>
+<p>]</p>
+<p>for doc in documents:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>queue.enqueue("worker.ai_summarize", doc["text"], doc["id"])
+    print(f"Queued doc {doc['id']}")</code></pre></div>
+</div>
+<h2 id="s52">Run: python producer.py  (queue tasks)</h2><div class="section-rule"></div>
+<h2 id="s53">Run: rq worker           (process tasks)</h2><div class="section-rule"></div>
+<p>📦</p>
+<h2 id="s54">Practical Takeaways</h2><div class="section-rule"></div>
+<p>Synchronous AI doesn't scale — every request blocks a thread waiting for the LLM</p>
+<p>Webhooks push events to you — always return 200 fast, queue the heavy work</p>
+<p>Message queues decouple trigger from processing — backpressure handled automatically</p>
+<p>Fan-out, pipeline, and saga — three patterns for different AI workflow shapes</p>
+<p>Scale workers independently — 2 workers at night, 20 during traffic spikes</p>
+<p>Always verify webhooks, always be idempotent — events can be spoofed or duplicated</p>
+<p>🚀</p>
+<p>What's Next?</p>
+<p>Episode 83: Semantic Caching — Your event-driven system processes thousands of LLM calls. Many are similar: "What's the weather in Mumbai?" and "Mumbai weather today?" are basically the same question. Semantic caching matches by meaning, not exact string — cutting LLM costs by 30-60%.</p>
+<p>← Previous</p>
+<p>Ep 81: A2A (Agent-to-Agent)</p>
+<p>Next →</p>
+<h2 id="s55">Ep 83: Semantic Caching</h2><div class="section-rule"></div>
+<h2 id="s56">Next: Episode 83 — Semantic Caching</h2><div class="section-rule"></div>
+<p>Exact-match caching is boring. Same question, same answer. Semantic caching matches similar questions — and that changes everything.</p>
+<p>This is part of a 98-episode series covering AI engineering from tokens to production deployment.</p>
+  </article>
+  <div class="ep-nav">
+    <a href="episode-81.html" class="ep-nav-card">
+      <span class="ep-nav-dir">← Previous</span>
+      <span class="ep-nav-title">Ep 81: A2A (Agent-to-Agent): How AI Agents Talk to Each Other</span>
+    </a>
+    <a href="episode-83.html" class="ep-nav-card next">
+      <span class="ep-nav-dir">Next Episode →</span>
+      <span class="ep-nav-title">Ep 83: Semantic Caching: Cache by Meaning, Not Exact Match</span>
+    </a>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <img class="footer-logo" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+      <div class="footer-tagline">98 Field Manual · Build with AI, not just use it · Free forever</div>
+    </div>
+    <div class="footer-links">
+      <a href="field-manual-index.html">All Episodes</a>
+      <a href="field-manual-index.html#g12">Protocols & Standards</a>
+      <a href="episode-81.html">← Ep 81</a>
+      <a href="episode-83.html">Ep 83 →</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+const prog=document.getElementById('prog');
+window.addEventListener('scroll',()=>{
+  const total=document.documentElement.scrollHeight-window.innerHeight;
+  prog.style.width=Math.min(100,(window.scrollY/total)*100)+'%';
+},{passive:true});
+
+// Build section nav dots from h2s
+const h2s=document.querySelectorAll('.prose h2');
+const sNav=document.getElementById('sectionNav');
+const dots=[];
+h2s.forEach((h,i)=>{
+  const btn=document.createElement('button');
+  btn.className='snav-dot';
+  btn.setAttribute('data-label',h.textContent.trim().substring(0,28));
+  btn.onclick=()=>h.scrollIntoView({behavior:'smooth',block:'start'});
+  sNav.appendChild(btn);
+  dots.push({btn,h});
+});
+
+const dotObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      const idx=dots.findIndex(d=>d.h===e.target);
+      if(idx>-1) dots.forEach((d,i)=>d.btn.classList.toggle('active',i===idx));
+    }
+  });
+},{rootMargin:'-30% 0px -60% 0px'});
+dots.forEach(d=>dotObs.observe(d.h));
+
+// Scroll reveal
+const revObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='translateY(0)';}});
+},{threshold:0.08});
+document.querySelectorAll('.toc,.callout,.table-wrap,.code-block,.ep-nav-card').forEach(el=>{
+  el.style.opacity='0';
+  el.style.transform='translateY(14px)';
+  el.style.transition='opacity 0.55s ease,transform 0.55s ease';
+  revObs.observe(el);
+});
+</script>
+</body>
+</html>

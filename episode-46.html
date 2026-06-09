@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ep 46: Training Data for Fine-Tuning: Quality Is the Only Thing That Matters</title>
+<meta name="description" content="You fire up training and the model outputs garbage. Worse than the base model. Three days wasted. The problem? Your data.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,300&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0d0d1a;--page:#ffffff;--paper:#f8f9ff;
+  --navy:#124093;--navy-dim:rgba(18,64,147,0.07);--navy-mid:rgba(18,64,147,0.15);
+  --red:#e2190e;--gold:#c8973a;--muted:#6b7280;--rule:#e5e7ef;--code-bg:#0d0d1f;
+  --title:'Roboto',sans-serif;--body:'Poppins',sans-serif;--mono:'DM Mono',monospace;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--page);color:var(--ink);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:#fff}
+::-webkit-scrollbar-thumb{background:var(--navy);border-radius:2px}
+
+/* NAV */
+nav.top{position:sticky;top:0;z-index:200;background:#fff;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(20px,5vw,60px);border-bottom:1px solid var(--rule);box-shadow:0 1px 12px rgba(0,0,0,0.05)}
+.logo-wrap{display:flex;align-items:center;text-decoration:none}
+.logo-img{height:38px;width:auto;object-fit:contain;display:block}
+.nav-right{display:flex;align-items:center;gap:6px}
+.nav-link{font-family:var(--body);font-size:11.5px;font-weight:500;color:var(--muted);text-decoration:none;padding:6px 14px;border-radius:6px;transition:all 0.2s}
+.nav-link:hover{color:var(--navy);background:var(--navy-dim)}
+.nav-cta{background:var(--navy)!important;color:#fff!important}
+.nav-cta:hover{background:#1a52c0!important;color:#fff!important}
+
+/* PROGRESS */
+.progress-bar-fixed{position:fixed;top:60px;left:0;right:0;height:2.5px;background:rgba(18,64,147,0.1);z-index:199}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--navy),#4f7ff7);width:0%;transition:width 0.1s;border-radius:0 2px 2px 0}
+
+/* HERO */
+.hero{background:#fff;position:relative;overflow:hidden;min-height:88vh;display:flex;flex-direction:column;justify-content:center}
+.hero-bg{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.hero-blob-1{position:absolute;top:-120px;right:-120px;width:700px;height:700px;background:radial-gradient(circle at 60% 40%,rgba(18,64,147,0.07) 0%,rgba(18,64,147,0.03) 40%,transparent 70%);border-radius:50%}
+.hero-blob-2{position:absolute;bottom:-80px;left:-80px;width:500px;height:500px;background:radial-gradient(circle,rgba(79,127,247,0.06) 0%,transparent 65%);border-radius:50%}
+.hero-lines{position:absolute;top:0;right:0;width:45%;height:100%;opacity:0.06}
+.hero-lines svg{width:100%;height:100%}
+.hero-tokens{position:absolute;top:0;right:0;width:46%;height:100%;display:flex;align-items:center;justify-content:center}
+.token-float-wrap{position:relative;width:360px;height:360px}
+.tf{position:absolute;font-family:var(--mono);font-size:13px;font-weight:500;padding:8px 16px;border-radius:8px;white-space:nowrap;animation:float-anim 6s ease-in-out infinite;box-shadow:0 4px 20px rgba(0,0,0,0.08)}
+.tf-1{top:20px;left:60px;background:rgba(18,64,147,0.09);color:#124093;border:1px solid rgba(18,64,147,0.18);animation-delay:0s}
+.tf-2{top:70px;right:20px;background:rgba(79,127,247,0.09);color:#2563eb;border:1px solid rgba(79,127,247,0.2);animation-delay:0.8s}
+.tf-3{top:140px;left:20px;background:rgba(16,185,129,0.08);color:#059669;border:1px solid rgba(16,185,129,0.18);animation-delay:1.6s}
+.tf-4{top:170px;right:50px;background:rgba(168,85,247,0.08);color:#7c3aed;border:1px solid rgba(168,85,247,0.18);animation-delay:0.4s}
+.tf-5{bottom:140px;left:80px;background:rgba(234,179,8,0.08);color:#b45309;border:1px solid rgba(234,179,8,0.2);animation-delay:1.2s}
+.tf-6{bottom:90px;right:30px;background:rgba(236,72,153,0.08);color:#db2777;border:1px solid rgba(236,72,153,0.2);animation-delay:2s}
+.tf-7{bottom:30px;left:40px;background:rgba(239,68,68,0.08);color:#dc2626;border:1px solid rgba(239,68,68,0.18);animation-delay:0.6s}
+.tf-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:110px;height:110px;background:var(--navy);border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;box-shadow:0 12px 40px rgba(18,64,147,0.3);animation:pulse-center 3s ease-in-out infinite}
+.tf-center .big{font-family:var(--title);font-size:28px;font-weight:900;color:#fff;line-height:1}
+.tf-center .small{font-family:var(--body);font-size:9px;font-weight:500;color:rgba(255,255,255,0.6);letter-spacing:1.5px;text-transform:uppercase}
+@keyframes float-anim{0%,100%{transform:translateY(0px)}50%{transform:translateY(-10px)}}
+@keyframes pulse-center{0%,100%{box-shadow:0 12px 40px rgba(18,64,147,0.3)}50%{box-shadow:0 12px 60px rgba(18,64,147,0.5)}}
+.hero-content{position:relative;z-index:2;width:54%;padding:clamp(48px,8vw,96px) clamp(24px,5vw,72px) clamp(48px,8vw,96px)}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:5px 14px;background:var(--navy-dim);border:1px solid rgba(18,64,147,0.18);border-radius:100px;margin-bottom:22px;font-family:var(--body);font-size:10px;font-weight:600;color:var(--navy);letter-spacing:1.2px;text-transform:uppercase}
+.hero-eyebrow .dot{width:5px;height:5px;background:var(--navy);border-radius:50%}
+.hero h1{font-family:var(--title);font-size:clamp(28px,4.5vw,52px);font-weight:900;color:var(--ink);line-height:1.08;letter-spacing:-1.2px;margin-bottom:20px}
+.hero h1 .line2{display:block;color:var(--navy)}
+.hero-sub{font-family:var(--body);font-size:clamp(13px,1.6vw,15px);font-weight:300;color:#4b5563;line-height:1.85;max-width:500px;margin-bottom:34px}
+.breadcrumb{display:flex;align-items:center;gap:7px;margin-bottom:28px;font-family:var(--mono);font-size:10px;color:#9ca3af}
+.breadcrumb a{color:inherit;text-decoration:none;transition:color 0.2s}
+.breadcrumb a:hover{color:var(--navy)}
+.breadcrumb .sep{color:#d1d5db}
+.breadcrumb .cur{color:#6b7280}
+.meta-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:14px 20px;background:var(--paper);border:1px solid var(--rule);border-radius:10px;margin-bottom:24px}
+.meta-item{font-family:var(--body);font-size:10.5px;font-weight:500;color:var(--muted);display:flex;align-items:center;gap:5px}
+.tags-row{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-family:var(--body);font-size:10px;font-weight:500;color:var(--navy);background:var(--navy-dim);padding:4px 11px;border-radius:100px;border:1px solid rgba(18,64,147,0.15)}
+@media(max-width:900px){.hero{min-height:auto;padding-bottom:48px}.hero-content{width:100%;padding:48px 24px 36px}.hero-tokens{display:none}.hero-lines{display:none}}
+
+/* SECTION NAV DOTS */
+.section-nav{position:fixed;right:clamp(12px,2vw,24px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:9px;z-index:100}
+.snav-dot{width:7px;height:7px;border-radius:50%;background:#d1d5db;border:none;padding:0;cursor:pointer;transition:all 0.3s;position:relative}
+.snav-dot::after{content:attr(data-label);position:absolute;right:16px;top:50%;transform:translateY(-50%);font-family:var(--body);font-size:9px;font-weight:500;color:var(--ink);background:#fff;padding:3px 9px;border-radius:4px;border:1px solid var(--rule);box-shadow:0 2px 8px rgba(0,0,0,0.06);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.2s}
+.snav-dot:hover::after{opacity:1}
+.snav-dot.active{background:var(--navy);transform:scale(1.5)}
+.snav-dot:hover:not(.active){background:rgba(18,64,147,0.4)}
+@media(max-width:768px){.section-nav{display:none}}
+
+/* LAYOUT */
+.layout{max-width:860px;margin:0 auto;padding:clamp(40px,6vw,68px) clamp(20px,5vw,56px) 80px}
+
+/* TOC */
+.toc{background:var(--paper);border:1px solid var(--rule);border-left:4px solid var(--navy);border-radius:10px;padding:22px 26px;margin-bottom:52px}
+.toc-title{font-family:var(--title);font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
+.toc-list{list-style:none;display:flex;flex-direction:column;gap:3px}
+.toc-list li a{display:flex;align-items:center;gap:12px;text-decoration:none;padding:6px 0;font-family:var(--body);font-size:13px;font-weight:400;color:var(--ink);transition:color 0.2s}
+.toc-list li a:hover{color:var(--navy)}
+.toc-num{font-family:var(--mono);font-size:9px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* PROSE */
+.prose{line-height:1.85}
+.prose h2{font-family:var(--title);font-size:clamp(18px,2.5vw,23px);font-weight:700;color:var(--ink);letter-spacing:-0.4px;margin:52px 0 8px;line-height:1.2;scroll-margin-top:80px;padding-left:18px;position:relative}
+.prose h2::before{content:'';position:absolute;left:0;top:5px;bottom:5px;width:3px;background:var(--navy);border-radius:2px}
+.prose h2:first-child{margin-top:0}
+.prose h3{font-family:var(--title);font-size:14px;font-weight:700;color:var(--ink);margin:26px 0 8px}
+.section-rule{width:36px;height:2px;background:var(--navy);border-radius:2px;margin:8px 0 22px 18px;opacity:0.4}
+.prose p{font-family:var(--body);font-size:clamp(13.5px,1.7vw,15px);line-height:1.88;color:#374151;margin-bottom:16px;font-weight:300}
+.prose p strong{font-weight:600;color:var(--ink)}
+.prose ul,.prose ol{list-style:none;padding:0;margin:4px 0 20px}
+.prose ul li,.prose ol li{font-family:var(--body);font-size:clamp(13.5px,1.7vw,14.5px);line-height:1.8;color:#374151;padding:4px 0 4px 26px;position:relative;font-weight:300}
+.prose ul li::before{content:'';position:absolute;left:5px;top:14px;width:5px;height:5px;background:var(--navy);border-radius:50%;opacity:0.55}
+.prose ol{counter-reset:li}
+.prose ol li{counter-increment:li}
+.prose ol li::before{content:counter(li);position:absolute;left:0;top:5px;font-family:var(--mono);font-size:8px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.ic{font-family:var(--mono);font-size:12.5px;background:var(--navy-dim);color:var(--navy);padding:1.5px 6px;border-radius:4px;border:1px solid rgba(18,64,147,0.15)}
+
+/* CODE */
+.code-block{background:var(--code-bg);border-radius:10px;margin:24px 0;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.12),0 0 0 1px rgba(18,64,147,0.1)}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.02)}
+.code-dots{display:flex;gap:5px}
+.cd{width:10px;height:10px;border-radius:50%}
+.cd-r{background:#ff5f56}.cd-y{background:#ffbd2e}.cd-g{background:#27c93f}
+.code-filename{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,0.25)}
+.code-lang{font-family:var(--mono);font-size:9px;color:rgba(91,140,247,0.6);letter-spacing:1px;text-transform:uppercase}
+.code-body{padding:20px 22px;overflow-x:auto}
+.code-body pre{margin:0}
+.code-body code{font-family:var(--mono);font-size:12.5px;line-height:1.9;color:#c9d4f5}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;margin:24px 0;border-radius:10px;border:1px solid var(--rule);box-shadow:0 2px 12px rgba(0,0,0,0.04)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:var(--ink)}
+thead th{padding:12px 16px;text-align:left;font-family:var(--body);font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,0.45)}
+thead th:first-child{color:#6b9fff}
+tbody tr{border-bottom:1px solid var(--rule);transition:background 0.15s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--paper)}
+tbody td{padding:10px 16px;font-family:var(--body);font-size:13px;color:#374151;font-weight:300;line-height:1.5}
+tbody td:first-child{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--navy)}
+
+/* CALLOUTS */
+.callout{border-radius:9px;padding:16px 20px;margin:24px 0;display:flex;gap:13px;align-items:flex-start}
+.callout-tip{background:rgba(18,64,147,0.05);border:1px solid rgba(18,64,147,0.16);border-left:3px solid var(--navy)}
+.callout-warn{background:rgba(220,38,38,0.04);border:1px solid rgba(220,38,38,0.14);border-left:3px solid #dc2626}
+.callout-note{background:rgba(200,151,58,0.05);border:1px solid rgba(200,151,58,0.2);border-left:3px solid var(--gold)}
+.callout-icon{font-size:16px;flex-shrink:0;margin-top:1px;line-height:1}
+.callout p{font-size:13.5px!important;line-height:1.7!important;color:#374151!important;margin:0!important}
+
+/* EP NAV */
+.ep-nav{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:64px;padding-top:32px;border-top:1px solid var(--rule)}
+@media(max-width:500px){.ep-nav{grid-template-columns:1fr}}
+.ep-nav-card{display:flex;flex-direction:column;text-decoration:none;padding:20px 22px;border:1px solid var(--rule);border-radius:10px;background:var(--paper);transition:all 0.25s;gap:5px}
+.ep-nav-card:hover{border-color:rgba(18,64,147,0.3);background:var(--navy-dim);transform:translateY(-2px);box-shadow:0 6px 20px rgba(18,64,147,0.08)}
+.ep-nav-dir{font-family:var(--body);font-size:9px;font-weight:600;color:var(--navy);letter-spacing:1px;text-transform:uppercase}
+.ep-nav-title{font-family:var(--title);font-size:13px;font-weight:600;color:var(--ink);line-height:1.4}
+.ep-nav-card.next{align-items:flex-end;text-align:right}
+
+/* FOOTER */
+footer{background:var(--ink);padding:44px clamp(20px,5vw,60px);border-top:3px solid var(--navy)}
+.footer-inner{max-width:860px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.footer-logo{height:32px;width:auto;object-fit:contain;filter:brightness(0) invert(1);opacity:0.7}
+.footer-tagline{font-family:var(--body);font-size:11px;color:rgba(255,255,255,0.22);font-style:italic;margin-top:4px;font-weight:300}
+.footer-links{display:flex;gap:20px;flex-wrap:wrap}
+.footer-links a{font-family:var(--body);font-size:11px;font-weight:400;color:rgba(255,255,255,0.3);text-decoration:none;transition:color 0.2s}
+.footer-links a:hover{color:rgba(255,255,255,0.75)}
+
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.hero-content>*{animation:fadeUp 0.65s cubic-bezier(0.22,1,0.36,1) both}
+.hero-content>*:nth-child(1){animation-delay:0.05s}
+.hero-content>*:nth-child(2){animation-delay:0.1s}
+.hero-content>*:nth-child(3){animation-delay:0.15s}
+.hero-content>*:nth-child(4){animation-delay:0.2s}
+.hero-content>*:nth-child(5){animation-delay:0.25s}
+.hero-content>*:nth-child(6){animation-delay:0.3s}
+.hero-content>*:nth-child(7){animation-delay:0.35s}
+@media(max-width:640px){.nav-link:not(.nav-cta){display:none}}
+</style>
+</head>
+<body>
+
+<div class="progress-bar-fixed"><div class="progress-fill" id="prog"></div></div>
+
+<nav class="top">
+  <a href="field-manual-index.html" class="logo-wrap">
+    <img class="logo-img" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+  </a>
+  <div class="nav-right">
+    <a href="field-manual-index.html" class="nav-link">All Episodes</a>
+    <a href="field-manual-index.html#g7" class="nav-link nav-cta">🎯 Fine-Tuning</a>
+  </div>
+</nav>
+
+<nav class="section-nav" id="sectionNav"></nav>
+
+<header class="hero">
+  <div class="hero-bg">
+    <div class="hero-blob-1"></div>
+    <div class="hero-blob-2"></div>
+    <div class="hero-lines">
+      <svg viewBox="0 0 600 800" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+        <line x1="0" y1="200" x2="600" y2="0" stroke="#124093" stroke-width="1"/>
+        <line x1="0" y1="400" x2="600" y2="200" stroke="#124093" stroke-width="0.6"/>
+        <line x1="0" y1="600" x2="600" y2="400" stroke="#124093" stroke-width="0.4"/>
+        <circle cx="500" cy="150" r="120" stroke="#124093" stroke-width="0.8" fill="none"/>
+        <circle cx="500" cy="150" r="80" stroke="#124093" stroke-width="0.4" fill="none"/>
+        <circle cx="500" cy="150" r="40" stroke="#124093" stroke-width="0.3" fill="none"/>
+        <line x1="300" y1="0" x2="300" y2="800" stroke="#124093" stroke-width="0.4" stroke-dasharray="6,12"/>
+        <rect x="360" y="480" width="160" height="160" stroke="#124093" stroke-width="0.6" fill="none" transform="rotate(15 440 560)"/>
+      </svg>
+    </div>
+  </div>
+  <div class="hero-tokens" aria-hidden="true">
+    <div class="token-float-wrap">
+      <div class="tf tf-1">token</div>
+<div class="tf tf-2">model</div>
+<div class="tf tf-3">layer</div>
+<div class="tf tf-4">vector</div>
+<div class="tf tf-5">embed</div>
+<div class="tf tf-6">weight</div>
+<div class="tf tf-7">param</div>
+      <div class="tf-center">
+        <span class="big">TRAI</span>
+        <span class="small">EP 46</span>
+      </div>
+    </div>
+  </div>
+  <div class="hero-content">
+    <nav class="breadcrumb">
+      <a href="field-manual-index.html">Field Manual</a>
+      <span class="sep">›</span>
+      <a href="field-manual-index.html#g7">🎯 Fine-Tuning</a>
+      <span class="sep">›</span>
+      <span class="cur">Episode 46</span>
+    </nav>
+    <div class="hero-eyebrow"><span class="dot"></span>MODULE 7 &nbsp;·&nbsp; Fine-Tuning</div>
+    <h1>Training Data for Fine-Tuning: Quality Is the Only Thing That Matters</h1>
+    <p class="hero-sub">You fire up training and the model outputs garbage. Worse than the base model. Three days wasted. The problem? Your data.</p>
+    <div class="meta-row">
+      <div class="meta-item"><span>📅</span> Mar 2026</div>
+      <div class="meta-item"><span>⏱</span> 10 min read</div>
+      <div class="meta-item"><span>🎯</span> Episode 46 of 98</div>
+    </div>
+    <div class="tags-row"><span class="tag">Training Data</span><span class="tag">Data Quality</span><span class="tag">Fine-Tuning</span><span class="tag">Datasets</span></div>
+  </div>
+</header>
+
+<main class="layout">
+  <div class="toc">
+  <div class="toc-title">In this episode</div>
+  <ul class="toc-list"><li><a href="#s1"><span class="toc-num">1</span>Data Formats: The Big Three</a></li>
+<li><a href="#s2"><span class="toc-num">2</span>Three fields:</a></li>
+<li><a href="#s3"><span class="toc-num">3</span>Format	Multi-turn	System prompt	Framework support	Recommendation</a></li>
+<li><a href="#s4"><span class="toc-num">4</span>Alpaca	No	No	Universal	Legacy, but simple</a></li>
+<li><a href="#s5"><span class="toc-num">5</span>Quality Over Quantity: The Numbers</a></li>
+<li><a href="#s6"><span class="toc-num">6</span>Dataset Size	Quality	Result</a></li>
+<li><a href="#s7"><span class="toc-num">7</span>The Quality Checklist</a></li>
+<li><a href="#s8"><span class="toc-num">8</span>Data Cleaning: The Boring Part That Matters Most</a></li>
+<li><a href="#s9"><span class="toc-num">9</span>Common Problems</a></li>
+<li><a href="#s10"><span class="toc-num">10</span>Problem 1: Duplicate or near-duplicate examples</a></li>
+<li><a href="#s11"><span class="toc-num">11</span>Tool: deduplicate with MinHash or exact string matching</a></li>
+<li><a href="#s12"><span class="toc-num">12</span>Problem 2: Inconsistent formatting</a></li>
+<li><a href="#s13"><span class="toc-num">13</span>Some outputs use markdown, others plain text, others HTML</a></li>
+<li><a href="#s14"><span class="toc-num">14</span>Solution: Standardize everything to one format</a></li>
+<li><a href="#s15"><span class="toc-num">15</span>Problem 3: Wrong or outdated information</a></li>
+<li><a href="#s16"><span class="toc-num">16</span>GPT-3.5 generated data often has subtle errors</a></li>
+<li><a href="#s17"><span class="toc-num">17</span>Solution: Human review of at least a random 10% sample</a></li>
+<li><a href="#s18"><span class="toc-num">18</span>Problem 4: Truncated responses</a></li>
+<li><a href="#s19"><span class="toc-num">19</span>Outputs that end mid-sentence because of token limits</a></li>
+<li><a href="#s20"><span class="toc-num">20</span>Solution: Filter by checking for proper sentence endings</a></li>
+<li><a href="#s21"><span class="toc-num">21</span>Problem 5: System prompt leakage</a></li>
+<li><a href="#s22"><span class="toc-num">22</span>Training data that accidentally includes "As an AI language model..."</a></li>
+<li><a href="#s23"><span class="toc-num">23</span>Solution: Regex filter for common AI hedging phrases</a></li>
+<li><a href="#s24"><span class="toc-num">24</span>Automated Cleaning Pipeline</a></li>
+<li><a href="#s25"><span class="toc-num">25</span>Process dataset</a></li>
+<li><a href="#s26"><span class="toc-num">26</span>Synthetic Data: When You Don't Have Enough</a></li>
+<li><a href="#s27"><span class="toc-num">27</span>The Process</a></li>
+<li><a href="#s28"><span class="toc-num">28</span>Generating with GPT-4</a></li>
+<li><a href="#s29"><span class="toc-num">29</span>Example:</a></li>
+<li><a href="#s30"><span class="toc-num">30</span>Rules for Synthetic Data</a></li>
+<li><a href="#s31"><span class="toc-num">31</span>Task	Minimum	Sweet Spot	Overkill</a></li>
+<li><a href="#s32"><span class="toc-num">32</span>Dataset Structure for Training</a></li>
+<li><a href="#s33"><span class="toc-num">33</span>Practical Takeaways</a></li>
+<li><a href="#s34"><span class="toc-num">34</span>Ep 45: QLoRA</a></li>
+<li><a href="#s35"><span class="toc-num">35</span>Ep 47: Fine-Tune Evaluation</a></li>
+<li><a href="#s36"><span class="toc-num">36</span>Next: Episode 47 — Fine-Tune Evaluation</a></li>
+</ul>
+</div>
+  <article class="prose" id="s0">
+<p>You've got LoRA set up. QLoRA is humming on your RTX 4090. You fire up training and... the model outputs garbage. Worse than the base model. Three days of training, wasted.</p>
+<p>The model isn't broken. Your data is.</p>
+<p>Fine-tuning is 20% code and 80% data. The model architecture, the hyperparameters, the LoRA rank — those matter. But the training data determines everything. Bad data with perfect code produces a bad model. Great data with mediocre code produces a great model.</p>
+<p>Let's talk about what great data looks like.</p>
+<h2 id="s1">Data Formats: The Big Three</h2><div class="section-rule"></div>
+<p>Every fine-tuning framework expects data in a specific format. There are three dominant ones:</p>
+<ol><li>Alpaca Format</li></ol>
+<p>The OG instruction-following format. Simple and clean:</p>
+<p>json</p>
+<p>{</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>"instruction": "Summarize the following text in 2 sentences",
+    "input": "The transformer architecture was introduced in 2017...",
+    "output": "The transformer architecture, introduced in 2017, replaced RNNs with self-attention mechanisms. It became the foundation for all modern language models including GPT and BERT."</code></pre></div>
+</div>
+<p>}</p>
+<h2 id="s2">Three fields:</h2><div class="section-rule"></div>
+<p>instruction: What to do</p>
+<p>input: Context (optional — can be empty string)</p>
+<p>output: Expected response</p>
+<p>Best for: Simple instruction-following tasks, single-turn interactions.</p>
+<ol><li>ShareGPT Format</li></ol>
+<p>Multi-turn conversation format. Named after the (now-defunct) site where people shared ChatGPT conversations:</p>
+<p>json</p>
+<p>{</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>"conversations": [
+        {"from": "human", "value": "I need to parse JSON in Python but it might be malformed. What's the safest way?"},
+        {"from": "gpt", "value": "Use a try-except block with json.loads():\n\n```python\nimport json\n\ntry:\n    data = json.loads(raw_string)\nexcept json.JSONDecodeError as e:\n    print(f'Invalid JSON: {e}')\n    data = None\n```\n\nFor extra safety, validate the schema after parsing with jsonschema or pydantic."},
+        {"from": "human", "value": "What if the JSON has comments in it? Some configs use // comments"},
+        {"from": "gpt", "value": "Standard json.loads() will fail on comments. Use json5 or strip comments first:\n\n```python\nimport json5  # pip install json5\ndata = json5.loads(raw_string)  # Handles comments and trailing commas\n```"}
+    ]</code></pre></div>
+</div>
+<p>}</p>
+<p>Best for: Chat models, multi-turn interactions, conversational assistants.</p>
+<ol><li>Chat Template Format (Messages)</li></ol>
+<p>The modern standard, aligned with OpenAI's message format:</p>
+<p>json</p>
+<p>{</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>"messages": [
+        {"role": "system", "content": "You are a senior Python developer who gives concise, production-ready code."},
+        {"role": "user", "content": "Write a retry decorator with exponential backoff"},
+        {"role": "assistant", "content": "```python\nimport time\nfrom functools import wraps\n\ndef retry(max_retries=3, base_delay=1):\n    def decorator(func):\n        @wraps(func)\n        def wrapper(*args, **kwargs):\n            for attempt in range(max_retries):\n                try:\n                    return func(*args, **kwargs)\n                except Exception as e:\n                    if attempt == max_retries - 1:\n                        raise\n                    time.sleep(base_delay * 2 ** attempt)\n        return wrapper\n    return decorator\n```"}
+    ]</code></pre></div>
+</div>
+<p>}</p>
+<p>Best for: Most modern fine-tuning. Works with virtually every framework.</p>
+<p>Which Format to Use?</p>
+<h2 id="s3">Format	Multi-turn	System prompt	Framework support	Recommendation</h2><div class="section-rule"></div>
+<h2 id="s4">Alpaca	No	No	Universal	Legacy, but simple</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>ShareGPT</th><th>Yes</th><th>Limited</th><th>Axolotl, FastChat</th><th>Good for conversations</th></tr></thead><tbody><tr><td>Messages</td><td>Yes</td><td>Yes</td><td>Everything modern</td><td>Default choice</td></tr></tbody></table></div>
+<p>Use the messages/chat template format unless you have a specific reason not to.</p>
+<div class="callout callout-tip"><span class="callout-icon">⚡</span><p></p></div>
+<h2 id="s5">Quality Over Quantity: The Numbers</h2><div class="section-rule"></div>
+<p>Here's data that will change how you think about fine-tuning:</p>
+<h2 id="s6">Dataset Size	Quality	Result</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>100,000 examples</th><th>Mixed quality, scraped</th><th>Worse than base model</th></tr></thead><tbody><tr><td>10,000 examples</td><td>Curated, human-written</td><td>Good</td></tr><tr><td>1,000 examples</td><td>Expert-curated, perfect</td><td>Great</td></tr><tr><td>500 examples</td><td>Hand-crafted, reviewed twice</td><td>Often best</td></tr></tbody></table></div>
+<p>The LIMA paper (Less Is More for Alignment) showed that just 1,000 carefully curated examples can produce a model that rivals models trained on 50,000+ examples.</p>
+<p>Why? Because fine-tuning isn't teaching the model new knowledge (that happened during pretraining). Fine-tuning is teaching the model a behavior pattern. And you can demonstrate a pattern in 500-1,000 examples.</p>
+<h2 id="s7">The Quality Checklist</h2><div class="section-rule"></div>
+<p>Every single example in your dataset should pass these checks:</p>
+<p>Is the output what an expert would write? If not, remove it.</p>
+<p>Is the instruction clear and unambiguous? Vague instructions teach vague behavior.</p>
+<p>Is the output the RIGHT length? If you want concise answers, your training data should have concise answers.</p>
+<p>Does it handle edge cases? Include examples where the right answer is "I don't know" or "I need more information."</p>
+<p>Is it diverse? 500 examples of the same pattern teaches one trick. 500 diverse examples teach general behavior.</p>
+<p>🔧</p>
+<h2 id="s8">Data Cleaning: The Boring Part That Matters Most</h2><div class="section-rule"></div>
+<p>Raw data is always dirty. Here's what to look for:</p>
+<h2 id="s9">Common Problems</h2><div class="section-rule"></div>
+<p>python</p>
+<h2 id="s10">Problem 1: Duplicate or near-duplicate examples</h2><div class="section-rule"></div>
+<h2 id="s11">Tool: deduplicate with MinHash or exact string matching</h2><div class="section-rule"></div>
+<p>from datasketch import MinHash, MinHashLSH</p>
+<h2 id="s12">Problem 2: Inconsistent formatting</h2><div class="section-rule"></div>
+<h2 id="s13">Some outputs use markdown, others plain text, others HTML</h2><div class="section-rule"></div>
+<h2 id="s14">Solution: Standardize everything to one format</h2><div class="section-rule"></div>
+<h2 id="s15">Problem 3: Wrong or outdated information</h2><div class="section-rule"></div>
+<h2 id="s16">GPT-3.5 generated data often has subtle errors</h2><div class="section-rule"></div>
+<h2 id="s17">Solution: Human review of at least a random 10% sample</h2><div class="section-rule"></div>
+<h2 id="s18">Problem 4: Truncated responses</h2><div class="section-rule"></div>
+<h2 id="s19">Outputs that end mid-sentence because of token limits</h2><div class="section-rule"></div>
+<h2 id="s20">Solution: Filter by checking for proper sentence endings</h2><div class="section-rule"></div>
+<h2 id="s21">Problem 5: System prompt leakage</h2><div class="section-rule"></div>
+<h2 id="s22">Training data that accidentally includes "As an AI language model..."</h2><div class="section-rule"></div>
+<h2 id="s23">Solution: Regex filter for common AI hedging phrases</h2><div class="section-rule"></div>
+<h2 id="s24">Automated Cleaning Pipeline</h2><div class="section-rule"></div>
+<p>python</p>
+<p>import json</p>
+<p>import re</p>
+<p>def clean_example(example):</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>"""Clean a single training example. Returns None if should be removed."""</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>messages = example.get("messages", [])</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># Remove if too short
+    assistant_msgs = [m for m in messages if m["role"] == "assistant"]
+    if any(len(m["content"]) &lt; 50 for m in assistant_msgs):
+        return None</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># Remove if contains AI hedging
+    hedging_patterns = [
+        r"as an ai",
+        r"i don't have personal",
+        r"i cannot provide",
+        r"i'm just a language model",
+    ]
+    for msg in assistant_msgs:
+        for pattern in hedging_patterns:
+            if re.search(pattern, msg["content"], re.IGNORECASE):
+                return None</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># Remove if truncated (doesn't end with punctuation or code block)
+    last_content = assistant_msgs[-1]["content"].strip()
+    if not re.search(r'[.!?\n`]$', last_content):
+        return None</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># Normalize whitespace
+    for msg in messages:
+        msg["content"] = re.sub(r'\n{3,}', '\n\n', msg["content"]).strip()</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>return example</code></pre></div>
+</div>
+<h2 id="s25">Process dataset</h2><div class="section-rule"></div>
+<p>with open("raw_data.jsonl") as f:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>raw = [json.loads(line) for line in f]</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>cleaned = [clean_example(ex) for ex in raw]
+cleaned = [ex for ex in cleaned if ex is not None]
+print(f"Kept {len(cleaned)}/{len(raw)} examples ({len(cleaned)/len(raw)*100:.1f}%)")</code></pre></div>
+</div>
+<p>A typical cleaning pipeline removes 20-40% of raw data. That's normal. That's good.</p>
+<p>📊</p>
+<h2 id="s26">Synthetic Data: When You Don't Have Enough</h2><div class="section-rule"></div>
+<p>You need 1,000 expert-quality examples but only have 50. Enter synthetic data generation — using a stronger model to generate training data for a weaker model.</p>
+<h2 id="s27">The Process</h2><div class="section-rule"></div>
+<ol><li>Write 50 seed examples by hand (highest quality possible)</li><li>Use GPT-4 / Claude to generate variations</li><li>Human-review the generated examples</li><li>Fine-tune your target model on the reviewed set</li></ol>
+<h2 id="s28">Generating with GPT-4</h2><div class="section-rule"></div>
+<p>python</p>
+<p>import openai</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>SEED_EXAMPLE = """</code></pre></div>
+</div>
+<p>User: Our API is returning 503 errors intermittently under load</p>
+<p>Assistant: Intermittent 503s under load point to a few common causes:</p>
+<ol><li>Backend saturation — Your upstream servers are running out of worker threads/processes. Check your server's active connections vs max connections.</li></ol>
+<ol><li>Load balancer health checks — If health checks are too aggressive, the LB might be marking healthy backends as down. Check your health check interval and threshold.</li></ol>
+<ol><li>Connection pooling — Database connection exhaustion is the #1 hidden cause. Run SELECT count(*) FROM pg_stat_activity; to check.</li></ol>
+<p>Quick diagnosis: Run curl -v during a 503 and check the Server header. If it's from your load balancer vs your app server, that tells you where the bottleneck is.</p>
+<p>"""</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>prompt = f"""Generate a similar technical support conversation.</code></pre></div>
+</div>
+<p>The user should describe a different infrastructure problem.</p>
+<p>The assistant should give the same depth and style of response.</p>
+<h2 id="s29">Example:</h2><div class="section-rule"></div>
+<p>{SEED_EXAMPLE}</p>
+<p>Now generate a new, different example:"""</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>response = openai.chat.completions.create(
+model="gpt-4",
+    messages=[{"role": "user", "content": prompt}],
+    n=5,  # Generate 5 variations
+    temperature=0.8,</code></pre></div>
+</div>
+<p>)</p>
+<h2 id="s30">Rules for Synthetic Data</h2><div class="section-rule"></div>
+<p>Always review generated data. GPT-4 makes mistakes. Every example needs at least a skim.</p>
+<p>Use diverse prompts. Don't generate 1,000 examples from the same template — vary the generation prompt.</p>
+<p>Mix synthetic and real. A 70% synthetic / 30% real mix often performs best.</p>
+<p>Use the strongest model available. Synthetic data from GPT-4 is better than from GPT-3.5.</p>
+<p>Evol-Instruct — Generate progressively harder versions of each example. Start simple, make it complex.</p>
+<p>How Much Data Do You Need?</p>
+<h2 id="s31">Task	Minimum	Sweet Spot	Overkill</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>Format/style change</th><th>100-200</th><th>500</th><th>>2,000</th></tr></thead><tbody><tr><td>Domain adaptation</td><td>500-1,000</td><td>2,000-5,000</td><td>>20,000</td></tr><tr><td>New task (classification)</td><td>200-500</td><td>1,000-2,000</td><td>>10,000</td></tr><tr><td>Complex reasoning</td><td>1,000-2,000</td><td>5,000-10,000</td><td>>50,000</td></tr><tr><td>Multi-task generalist</td><td>5,000-10,000</td><td>20,000-50,000</td><td>>200,000</td></tr></tbody></table></div>
+<p>These numbers assume high-quality, curated data. If your data is noisy, multiply by 3-5×.</p>
+<p>The scaling law: Doubling data quality has 5-10× the impact of doubling data quantity.</p>
+<div class="callout callout-tip"><span class="callout-icon">💡</span><p></p></div>
+<h2 id="s32">Dataset Structure for Training</h2><div class="section-rule"></div>
+<p>Here's a production-ready dataset structure:</p>
+<p>my_finetune_data/</p>
+<p>├── train.jsonl          # 90% of data</p>
+<p>├── eval.jsonl           # 10% of data (held out)</p>
+<p>├── metadata.json        # Dataset info</p>
+<p>└── README.md            # What this dataset is, how it was created</p>
+<p>json</p>
+<p>// metadata.json</p>
+<p>{</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>"name": "customer-support-v2",
+    "format": "messages",
+    "total_examples": 2847,
+    "train_examples": 2562,
+    "eval_examples": 285,
+    "created": "2024-12-15",
+    "source": "70% real support tickets (anonymized), 30% GPT-4 synthetic",
+    "cleaning": "Removed duplicates, truncated responses, PII",
+    "avg_tokens_per_example": 650,
+    "total_tokens": ~1.85M</code></pre></div>
+</div>
+<p>}</p>
+<p>Always have an eval split. Without it, you can't detect overfitting.</p>
+<p>🔬</p>
+<h2 id="s33">Practical Takeaways</h2><div class="section-rule"></div>
+<p>Quality beats quantity, always — 500 perfect examples > 50,000 messy ones</p>
+<p>Use the messages/chat template format — it's the modern standard</p>
+<p>Clean aggressively — removing 30% of your data often improves results</p>
+<p>Synthetic data works — but always human-review it</p>
+<p>Hold out 10% for evaluation — you need to measure, not guess</p>
+<p>Document your dataset — future you will thank present you</p>
+<p>🛡️</p>
+<p>What's Next?</p>
+<p>Episode 47: Fine-Tune Evaluation — You've trained the model. But is it actually good? Perplexity, benchmarks, vibe checks, loss curves — how do you know if your fine-tune worked? And how do you catch overfitting before it ruins your model?</p>
+<p>← Previous</p>
+<h2 id="s34">Ep 45: QLoRA</h2><div class="section-rule"></div>
+<p>Next →</p>
+<h2 id="s35">Ep 47: Fine-Tune Evaluation</h2><div class="section-rule"></div>
+<h2 id="s36">Next: Episode 47 — Fine-Tune Evaluation</h2><div class="section-rule"></div>
+<p>Loss went down. Training finished. The response looks... okay? But 'okay' isn't a metric. Here's how to actually evaluate.</p>
+<p>This is part of a 98-episode series covering AI engineering from tokens to production deployment.</p>
+  </article>
+  <div class="ep-nav">
+    <a href="episode-45.html" class="ep-nav-card">
+      <span class="ep-nav-dir">← Previous</span>
+      <span class="ep-nav-title">Ep 45: QLoRA: Fine-Tune a 70B Model on Your Gaming GPU</span>
+    </a>
+    <a href="episode-47.html" class="ep-nav-card next">
+      <span class="ep-nav-dir">Next Episode →</span>
+      <span class="ep-nav-title">Ep 47: Fine-Tune Evaluation: How to Know If Your Model Is Actu…</span>
+    </a>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <img class="footer-logo" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+      <div class="footer-tagline">98 Field Manual · Build with AI, not just use it · Free forever</div>
+    </div>
+    <div class="footer-links">
+      <a href="field-manual-index.html">All Episodes</a>
+      <a href="field-manual-index.html#g7">Fine-Tuning</a>
+      <a href="episode-45.html">← Ep 45</a>
+      <a href="episode-47.html">Ep 47 →</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+const prog=document.getElementById('prog');
+window.addEventListener('scroll',()=>{
+  const total=document.documentElement.scrollHeight-window.innerHeight;
+  prog.style.width=Math.min(100,(window.scrollY/total)*100)+'%';
+},{passive:true});
+
+// Build section nav dots from h2s
+const h2s=document.querySelectorAll('.prose h2');
+const sNav=document.getElementById('sectionNav');
+const dots=[];
+h2s.forEach((h,i)=>{
+  const btn=document.createElement('button');
+  btn.className='snav-dot';
+  btn.setAttribute('data-label',h.textContent.trim().substring(0,28));
+  btn.onclick=()=>h.scrollIntoView({behavior:'smooth',block:'start'});
+  sNav.appendChild(btn);
+  dots.push({btn,h});
+});
+
+const dotObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      const idx=dots.findIndex(d=>d.h===e.target);
+      if(idx>-1) dots.forEach((d,i)=>d.btn.classList.toggle('active',i===idx));
+    }
+  });
+},{rootMargin:'-30% 0px -60% 0px'});
+dots.forEach(d=>dotObs.observe(d.h));
+
+// Scroll reveal
+const revObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='translateY(0)';}});
+},{threshold:0.08});
+document.querySelectorAll('.toc,.callout,.table-wrap,.code-block,.ep-nav-card').forEach(el=>{
+  el.style.opacity='0';
+  el.style.transform='translateY(14px)';
+  el.style.transition='opacity 0.55s ease,transform 0.55s ease';
+  revObs.observe(el);
+});
+</script>
+</body>
+</html>

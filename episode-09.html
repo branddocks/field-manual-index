@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ep 9: Quantization: Running 70B Models on Your Laptop</title>
+<meta name="description" content="Llama 3.1 70B needs 140 GB in FP16. Your GPU has 24 GB. Math says it doesn't fit. Quantization says hold my beer.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,300&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0d0d1a;--page:#ffffff;--paper:#f8f9ff;
+  --navy:#124093;--navy-dim:rgba(18,64,147,0.07);--navy-mid:rgba(18,64,147,0.15);
+  --red:#e2190e;--gold:#c8973a;--muted:#6b7280;--rule:#e5e7ef;--code-bg:#0d0d1f;
+  --title:'Roboto',sans-serif;--body:'Poppins',sans-serif;--mono:'DM Mono',monospace;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--page);color:var(--ink);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:#fff}
+::-webkit-scrollbar-thumb{background:var(--navy);border-radius:2px}
+
+/* NAV */
+nav.top{position:sticky;top:0;z-index:200;background:#fff;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(20px,5vw,60px);border-bottom:1px solid var(--rule);box-shadow:0 1px 12px rgba(0,0,0,0.05)}
+.logo-wrap{display:flex;align-items:center;text-decoration:none}
+.logo-img{height:38px;width:auto;object-fit:contain;display:block}
+.nav-right{display:flex;align-items:center;gap:6px}
+.nav-link{font-family:var(--body);font-size:11.5px;font-weight:500;color:var(--muted);text-decoration:none;padding:6px 14px;border-radius:6px;transition:all 0.2s}
+.nav-link:hover{color:var(--navy);background:var(--navy-dim)}
+.nav-cta{background:var(--navy)!important;color:#fff!important}
+.nav-cta:hover{background:#1a52c0!important;color:#fff!important}
+
+/* PROGRESS */
+.progress-bar-fixed{position:fixed;top:60px;left:0;right:0;height:2.5px;background:rgba(18,64,147,0.1);z-index:199}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--navy),#4f7ff7);width:0%;transition:width 0.1s;border-radius:0 2px 2px 0}
+
+/* HERO */
+.hero{background:#fff;position:relative;overflow:hidden;min-height:88vh;display:flex;flex-direction:column;justify-content:center}
+.hero-bg{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.hero-blob-1{position:absolute;top:-120px;right:-120px;width:700px;height:700px;background:radial-gradient(circle at 60% 40%,rgba(18,64,147,0.07) 0%,rgba(18,64,147,0.03) 40%,transparent 70%);border-radius:50%}
+.hero-blob-2{position:absolute;bottom:-80px;left:-80px;width:500px;height:500px;background:radial-gradient(circle,rgba(79,127,247,0.06) 0%,transparent 65%);border-radius:50%}
+.hero-lines{position:absolute;top:0;right:0;width:45%;height:100%;opacity:0.06}
+.hero-lines svg{width:100%;height:100%}
+.hero-tokens{position:absolute;top:0;right:0;width:46%;height:100%;display:flex;align-items:center;justify-content:center}
+.token-float-wrap{position:relative;width:360px;height:360px}
+.tf{position:absolute;font-family:var(--mono);font-size:13px;font-weight:500;padding:8px 16px;border-radius:8px;white-space:nowrap;animation:float-anim 6s ease-in-out infinite;box-shadow:0 4px 20px rgba(0,0,0,0.08)}
+.tf-1{top:20px;left:60px;background:rgba(18,64,147,0.09);color:#124093;border:1px solid rgba(18,64,147,0.18);animation-delay:0s}
+.tf-2{top:70px;right:20px;background:rgba(79,127,247,0.09);color:#2563eb;border:1px solid rgba(79,127,247,0.2);animation-delay:0.8s}
+.tf-3{top:140px;left:20px;background:rgba(16,185,129,0.08);color:#059669;border:1px solid rgba(16,185,129,0.18);animation-delay:1.6s}
+.tf-4{top:170px;right:50px;background:rgba(168,85,247,0.08);color:#7c3aed;border:1px solid rgba(168,85,247,0.18);animation-delay:0.4s}
+.tf-5{bottom:140px;left:80px;background:rgba(234,179,8,0.08);color:#b45309;border:1px solid rgba(234,179,8,0.2);animation-delay:1.2s}
+.tf-6{bottom:90px;right:30px;background:rgba(236,72,153,0.08);color:#db2777;border:1px solid rgba(236,72,153,0.2);animation-delay:2s}
+.tf-7{bottom:30px;left:40px;background:rgba(239,68,68,0.08);color:#dc2626;border:1px solid rgba(239,68,68,0.18);animation-delay:0.6s}
+.tf-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:110px;height:110px;background:var(--navy);border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;box-shadow:0 12px 40px rgba(18,64,147,0.3);animation:pulse-center 3s ease-in-out infinite}
+.tf-center .big{font-family:var(--title);font-size:28px;font-weight:900;color:#fff;line-height:1}
+.tf-center .small{font-family:var(--body);font-size:9px;font-weight:500;color:rgba(255,255,255,0.6);letter-spacing:1.5px;text-transform:uppercase}
+@keyframes float-anim{0%,100%{transform:translateY(0px)}50%{transform:translateY(-10px)}}
+@keyframes pulse-center{0%,100%{box-shadow:0 12px 40px rgba(18,64,147,0.3)}50%{box-shadow:0 12px 60px rgba(18,64,147,0.5)}}
+.hero-content{position:relative;z-index:2;width:54%;padding:clamp(48px,8vw,96px) clamp(24px,5vw,72px) clamp(48px,8vw,96px)}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:5px 14px;background:var(--navy-dim);border:1px solid rgba(18,64,147,0.18);border-radius:100px;margin-bottom:22px;font-family:var(--body);font-size:10px;font-weight:600;color:var(--navy);letter-spacing:1.2px;text-transform:uppercase}
+.hero-eyebrow .dot{width:5px;height:5px;background:var(--navy);border-radius:50%}
+.hero h1{font-family:var(--title);font-size:clamp(28px,4.5vw,52px);font-weight:900;color:var(--ink);line-height:1.08;letter-spacing:-1.2px;margin-bottom:20px}
+.hero h1 .line2{display:block;color:var(--navy)}
+.hero-sub{font-family:var(--body);font-size:clamp(13px,1.6vw,15px);font-weight:300;color:#4b5563;line-height:1.85;max-width:500px;margin-bottom:34px}
+.breadcrumb{display:flex;align-items:center;gap:7px;margin-bottom:28px;font-family:var(--mono);font-size:10px;color:#9ca3af}
+.breadcrumb a{color:inherit;text-decoration:none;transition:color 0.2s}
+.breadcrumb a:hover{color:var(--navy)}
+.breadcrumb .sep{color:#d1d5db}
+.breadcrumb .cur{color:#6b7280}
+.meta-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:14px 20px;background:var(--paper);border:1px solid var(--rule);border-radius:10px;margin-bottom:24px}
+.meta-item{font-family:var(--body);font-size:10.5px;font-weight:500;color:var(--muted);display:flex;align-items:center;gap:5px}
+.tags-row{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-family:var(--body);font-size:10px;font-weight:500;color:var(--navy);background:var(--navy-dim);padding:4px 11px;border-radius:100px;border:1px solid rgba(18,64,147,0.15)}
+@media(max-width:900px){.hero{min-height:auto;padding-bottom:48px}.hero-content{width:100%;padding:48px 24px 36px}.hero-tokens{display:none}.hero-lines{display:none}}
+
+/* SECTION NAV DOTS */
+.section-nav{position:fixed;right:clamp(12px,2vw,24px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:9px;z-index:100}
+.snav-dot{width:7px;height:7px;border-radius:50%;background:#d1d5db;border:none;padding:0;cursor:pointer;transition:all 0.3s;position:relative}
+.snav-dot::after{content:attr(data-label);position:absolute;right:16px;top:50%;transform:translateY(-50%);font-family:var(--body);font-size:9px;font-weight:500;color:var(--ink);background:#fff;padding:3px 9px;border-radius:4px;border:1px solid var(--rule);box-shadow:0 2px 8px rgba(0,0,0,0.06);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.2s}
+.snav-dot:hover::after{opacity:1}
+.snav-dot.active{background:var(--navy);transform:scale(1.5)}
+.snav-dot:hover:not(.active){background:rgba(18,64,147,0.4)}
+@media(max-width:768px){.section-nav{display:none}}
+
+/* LAYOUT */
+.layout{max-width:860px;margin:0 auto;padding:clamp(40px,6vw,68px) clamp(20px,5vw,56px) 80px}
+
+/* TOC */
+.toc{background:var(--paper);border:1px solid var(--rule);border-left:4px solid var(--navy);border-radius:10px;padding:22px 26px;margin-bottom:52px}
+.toc-title{font-family:var(--title);font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
+.toc-list{list-style:none;display:flex;flex-direction:column;gap:3px}
+.toc-list li a{display:flex;align-items:center;gap:12px;text-decoration:none;padding:6px 0;font-family:var(--body);font-size:13px;font-weight:400;color:var(--ink);transition:color 0.2s}
+.toc-list li a:hover{color:var(--navy)}
+.toc-num{font-family:var(--mono);font-size:9px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* PROSE */
+.prose{line-height:1.85}
+.prose h2{font-family:var(--title);font-size:clamp(18px,2.5vw,23px);font-weight:700;color:var(--ink);letter-spacing:-0.4px;margin:52px 0 8px;line-height:1.2;scroll-margin-top:80px;padding-left:18px;position:relative}
+.prose h2::before{content:'';position:absolute;left:0;top:5px;bottom:5px;width:3px;background:var(--navy);border-radius:2px}
+.prose h2:first-child{margin-top:0}
+.prose h3{font-family:var(--title);font-size:14px;font-weight:700;color:var(--ink);margin:26px 0 8px}
+.section-rule{width:36px;height:2px;background:var(--navy);border-radius:2px;margin:8px 0 22px 18px;opacity:0.4}
+.prose p{font-family:var(--body);font-size:clamp(13.5px,1.7vw,15px);line-height:1.88;color:#374151;margin-bottom:16px;font-weight:300}
+.prose p strong{font-weight:600;color:var(--ink)}
+.prose ul,.prose ol{list-style:none;padding:0;margin:4px 0 20px}
+.prose ul li,.prose ol li{font-family:var(--body);font-size:clamp(13.5px,1.7vw,14.5px);line-height:1.8;color:#374151;padding:4px 0 4px 26px;position:relative;font-weight:300}
+.prose ul li::before{content:'';position:absolute;left:5px;top:14px;width:5px;height:5px;background:var(--navy);border-radius:50%;opacity:0.55}
+.prose ol{counter-reset:li}
+.prose ol li{counter-increment:li}
+.prose ol li::before{content:counter(li);position:absolute;left:0;top:5px;font-family:var(--mono);font-size:8px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.ic{font-family:var(--mono);font-size:12.5px;background:var(--navy-dim);color:var(--navy);padding:1.5px 6px;border-radius:4px;border:1px solid rgba(18,64,147,0.15)}
+
+/* CODE */
+.code-block{background:var(--code-bg);border-radius:10px;margin:24px 0;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.12),0 0 0 1px rgba(18,64,147,0.1)}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.02)}
+.code-dots{display:flex;gap:5px}
+.cd{width:10px;height:10px;border-radius:50%}
+.cd-r{background:#ff5f56}.cd-y{background:#ffbd2e}.cd-g{background:#27c93f}
+.code-filename{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,0.25)}
+.code-lang{font-family:var(--mono);font-size:9px;color:rgba(91,140,247,0.6);letter-spacing:1px;text-transform:uppercase}
+.code-body{padding:20px 22px;overflow-x:auto}
+.code-body pre{margin:0}
+.code-body code{font-family:var(--mono);font-size:12.5px;line-height:1.9;color:#c9d4f5}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;margin:24px 0;border-radius:10px;border:1px solid var(--rule);box-shadow:0 2px 12px rgba(0,0,0,0.04)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:var(--ink)}
+thead th{padding:12px 16px;text-align:left;font-family:var(--body);font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,0.45)}
+thead th:first-child{color:#6b9fff}
+tbody tr{border-bottom:1px solid var(--rule);transition:background 0.15s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--paper)}
+tbody td{padding:10px 16px;font-family:var(--body);font-size:13px;color:#374151;font-weight:300;line-height:1.5}
+tbody td:first-child{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--navy)}
+
+/* CALLOUTS */
+.callout{border-radius:9px;padding:16px 20px;margin:24px 0;display:flex;gap:13px;align-items:flex-start}
+.callout-tip{background:rgba(18,64,147,0.05);border:1px solid rgba(18,64,147,0.16);border-left:3px solid var(--navy)}
+.callout-warn{background:rgba(220,38,38,0.04);border:1px solid rgba(220,38,38,0.14);border-left:3px solid #dc2626}
+.callout-note{background:rgba(200,151,58,0.05);border:1px solid rgba(200,151,58,0.2);border-left:3px solid var(--gold)}
+.callout-icon{font-size:16px;flex-shrink:0;margin-top:1px;line-height:1}
+.callout p{font-size:13.5px!important;line-height:1.7!important;color:#374151!important;margin:0!important}
+
+/* EP NAV */
+.ep-nav{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:64px;padding-top:32px;border-top:1px solid var(--rule)}
+@media(max-width:500px){.ep-nav{grid-template-columns:1fr}}
+.ep-nav-card{display:flex;flex-direction:column;text-decoration:none;padding:20px 22px;border:1px solid var(--rule);border-radius:10px;background:var(--paper);transition:all 0.25s;gap:5px}
+.ep-nav-card:hover{border-color:rgba(18,64,147,0.3);background:var(--navy-dim);transform:translateY(-2px);box-shadow:0 6px 20px rgba(18,64,147,0.08)}
+.ep-nav-dir{font-family:var(--body);font-size:9px;font-weight:600;color:var(--navy);letter-spacing:1px;text-transform:uppercase}
+.ep-nav-title{font-family:var(--title);font-size:13px;font-weight:600;color:var(--ink);line-height:1.4}
+.ep-nav-card.next{align-items:flex-end;text-align:right}
+
+/* FOOTER */
+footer{background:var(--ink);padding:44px clamp(20px,5vw,60px);border-top:3px solid var(--navy)}
+.footer-inner{max-width:860px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.footer-logo{height:32px;width:auto;object-fit:contain;filter:brightness(0) invert(1);opacity:0.7}
+.footer-tagline{font-family:var(--body);font-size:11px;color:rgba(255,255,255,0.22);font-style:italic;margin-top:4px;font-weight:300}
+.footer-links{display:flex;gap:20px;flex-wrap:wrap}
+.footer-links a{font-family:var(--body);font-size:11px;font-weight:400;color:rgba(255,255,255,0.3);text-decoration:none;transition:color 0.2s}
+.footer-links a:hover{color:rgba(255,255,255,0.75)}
+
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.hero-content>*{animation:fadeUp 0.65s cubic-bezier(0.22,1,0.36,1) both}
+.hero-content>*:nth-child(1){animation-delay:0.05s}
+.hero-content>*:nth-child(2){animation-delay:0.1s}
+.hero-content>*:nth-child(3){animation-delay:0.15s}
+.hero-content>*:nth-child(4){animation-delay:0.2s}
+.hero-content>*:nth-child(5){animation-delay:0.25s}
+.hero-content>*:nth-child(6){animation-delay:0.3s}
+.hero-content>*:nth-child(7){animation-delay:0.35s}
+@media(max-width:640px){.nav-link:not(.nav-cta){display:none}}
+</style>
+</head>
+<body>
+
+<div class="progress-bar-fixed"><div class="progress-fill" id="prog"></div></div>
+
+<nav class="top">
+  <a href="field-manual-index.html" class="logo-wrap">
+    <img class="logo-img" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+  </a>
+  <div class="nav-right">
+    <a href="field-manual-index.html" class="nav-link">All Episodes</a>
+    <a href="field-manual-index.html#g2" class="nav-link nav-cta">⚡ Running Models & Inference</a>
+  </div>
+</nav>
+
+<nav class="section-nav" id="sectionNav"></nav>
+
+<header class="hero">
+  <div class="hero-bg">
+    <div class="hero-blob-1"></div>
+    <div class="hero-blob-2"></div>
+    <div class="hero-lines">
+      <svg viewBox="0 0 600 800" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+        <line x1="0" y1="200" x2="600" y2="0" stroke="#124093" stroke-width="1"/>
+        <line x1="0" y1="400" x2="600" y2="200" stroke="#124093" stroke-width="0.6"/>
+        <line x1="0" y1="600" x2="600" y2="400" stroke="#124093" stroke-width="0.4"/>
+        <circle cx="500" cy="150" r="120" stroke="#124093" stroke-width="0.8" fill="none"/>
+        <circle cx="500" cy="150" r="80" stroke="#124093" stroke-width="0.4" fill="none"/>
+        <circle cx="500" cy="150" r="40" stroke="#124093" stroke-width="0.3" fill="none"/>
+        <line x1="300" y1="0" x2="300" y2="800" stroke="#124093" stroke-width="0.4" stroke-dasharray="6,12"/>
+        <rect x="360" y="480" width="160" height="160" stroke="#124093" stroke-width="0.6" fill="none" transform="rotate(15 440 560)"/>
+      </svg>
+    </div>
+  </div>
+  <div class="hero-tokens" aria-hidden="true">
+    <div class="token-float-wrap">
+      <div class="tf tf-1">token</div>
+<div class="tf tf-2">model</div>
+<div class="tf tf-3">layer</div>
+<div class="tf tf-4">vector</div>
+<div class="tf tf-5">embed</div>
+<div class="tf tf-6">weight</div>
+<div class="tf tf-7">param</div>
+      <div class="tf-center">
+        <span class="big">QUAN</span>
+        <span class="small">EP 09</span>
+      </div>
+    </div>
+  </div>
+  <div class="hero-content">
+    <nav class="breadcrumb">
+      <a href="field-manual-index.html">Field Manual</a>
+      <span class="sep">›</span>
+      <a href="field-manual-index.html#g2">⚡ Running Models & Inference</a>
+      <span class="sep">›</span>
+      <span class="cur">Episode 9</span>
+    </nav>
+    <div class="hero-eyebrow"><span class="dot"></span>MODULE 2 &nbsp;·&nbsp; Running Models & Inference</div>
+    <h1>Quantization: Running 70B Models on Your Laptop</h1>
+    <p class="hero-sub">Llama 3.1 70B needs 140 GB in FP16. Your GPU has 24 GB. Math says it doesn't fit. Quantization says hold my beer.</p>
+    <div class="meta-row">
+      <div class="meta-item"><span>📅</span> Mar 2026</div>
+      <div class="meta-item"><span>⏱</span> 10 min read</div>
+      <div class="meta-item"><span>🎯</span> Episode 9 of 98</div>
+    </div>
+    <div class="tags-row"><span class="tag">Quantization</span><span class="tag">GGUF</span><span class="tag">VRAM</span><span class="tag">Optimization</span></div>
+  </div>
+</header>
+
+<main class="layout">
+  <div class="toc">
+  <div class="toc-title">In this episode</div>
+  <ul class="toc-list"><li><a href="#s1"><span class="toc-num">1</span>What Quantization Actually Does</a></li>
+<li><a href="#s2"><span class="toc-num">2</span>The Mapping</a></li>
+<li><a href="#s3"><span class="toc-num">3</span>FP16 range: [-1.5, -0.8, -0.2, 0.1, 0.4, 0.9, 1.3]</a></li>
+<li><a href="#s4"><span class="toc-num">4</span>INT4 mapping (16 possible values: 0 to 15):</a></li>
+<li><a href="#s5"><span class="toc-num">5</span>The Model Size Math</a></li>
+<li><a href="#s6"><span class="toc-num">6</span>FP32:  70B × 4 bytes  = 280 GB</a></li>
+<li><a href="#s7"><span class="toc-num">7</span>FP16:  70B × 2 bytes  = 140 GB</a></li>
+<li><a href="#s8"><span class="toc-num">8</span>Q6_K:  70B × 0.75     =  52.5 GB</a></li>
+<li><a href="#s9"><span class="toc-num">9</span>Q4_K_M:70B × 0.5      =  35 GB</a></li>
+<li><a href="#s10"><span class="toc-num">10</span>Q2_K:  70B × 0.25     =  17.5 GB</a></li>
+<li><a href="#s11"><span class="toc-num">11</span>Quality vs Speed Tradeoff: Perplexity</a></li>
+<li><a href="#s12"><span class="toc-num">12</span>Quantization	Size	Perplexity	Speed (tok/s)	Quality</a></li>
+<li><a href="#s13"><span class="toc-num">13</span>FP16	16 GB	6.14 (baseline)	25	Perfect</a></li>
+<li><a href="#s14"><span class="toc-num">14</span>The Sweet Spots</a></li>
+<li><a href="#s15"><span class="toc-num">15</span>Q8: When you want near-perfect quality and have the VRAM</a></li>
+<li><a href="#s16"><span class="toc-num">16</span>Q3_K_M: Acceptable for chat, not for critical tasks</a></li>
+<li><a href="#s17"><span class="toc-num">17</span>Q2_K: Emergency mode only — when nothing else fits</a></li>
+<li><a href="#s18"><span class="toc-num">18</span>The Format Zoo: GGUF, GPTQ, AWQ</a></li>
+<li><a href="#s19"><span class="toc-num">19</span>GGUF (GPT-Generated Unified Format)</a></li>
+<li><a href="#s20"><span class="toc-num">20</span>GGUF files on HuggingFace</a></li>
+<li><a href="#s21"><span class="toc-num">21</span>Example: TheBloke/Llama-2-70B-GGUF</a></li>
+<li><a href="#s22"><span class="toc-num">22</span>Supported by llama.cpp, Ollama, LM Studio, GPT4All</a></li>
+<li><a href="#s23"><span class="toc-num">23</span>GPTQ (GPT-Quantized)</a></li>
+<li><a href="#s24"><span class="toc-num">24</span>Using GPTQ with transformers</a></li>
+<li><a href="#s25"><span class="toc-num">25</span>Faster on GPU than GGUF</a></li>
+<li><a href="#s26"><span class="toc-num">26</span>AWQ (Activation-Aware Weight Quantization)</a></li>
+<li><a href="#s27"><span class="toc-num">27</span>AWQ:                       Important weights get more protection</a></li>
+<li><a href="#s28"><span class="toc-num">28</span>Better quality than GPTQ at the same bit width</a></li>
+<li><a href="#s29"><span class="toc-num">29</span>Faster inference than GPTQ on modern GPUs</a></li>
+<li><a href="#s30"><span class="toc-num">30</span>Scenario	Format	Why</a></li>
+<li><a href="#s31"><span class="toc-num">31</span>How Quantization Actually Works (Under the Hood)</a></li>
+<li><a href="#s32"><span class="toc-num">32</span>K-Quant (GGUF's Smart Method)</a></li>
+<li><a href="#s33"><span class="toc-num">33</span>K: K-quant method (mixed precision)</a></li>
+<li><a href="#s34"><span class="toc-num">34</span>S: Small (more compression, lower quality)</a></li>
+<li><a href="#s35"><span class="toc-num">35</span>M: Medium (balanced)</a></li>
+<li><a href="#s36"><span class="toc-num">36</span>L: Large (less compression, higher quality)</a></li>
+<li><a href="#s37"><span class="toc-num">37</span>GPTQ / AWQ: Calibration-Based</a></li>
+<li><a href="#s38"><span class="toc-num">38</span>Simplified GPTQ process:</a></li>
+<li><a href="#s39"><span class="toc-num">39</span>1. Run 128 text samples through the model</a></li>
+<li><a href="#s40"><span class="toc-num">40</span>2. For each layer, measure the Hessian (sensitivity of output to weight changes)</a></li>
+<li><a href="#s41"><span class="toc-num">41</span>3. Quantize weights in order of importance</a></li>
+<li><a href="#s42"><span class="toc-num">42</span>4. After quantizing each weight, adjust remaining weights to compensate</a></li>
+<li><a href="#s43"><span class="toc-num">43</span>Try It Yourself — Quantize and Compare</a></li>
+<li><a href="#s44"><span class="toc-num">44</span>Using Ollama (easiest)</a></li>
+<li><a href="#s45"><span class="toc-num">45</span>Compare quality:</a></li>
+<li><a href="#s46"><span class="toc-num">46</span>Check actual file sizes:</a></li>
+<li><a href="#s47"><span class="toc-num">47</span>Quantize a model yourself</a></li>
+<li><a href="#s48"><span class="toc-num">48</span>Measure perplexity</a></li>
+<li><a href="#s49"><span class="toc-num">49</span>Practical Takeaways</a></li>
+<li><a href="#s50"><span class="toc-num">50</span>Ep 8: CPU vs GPU Inference</a></li>
+</ul>
+</div>
+  <article class="prose" id="s0">
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Llama 3.1 70B has 70 billion parameters. In FP16, that's 140 GB. Your GPU has 24 GB of VRAM. Math says it doesn't fit.</code></pre></div>
+</div>
+<p>But people run it. On a single RTX 4090. On a MacBook Pro. On a laptop with 16 GB RAM.</p>
+<p>The trick: quantization. Instead of storing each parameter as a 16-bit number, compress it to 4 bits. 140 GB becomes 35 GB. Now it fits.</p>
+<p>But you just threw away 75% of the information. Doesn't that destroy the model?</p>
+<p>Surprisingly... not really.</p>
+<h2 id="s1">What Quantization Actually Does</h2><div class="section-rule"></div>
+<p>Every parameter in a neural network is a decimal number like 0.00347 or -1.2891. In full precision (FP32), each number takes 32 bits — 4 bytes. In half precision (FP16), 16 bits — 2 bytes.</p>
+<p>Quantization reduces the number of bits per parameter:</p>
+<p>FP32:  0.00347000 → 32 bits → 4 bytes per parameter</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>FP16:  0.00347    → 16 bits → 2 bytes per parameter
+INT8:  3          →  8 bits → 1 byte per parameter
+INT4:  1          →  4 bits → 0.5 bytes per parameter</code></pre></div>
+</div>
+<p>Wait — how does 0.00347 become 3 or 1? Through mapping.</p>
+<h2 id="s2">The Mapping</h2><div class="section-rule"></div>
+<p>Take a range of values and map them to a smaller set of integers:</p>
+<h2 id="s3">FP16 range: [-1.5, -0.8, -0.2, 0.1, 0.4, 0.9, 1.3]</h2><div class="section-rule"></div>
+<h2 id="s4">INT4 mapping (16 possible values: 0 to 15):</h2><div class="section-rule"></div>
+<p>-1.5 → 0</p>
+<p>-0.8 → 3</p>
+<p>-0.2 → 6</p>
+<p>0.1 → 7</p>
+<p>0.4 → 9</p>
+<p>0.9 → 12</p>
+<p>1.3 → 15</p>
+<p>Scale factor: (1.3 - (-1.5)) / 15 = 0.187</p>
+<p>Zero point: 8</p>
+<p>To reconstruct: value ≈ (quantized_int - zero_point) × scale</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>0 → (0 - 8) × 0.187 = -1.496  (original: -1.5, error: 0.004)
+7 → (7 - 8) × 0.187 = -0.187  (original:  0.1, error: 0.287!)</code></pre></div>
+</div>
+<p>Notice: the reconstruction isn't perfect. There's quantization error. The question is: how much error can the model tolerate before quality degrades noticeably?</p>
+<div class="callout callout-tip"><span class="callout-icon">⚡</span><p></p></div>
+<h2 id="s5">The Model Size Math</h2><div class="section-rule"></div>
+<p>This is the formula everyone in AI infra uses daily:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Model size (GB) = parameters × bits_per_weight / 8 / 1,000,000,000</code></pre></div>
+</div>
+<p>Llama 3.1 70B:</p>
+<h2 id="s6">FP32:  70B × 4 bytes  = 280 GB</h2><div class="section-rule"></div>
+<h2 id="s7">FP16:  70B × 2 bytes  = 140 GB</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Q8:    70B × 1 byte   =  70 GB</code></pre></div>
+</div>
+<h2 id="s8">Q6_K:  70B × 0.75     =  52.5 GB</h2><div class="section-rule"></div>
+<h2 id="s9">Q4_K_M:70B × 0.5      =  35 GB</h2><div class="section-rule"></div>
+<h2 id="s10">Q2_K:  70B × 0.25     =  17.5 GB</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>Quantization</th><th>Bits/Weight</th><th>7B Model</th><th>13B Model</th><th>70B Model</th></tr></thead><tbody><tr><td>FP16</td><td>16</td><td>14 GB</td><td>26 GB</td><td>140 GB</td></tr><tr><td>Q8_0</td><td>8</td><td>7 GB</td><td>13 GB</td><td>70 GB</td></tr><tr><td>Q6_K</td><td>6.6</td><td>5.5 GB</td><td>10.7 GB</td><td>52 GB</td></tr><tr><td>Q5_K_M</td><td>5.7</td><td>4.8 GB</td><td>9.2 GB</td><td>45 GB</td></tr><tr><td>Q4_K_M</td><td>4.8</td><td>4 GB</td><td>7.9 GB</td><td>35 GB</td></tr><tr><td>Q3_K_M</td><td>3.9</td><td>3.3 GB</td><td>6.3 GB</td><td>28 GB</td></tr><tr><td>Q2_K</td><td>2.5</td><td>2.1 GB</td><td>4.1 GB</td><td>17.5 GB</td></tr></tbody></table></div>
+<p>Q4_K_M is the sweet spot for most people. 4.8 bits per weight. You lose some quality, but the model still works remarkably well.</p>
+<p>🔧</p>
+<h2 id="s11">Quality vs Speed Tradeoff: Perplexity</h2><div class="section-rule"></div>
+<p>How do we measure quality loss from quantization? Perplexity — a standard metric that measures how "surprised" the model is by real text. Lower perplexity = better predictions = higher quality.</p>
+<p>Real benchmarks for Llama 3.1 8B:</p>
+<h2 id="s12">Quantization	Size	Perplexity	Speed (tok/s)	Quality</h2><div class="section-rule"></div>
+<h2 id="s13">FP16	16 GB	6.14 (baseline)	25	Perfect</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>Q8_0</th><th>8 GB</th><th>6.15</th><th>45</th><th>99.8% of FP16</th></tr></thead><tbody><tr><td>Q6_K</td><td>6.6 GB</td><td>6.16</td><td>52</td><td>99.7%</td></tr><tr><td>Q5_K_M</td><td>5.7 GB</td><td>6.18</td><td>58</td><td>99.4%</td></tr><tr><td>Q4_K_M</td><td>4.8 GB</td><td>6.24</td><td>65</td><td>98.4%</td></tr><tr><td>Q3_K_M</td><td>3.9 GB</td><td>6.41</td><td>72</td><td>95.6%</td></tr><tr><td>Q2_K</td><td>2.5 GB</td><td>7.89</td><td>80</td><td>78% — noticeable degradation</td></tr></tbody></table></div>
+<p>The pattern: Q8 to Q4 loses almost nothing. Q3 starts to feel different. Q2 is where quality falls off a cliff — the model starts making more mistakes, loses nuance, and occasionally produces gibberish.</p>
+<h2 id="s14">The Sweet Spots</h2><div class="section-rule"></div>
+<h2 id="s15">Q8: When you want near-perfect quality and have the VRAM</h2><div class="section-rule"></div>
+<p>Q5_K_M / Q4_K_M: Best bang for buck — barely noticeable quality loss</p>
+<h2 id="s16">Q3_K_M: Acceptable for chat, not for critical tasks</h2><div class="section-rule"></div>
+<h2 id="s17">Q2_K: Emergency mode only — when nothing else fits</h2><div class="section-rule"></div>
+<p>📊</p>
+<h2 id="s18">The Format Zoo: GGUF, GPTQ, AWQ</h2><div class="section-rule"></div>
+<h2 id="s19">GGUF (GPT-Generated Unified Format)</h2><div class="section-rule"></div>
+<p>Created by the llama.cpp project (covered in Episode 10). GGUF is the standard for CPU and hybrid CPU/GPU inference.</p>
+<p>bash</p>
+<h2 id="s20">GGUF files on HuggingFace</h2><div class="section-rule"></div>
+<h2 id="s21">Example: TheBloke/Llama-2-70B-GGUF</h2><div class="section-rule"></div>
+<p>bartowski/Meta-Llama-3.1-70B-Instruct-GGUF/</p>
+<p>├── Meta-Llama-3.1-70B-Instruct-Q2_K.gguf     (17.5 GB)</p>
+<p>├── Meta-Llama-3.1-70B-Instruct-Q3_K_M.gguf   (28 GB)</p>
+<p>├── Meta-Llama-3.1-70B-Instruct-Q4_K_M.gguf   (35 GB)</p>
+<p>├── Meta-Llama-3.1-70B-Instruct-Q5_K_M.gguf   (45 GB)</p>
+<p>├── Meta-Llama-3.1-70B-Instruct-Q6_K.gguf     (52 GB)</p>
+<p>└── Meta-Llama-3.1-70B-Instruct-Q8_0.gguf     (70 GB)</p>
+<p>Why GGUF?</p>
+<p>Works on CPU, GPU, or mixed (some layers on GPU, rest on CPU)</p>
+<p>Self-contained: model weights + tokenizer + metadata in one file</p>
+<h2 id="s22">Supported by llama.cpp, Ollama, LM Studio, GPT4All</h2><div class="section-rule"></div>
+<p>The K-quants (Q4_K_M, Q5_K_M, etc.) use mixed precision — important layers get more bits, less important layers get fewer</p>
+<h2 id="s23">GPTQ (GPT-Quantized)</h2><div class="section-rule"></div>
+<p>A GPU-only quantization method. Uses a calibration dataset to find the optimal way to quantize each layer.</p>
+<p>python</p>
+<h2 id="s24">Using GPTQ with transformers</h2><div class="section-rule"></div>
+<p>from transformers import AutoModelForCausalLM</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>model = AutoModelForCausalLM.from_pretrained(
+"TheBloke/Llama-2-70B-GPTQ",
+    device_map="auto"</code></pre></div>
+</div>
+<p>)</p>
+<p>Why GPTQ?</p>
+<p>Higher quality than naive quantization (calibration-based)</p>
+<h2 id="s25">Faster on GPU than GGUF</h2><div class="section-rule"></div>
+<p>Requires GPU — no CPU fallback</p>
+<p>Supported by vLLM, text-generation-inference, ExLlamaV2</p>
+<h2 id="s26">AWQ (Activation-Aware Weight Quantization)</h2><div class="section-rule"></div>
+<p>The newest of the three. Like GPTQ, it's GPU-focused and uses calibration. But AWQ is smarter about which weights matter most.</p>
+<p>The key insight: not all weights are equally important. Some weights consistently produce large activations — these "salient" weights need more precision. AWQ protects them.</p>
+<p>Traditional quantization:  All weights get 4 bits equally</p>
+<h2 id="s27">AWQ:                       Important weights get more protection</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>Less important weights get aggressively quantized</code></pre></div>
+</div>
+<p>Why AWQ?</p>
+<h2 id="s28">Better quality than GPTQ at the same bit width</h2><div class="section-rule"></div>
+<h2 id="s29">Faster inference than GPTQ on modern GPUs</h2><div class="section-rule"></div>
+<p>Supported by vLLM (default recommendation), TGI</p>
+<p>Which Format to Use?</p>
+<h2 id="s30">Scenario	Format	Why</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>Local on laptop/desktop</th><th>GGUF</th><th>CPU/GPU flexibility, Ollama support</th></tr></thead><tbody><tr><td>Apple Silicon Mac</td><td>GGUF</td><td>Only format with proper Metal support</td></tr><tr><td>Production GPU server</td><td>AWQ</td><td>Best quality-to-speed ratio</td></tr><tr><td>Existing GPTQ pipeline</td><td>GPTQ</td><td>Don't fix what isn't broken</td></tr><tr><td>vLLM deployment</td><td>AWQ or GPTQ</td><td>Both supported, AWQ preferred</td></tr></tbody></table></div>
+<h2 id="s31">How Quantization Actually Works (Under the Hood)</h2><div class="section-rule"></div>
+<p>Round-to-Nearest (RTN)</p>
+<p>The simplest approach. Take each weight, map it to the nearest quantized value.</p>
+<p>Weight: 0.347</p>
+<p>Quantization grid: [0.0, 0.25, 0.5, 0.75, 1.0]</p>
+<p>Nearest: 0.25</p>
+<p>Error: 0.347 - 0.25 = 0.097</p>
+<p>RTN is fast but introduces significant error. It's what you get with basic GGUF Q4_0 quantization.</p>
+<h2 id="s32">K-Quant (GGUF's Smart Method)</h2><div class="section-rule"></div>
+<p>GGUF K-quants (Q4_K_M, Q5_K_S, etc.) use mixed precision across layers:</p>
+<p>Attention layers:    Higher precision (Q6 or Q5)</p>
+<p>Feed-forward layers: Lower precision (Q4 or Q3)</p>
+<p>Embedding layers:    Full precision (Q8 or FP16)</p>
+<p>The logic: attention layers are more sensitive to quantization error. Feed-forward layers are more robust. By allocating bits where they matter most, K-quants achieve better quality at the same average bit rate.</p>
+<p>That's what the K and M/S/L mean:</p>
+<h2 id="s33">K: K-quant method (mixed precision)</h2><div class="section-rule"></div>
+<h2 id="s34">S: Small (more compression, lower quality)</h2><div class="section-rule"></div>
+<h2 id="s35">M: Medium (balanced)</h2><div class="section-rule"></div>
+<h2 id="s36">L: Large (less compression, higher quality)</h2><div class="section-rule"></div>
+<h2 id="s37">GPTQ / AWQ: Calibration-Based</h2><div class="section-rule"></div>
+<p>These methods run a small dataset through the model and measure which weights matter most:</p>
+<p>python</p>
+<h2 id="s38">Simplified GPTQ process:</h2><div class="section-rule"></div>
+<h2 id="s39">1. Run 128 text samples through the model</h2><div class="section-rule"></div>
+<h2 id="s40">2. For each layer, measure the Hessian (sensitivity of output to weight changes)</h2><div class="section-rule"></div>
+<h2 id="s41">3. Quantize weights in order of importance</h2><div class="section-rule"></div>
+<h2 id="s42">4. After quantizing each weight, adjust remaining weights to compensate</h2><div class="section-rule"></div>
+<p>This "adjust remaining weights" step is the magic — it distributes the quantization error across the layer instead of letting it accumulate.</p>
+<div class="callout callout-tip"><span class="callout-icon">💡</span><p></p></div>
+<h2 id="s43">Try It Yourself — Quantize and Compare</h2><div class="section-rule"></div>
+<p>bash</p>
+<h2 id="s44">Using Ollama (easiest)</h2><div class="section-rule"></div>
+<p>ollama pull llama3.1:8b          # Default Q4_K_M</p>
+<p>ollama pull llama3.1:8b-text-q8_0  # Q8 version</p>
+<h2 id="s45">Compare quality:</h2><div class="section-rule"></div>
+<p>echo "Explain quantum entanglement"ollama run llama3.1:8b
+echo "Explain quantum entanglement"ollama run llama3.1:8b-text-q8_0</p>
+<h2 id="s46">Check actual file sizes:</h2><div class="section-rule"></div>
+<p>ls -lh ~/.ollama/models/blobs/</p>
+<p>Or using llama.cpp directly:</p>
+<p>bash</p>
+<h2 id="s47">Quantize a model yourself</h2><div class="section-rule"></div>
+<p>./llama-quantize model-f16.gguf model-q4_k_m.gguf Q4_K_M</p>
+<h2 id="s48">Measure perplexity</h2><div class="section-rule"></div>
+<p>./llama-perplexity -m model-f16.gguf -f wiki.test.raw</p>
+<p>./llama-perplexity -m model-q4_k_m.gguf -f wiki.test.raw</p>
+<p>🔬</p>
+<h2 id="s49">Practical Takeaways</h2><div class="section-rule"></div>
+<p>Quantization trades precision for size — 4-bit models are 4x smaller than FP16 with minimal quality loss</p>
+<p>Q4_K_M is the sweet spot — best balance of size, speed, and quality for most use cases</p>
+<p>Below Q3, quality degrades fast — don't go to Q2 unless absolutely necessary</p>
+<p>GGUF for local, AWQ for production GPUs — match the format to your hardware</p>
+<p>K-quants are smarter — they give important layers more bits, so Q4_K_M beats Q4_0</p>
+<p>Perplexity is your quality metric — track it when comparing quantization levels</p>
+<p>🛡️</p>
+<p>What's Next?</p>
+<p>Episode 10: llama.cpp — The open-source project that made local AI possible. How one developer's C++ code lets you run billion-parameter models on a laptop with no Python, no PyTorch, no CUDA SDK. mmap, GGUF, Metal, and the magic of efficient inference.</p>
+<p>← Previous</p>
+<h2 id="s50">Ep 8: CPU vs GPU Inference</h2><div class="section-rule"></div>
+<p>Next →</p>
+<p>Ep 10: llama.cpp</p>
+<p>Next: Episode 10 — llama.cpp</p>
+<p>In March 2023, a Bulgarian developer made Meta's LLaMA run on a MacBook. That single project changed AI forever.</p>
+  </article>
+  <div class="ep-nav">
+    <a href="episode-08.html" class="ep-nav-card">
+      <span class="ep-nav-dir">← Previous</span>
+      <span class="ep-nav-title">Ep 8: CPU vs GPU Inference: Why Your Graphics Card Matters Mo…</span>
+    </a>
+    <a href="episode-10.html" class="ep-nav-card next">
+      <span class="ep-nav-dir">Next Episode →</span>
+      <span class="ep-nav-title">Ep 10: llama.cpp: The Project That Made Local AI Possible</span>
+    </a>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <img class="footer-logo" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+      <div class="footer-tagline">98 Field Manual · Build with AI, not just use it · Free forever</div>
+    </div>
+    <div class="footer-links">
+      <a href="field-manual-index.html">All Episodes</a>
+      <a href="field-manual-index.html#g2">Running Models & Inference</a>
+      <a href="episode-08.html">← Ep 8</a>
+      <a href="episode-10.html">Ep 10 →</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+const prog=document.getElementById('prog');
+window.addEventListener('scroll',()=>{
+  const total=document.documentElement.scrollHeight-window.innerHeight;
+  prog.style.width=Math.min(100,(window.scrollY/total)*100)+'%';
+},{passive:true});
+
+// Build section nav dots from h2s
+const h2s=document.querySelectorAll('.prose h2');
+const sNav=document.getElementById('sectionNav');
+const dots=[];
+h2s.forEach((h,i)=>{
+  const btn=document.createElement('button');
+  btn.className='snav-dot';
+  btn.setAttribute('data-label',h.textContent.trim().substring(0,28));
+  btn.onclick=()=>h.scrollIntoView({behavior:'smooth',block:'start'});
+  sNav.appendChild(btn);
+  dots.push({btn,h});
+});
+
+const dotObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      const idx=dots.findIndex(d=>d.h===e.target);
+      if(idx>-1) dots.forEach((d,i)=>d.btn.classList.toggle('active',i===idx));
+    }
+  });
+},{rootMargin:'-30% 0px -60% 0px'});
+dots.forEach(d=>dotObs.observe(d.h));
+
+// Scroll reveal
+const revObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='translateY(0)';}});
+},{threshold:0.08});
+document.querySelectorAll('.toc,.callout,.table-wrap,.code-block,.ep-nav-card').forEach(el=>{
+  el.style.opacity='0';
+  el.style.transform='translateY(14px)';
+  el.style.transition='opacity 0.55s ease,transform 0.55s ease';
+  revObs.observe(el);
+});
+</script>
+</body>
+</html>

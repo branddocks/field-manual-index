@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ep 81: A2A (Agent-to-Agent): How AI Agents Talk to Each Other</title>
+<meta name="description" content="MCP lets AI talk to tools. Function calling lets AI take actions. But what happens when you need AI talking to AI?">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,300&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0d0d1a;--page:#ffffff;--paper:#f8f9ff;
+  --navy:#124093;--navy-dim:rgba(18,64,147,0.07);--navy-mid:rgba(18,64,147,0.15);
+  --red:#e2190e;--gold:#c8973a;--muted:#6b7280;--rule:#e5e7ef;--code-bg:#0d0d1f;
+  --title:'Roboto',sans-serif;--body:'Poppins',sans-serif;--mono:'DM Mono',monospace;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--page);color:var(--ink);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:#fff}
+::-webkit-scrollbar-thumb{background:var(--navy);border-radius:2px}
+
+/* NAV */
+nav.top{position:sticky;top:0;z-index:200;background:#fff;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(20px,5vw,60px);border-bottom:1px solid var(--rule);box-shadow:0 1px 12px rgba(0,0,0,0.05)}
+.logo-wrap{display:flex;align-items:center;text-decoration:none}
+.logo-img{height:38px;width:auto;object-fit:contain;display:block}
+.nav-right{display:flex;align-items:center;gap:6px}
+.nav-link{font-family:var(--body);font-size:11.5px;font-weight:500;color:var(--muted);text-decoration:none;padding:6px 14px;border-radius:6px;transition:all 0.2s}
+.nav-link:hover{color:var(--navy);background:var(--navy-dim)}
+.nav-cta{background:var(--navy)!important;color:#fff!important}
+.nav-cta:hover{background:#1a52c0!important;color:#fff!important}
+
+/* PROGRESS */
+.progress-bar-fixed{position:fixed;top:60px;left:0;right:0;height:2.5px;background:rgba(18,64,147,0.1);z-index:199}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--navy),#4f7ff7);width:0%;transition:width 0.1s;border-radius:0 2px 2px 0}
+
+/* HERO */
+.hero{background:#fff;position:relative;overflow:hidden;min-height:88vh;display:flex;flex-direction:column;justify-content:center}
+.hero-bg{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.hero-blob-1{position:absolute;top:-120px;right:-120px;width:700px;height:700px;background:radial-gradient(circle at 60% 40%,rgba(18,64,147,0.07) 0%,rgba(18,64,147,0.03) 40%,transparent 70%);border-radius:50%}
+.hero-blob-2{position:absolute;bottom:-80px;left:-80px;width:500px;height:500px;background:radial-gradient(circle,rgba(79,127,247,0.06) 0%,transparent 65%);border-radius:50%}
+.hero-lines{position:absolute;top:0;right:0;width:45%;height:100%;opacity:0.06}
+.hero-lines svg{width:100%;height:100%}
+.hero-tokens{position:absolute;top:0;right:0;width:46%;height:100%;display:flex;align-items:center;justify-content:center}
+.token-float-wrap{position:relative;width:360px;height:360px}
+.tf{position:absolute;font-family:var(--mono);font-size:13px;font-weight:500;padding:8px 16px;border-radius:8px;white-space:nowrap;animation:float-anim 6s ease-in-out infinite;box-shadow:0 4px 20px rgba(0,0,0,0.08)}
+.tf-1{top:20px;left:60px;background:rgba(18,64,147,0.09);color:#124093;border:1px solid rgba(18,64,147,0.18);animation-delay:0s}
+.tf-2{top:70px;right:20px;background:rgba(79,127,247,0.09);color:#2563eb;border:1px solid rgba(79,127,247,0.2);animation-delay:0.8s}
+.tf-3{top:140px;left:20px;background:rgba(16,185,129,0.08);color:#059669;border:1px solid rgba(16,185,129,0.18);animation-delay:1.6s}
+.tf-4{top:170px;right:50px;background:rgba(168,85,247,0.08);color:#7c3aed;border:1px solid rgba(168,85,247,0.18);animation-delay:0.4s}
+.tf-5{bottom:140px;left:80px;background:rgba(234,179,8,0.08);color:#b45309;border:1px solid rgba(234,179,8,0.2);animation-delay:1.2s}
+.tf-6{bottom:90px;right:30px;background:rgba(236,72,153,0.08);color:#db2777;border:1px solid rgba(236,72,153,0.2);animation-delay:2s}
+.tf-7{bottom:30px;left:40px;background:rgba(239,68,68,0.08);color:#dc2626;border:1px solid rgba(239,68,68,0.18);animation-delay:0.6s}
+.tf-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:110px;height:110px;background:var(--navy);border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;box-shadow:0 12px 40px rgba(18,64,147,0.3);animation:pulse-center 3s ease-in-out infinite}
+.tf-center .big{font-family:var(--title);font-size:28px;font-weight:900;color:#fff;line-height:1}
+.tf-center .small{font-family:var(--body);font-size:9px;font-weight:500;color:rgba(255,255,255,0.6);letter-spacing:1.5px;text-transform:uppercase}
+@keyframes float-anim{0%,100%{transform:translateY(0px)}50%{transform:translateY(-10px)}}
+@keyframes pulse-center{0%,100%{box-shadow:0 12px 40px rgba(18,64,147,0.3)}50%{box-shadow:0 12px 60px rgba(18,64,147,0.5)}}
+.hero-content{position:relative;z-index:2;width:54%;padding:clamp(48px,8vw,96px) clamp(24px,5vw,72px) clamp(48px,8vw,96px)}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:5px 14px;background:var(--navy-dim);border:1px solid rgba(18,64,147,0.18);border-radius:100px;margin-bottom:22px;font-family:var(--body);font-size:10px;font-weight:600;color:var(--navy);letter-spacing:1.2px;text-transform:uppercase}
+.hero-eyebrow .dot{width:5px;height:5px;background:var(--navy);border-radius:50%}
+.hero h1{font-family:var(--title);font-size:clamp(28px,4.5vw,52px);font-weight:900;color:var(--ink);line-height:1.08;letter-spacing:-1.2px;margin-bottom:20px}
+.hero h1 .line2{display:block;color:var(--navy)}
+.hero-sub{font-family:var(--body);font-size:clamp(13px,1.6vw,15px);font-weight:300;color:#4b5563;line-height:1.85;max-width:500px;margin-bottom:34px}
+.breadcrumb{display:flex;align-items:center;gap:7px;margin-bottom:28px;font-family:var(--mono);font-size:10px;color:#9ca3af}
+.breadcrumb a{color:inherit;text-decoration:none;transition:color 0.2s}
+.breadcrumb a:hover{color:var(--navy)}
+.breadcrumb .sep{color:#d1d5db}
+.breadcrumb .cur{color:#6b7280}
+.meta-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:14px 20px;background:var(--paper);border:1px solid var(--rule);border-radius:10px;margin-bottom:24px}
+.meta-item{font-family:var(--body);font-size:10.5px;font-weight:500;color:var(--muted);display:flex;align-items:center;gap:5px}
+.tags-row{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-family:var(--body);font-size:10px;font-weight:500;color:var(--navy);background:var(--navy-dim);padding:4px 11px;border-radius:100px;border:1px solid rgba(18,64,147,0.15)}
+@media(max-width:900px){.hero{min-height:auto;padding-bottom:48px}.hero-content{width:100%;padding:48px 24px 36px}.hero-tokens{display:none}.hero-lines{display:none}}
+
+/* SECTION NAV DOTS */
+.section-nav{position:fixed;right:clamp(12px,2vw,24px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:9px;z-index:100}
+.snav-dot{width:7px;height:7px;border-radius:50%;background:#d1d5db;border:none;padding:0;cursor:pointer;transition:all 0.3s;position:relative}
+.snav-dot::after{content:attr(data-label);position:absolute;right:16px;top:50%;transform:translateY(-50%);font-family:var(--body);font-size:9px;font-weight:500;color:var(--ink);background:#fff;padding:3px 9px;border-radius:4px;border:1px solid var(--rule);box-shadow:0 2px 8px rgba(0,0,0,0.06);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.2s}
+.snav-dot:hover::after{opacity:1}
+.snav-dot.active{background:var(--navy);transform:scale(1.5)}
+.snav-dot:hover:not(.active){background:rgba(18,64,147,0.4)}
+@media(max-width:768px){.section-nav{display:none}}
+
+/* LAYOUT */
+.layout{max-width:860px;margin:0 auto;padding:clamp(40px,6vw,68px) clamp(20px,5vw,56px) 80px}
+
+/* TOC */
+.toc{background:var(--paper);border:1px solid var(--rule);border-left:4px solid var(--navy);border-radius:10px;padding:22px 26px;margin-bottom:52px}
+.toc-title{font-family:var(--title);font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
+.toc-list{list-style:none;display:flex;flex-direction:column;gap:3px}
+.toc-list li a{display:flex;align-items:center;gap:12px;text-decoration:none;padding:6px 0;font-family:var(--body);font-size:13px;font-weight:400;color:var(--ink);transition:color 0.2s}
+.toc-list li a:hover{color:var(--navy)}
+.toc-num{font-family:var(--mono);font-size:9px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* PROSE */
+.prose{line-height:1.85}
+.prose h2{font-family:var(--title);font-size:clamp(18px,2.5vw,23px);font-weight:700;color:var(--ink);letter-spacing:-0.4px;margin:52px 0 8px;line-height:1.2;scroll-margin-top:80px;padding-left:18px;position:relative}
+.prose h2::before{content:'';position:absolute;left:0;top:5px;bottom:5px;width:3px;background:var(--navy);border-radius:2px}
+.prose h2:first-child{margin-top:0}
+.prose h3{font-family:var(--title);font-size:14px;font-weight:700;color:var(--ink);margin:26px 0 8px}
+.section-rule{width:36px;height:2px;background:var(--navy);border-radius:2px;margin:8px 0 22px 18px;opacity:0.4}
+.prose p{font-family:var(--body);font-size:clamp(13.5px,1.7vw,15px);line-height:1.88;color:#374151;margin-bottom:16px;font-weight:300}
+.prose p strong{font-weight:600;color:var(--ink)}
+.prose ul,.prose ol{list-style:none;padding:0;margin:4px 0 20px}
+.prose ul li,.prose ol li{font-family:var(--body);font-size:clamp(13.5px,1.7vw,14.5px);line-height:1.8;color:#374151;padding:4px 0 4px 26px;position:relative;font-weight:300}
+.prose ul li::before{content:'';position:absolute;left:5px;top:14px;width:5px;height:5px;background:var(--navy);border-radius:50%;opacity:0.55}
+.prose ol{counter-reset:li}
+.prose ol li{counter-increment:li}
+.prose ol li::before{content:counter(li);position:absolute;left:0;top:5px;font-family:var(--mono);font-size:8px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.ic{font-family:var(--mono);font-size:12.5px;background:var(--navy-dim);color:var(--navy);padding:1.5px 6px;border-radius:4px;border:1px solid rgba(18,64,147,0.15)}
+
+/* CODE */
+.code-block{background:var(--code-bg);border-radius:10px;margin:24px 0;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.12),0 0 0 1px rgba(18,64,147,0.1)}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.02)}
+.code-dots{display:flex;gap:5px}
+.cd{width:10px;height:10px;border-radius:50%}
+.cd-r{background:#ff5f56}.cd-y{background:#ffbd2e}.cd-g{background:#27c93f}
+.code-filename{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,0.25)}
+.code-lang{font-family:var(--mono);font-size:9px;color:rgba(91,140,247,0.6);letter-spacing:1px;text-transform:uppercase}
+.code-body{padding:20px 22px;overflow-x:auto}
+.code-body pre{margin:0}
+.code-body code{font-family:var(--mono);font-size:12.5px;line-height:1.9;color:#c9d4f5}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;margin:24px 0;border-radius:10px;border:1px solid var(--rule);box-shadow:0 2px 12px rgba(0,0,0,0.04)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:var(--ink)}
+thead th{padding:12px 16px;text-align:left;font-family:var(--body);font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,0.45)}
+thead th:first-child{color:#6b9fff}
+tbody tr{border-bottom:1px solid var(--rule);transition:background 0.15s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--paper)}
+tbody td{padding:10px 16px;font-family:var(--body);font-size:13px;color:#374151;font-weight:300;line-height:1.5}
+tbody td:first-child{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--navy)}
+
+/* CALLOUTS */
+.callout{border-radius:9px;padding:16px 20px;margin:24px 0;display:flex;gap:13px;align-items:flex-start}
+.callout-tip{background:rgba(18,64,147,0.05);border:1px solid rgba(18,64,147,0.16);border-left:3px solid var(--navy)}
+.callout-warn{background:rgba(220,38,38,0.04);border:1px solid rgba(220,38,38,0.14);border-left:3px solid #dc2626}
+.callout-note{background:rgba(200,151,58,0.05);border:1px solid rgba(200,151,58,0.2);border-left:3px solid var(--gold)}
+.callout-icon{font-size:16px;flex-shrink:0;margin-top:1px;line-height:1}
+.callout p{font-size:13.5px!important;line-height:1.7!important;color:#374151!important;margin:0!important}
+
+/* EP NAV */
+.ep-nav{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:64px;padding-top:32px;border-top:1px solid var(--rule)}
+@media(max-width:500px){.ep-nav{grid-template-columns:1fr}}
+.ep-nav-card{display:flex;flex-direction:column;text-decoration:none;padding:20px 22px;border:1px solid var(--rule);border-radius:10px;background:var(--paper);transition:all 0.25s;gap:5px}
+.ep-nav-card:hover{border-color:rgba(18,64,147,0.3);background:var(--navy-dim);transform:translateY(-2px);box-shadow:0 6px 20px rgba(18,64,147,0.08)}
+.ep-nav-dir{font-family:var(--body);font-size:9px;font-weight:600;color:var(--navy);letter-spacing:1px;text-transform:uppercase}
+.ep-nav-title{font-family:var(--title);font-size:13px;font-weight:600;color:var(--ink);line-height:1.4}
+.ep-nav-card.next{align-items:flex-end;text-align:right}
+
+/* FOOTER */
+footer{background:var(--ink);padding:44px clamp(20px,5vw,60px);border-top:3px solid var(--navy)}
+.footer-inner{max-width:860px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.footer-logo{height:32px;width:auto;object-fit:contain;filter:brightness(0) invert(1);opacity:0.7}
+.footer-tagline{font-family:var(--body);font-size:11px;color:rgba(255,255,255,0.22);font-style:italic;margin-top:4px;font-weight:300}
+.footer-links{display:flex;gap:20px;flex-wrap:wrap}
+.footer-links a{font-family:var(--body);font-size:11px;font-weight:400;color:rgba(255,255,255,0.3);text-decoration:none;transition:color 0.2s}
+.footer-links a:hover{color:rgba(255,255,255,0.75)}
+
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.hero-content>*{animation:fadeUp 0.65s cubic-bezier(0.22,1,0.36,1) both}
+.hero-content>*:nth-child(1){animation-delay:0.05s}
+.hero-content>*:nth-child(2){animation-delay:0.1s}
+.hero-content>*:nth-child(3){animation-delay:0.15s}
+.hero-content>*:nth-child(4){animation-delay:0.2s}
+.hero-content>*:nth-child(5){animation-delay:0.25s}
+.hero-content>*:nth-child(6){animation-delay:0.3s}
+.hero-content>*:nth-child(7){animation-delay:0.35s}
+@media(max-width:640px){.nav-link:not(.nav-cta){display:none}}
+</style>
+</head>
+<body>
+
+<div class="progress-bar-fixed"><div class="progress-fill" id="prog"></div></div>
+
+<nav class="top">
+  <a href="field-manual-index.html" class="logo-wrap">
+    <img class="logo-img" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+  </a>
+  <div class="nav-right">
+    <a href="field-manual-index.html" class="nav-link">All Episodes</a>
+    <a href="field-manual-index.html#g12" class="nav-link nav-cta">📡 Protocols & Standards</a>
+  </div>
+</nav>
+
+<nav class="section-nav" id="sectionNav"></nav>
+
+<header class="hero">
+  <div class="hero-bg">
+    <div class="hero-blob-1"></div>
+    <div class="hero-blob-2"></div>
+    <div class="hero-lines">
+      <svg viewBox="0 0 600 800" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+        <line x1="0" y1="200" x2="600" y2="0" stroke="#124093" stroke-width="1"/>
+        <line x1="0" y1="400" x2="600" y2="200" stroke="#124093" stroke-width="0.6"/>
+        <line x1="0" y1="600" x2="600" y2="400" stroke="#124093" stroke-width="0.4"/>
+        <circle cx="500" cy="150" r="120" stroke="#124093" stroke-width="0.8" fill="none"/>
+        <circle cx="500" cy="150" r="80" stroke="#124093" stroke-width="0.4" fill="none"/>
+        <circle cx="500" cy="150" r="40" stroke="#124093" stroke-width="0.3" fill="none"/>
+        <line x1="300" y1="0" x2="300" y2="800" stroke="#124093" stroke-width="0.4" stroke-dasharray="6,12"/>
+        <rect x="360" y="480" width="160" height="160" stroke="#124093" stroke-width="0.6" fill="none" transform="rotate(15 440 560)"/>
+      </svg>
+    </div>
+  </div>
+  <div class="hero-tokens" aria-hidden="true">
+    <div class="token-float-wrap">
+      <div class="tf tf-1">token</div>
+<div class="tf tf-2">model</div>
+<div class="tf tf-3">layer</div>
+<div class="tf tf-4">vector</div>
+<div class="tf tf-5">embed</div>
+<div class="tf tf-6">weight</div>
+<div class="tf tf-7">param</div>
+      <div class="tf-center">
+        <span class="big">A2A</span>
+        <span class="small">EP 81</span>
+      </div>
+    </div>
+  </div>
+  <div class="hero-content">
+    <nav class="breadcrumb">
+      <a href="field-manual-index.html">Field Manual</a>
+      <span class="sep">›</span>
+      <a href="field-manual-index.html#g12">📡 Protocols & Standards</a>
+      <span class="sep">›</span>
+      <span class="cur">Episode 81</span>
+    </nav>
+    <div class="hero-eyebrow"><span class="dot"></span>MODULE 12 &nbsp;·&nbsp; Protocols & Standards</div>
+    <h1>A2A (Agent-to-Agent): How AI Agents Talk to Each Other</h1>
+    <p class="hero-sub">MCP lets AI talk to tools. Function calling lets AI take actions. But what happens when you need AI talking to AI?</p>
+    <div class="meta-row">
+      <div class="meta-item"><span>📅</span> Mar 2026</div>
+      <div class="meta-item"><span>⏱</span> 10 min read</div>
+      <div class="meta-item"><span>🎯</span> Episode 81 of 98</div>
+    </div>
+    <div class="tags-row"><span class="tag">A2A</span><span class="tag">Agent Protocol</span><span class="tag">Multi-Agent</span><span class="tag">Interoperability</span></div>
+  </div>
+</header>
+
+<main class="layout">
+  <div class="toc">
+  <div class="toc-title">In this episode</div>
+  <ul class="toc-list"><li><a href="#s1"><span class="toc-num">1</span>MCP	A2A</a></li>
+<li><a href="#s2"><span class="toc-num">2</span>A2A Architecture: Four Building Blocks</a></li>
+<li><a href="#s3"><span class="toc-num">3</span>Task Lifecycle:</a></li>
+<li><a href="#s4"><span class="toc-num">4</span>The A2A Protocol: HTTP Endpoints</a></li>
+<li><a href="#s5"><span class="toc-num">5</span>Endpoint	Method	Purpose</a></li>
+<li><a href="#s6"><span class="toc-num">6</span>/.well-known/agent.json	GET	Agent Card (discovery)</a></li>
+<li><a href="#s7"><span class="toc-num">7</span>Creating a Task</a></li>
+<li><a href="#s8"><span class="toc-num">8</span>Discover the agent</a></li>
+<li><a href="#s9"><span class="toc-num">9</span>Create a task</a></li>
+<li><a href="#s10"><span class="toc-num">10</span>"completed" or "working"</a></li>
+<li><a href="#s11"><span class="toc-num">11</span>Streaming Results</a></li>
+<li><a href="#s12"><span class="toc-num">12</span>Subscribe to task updates via SSE</a></li>
+<li><a href="#s13"><span class="toc-num">13</span>Multi-Agent Orchestration</a></li>
+<li><a href="#s14"><span class="toc-num">14</span>A2A vs Other Agent Protocols</a></li>
+<li><a href="#s15"><span class="toc-num">15</span>Feature	A2A (Google)	MCP (Anthropic)	AutoGen	CrewAI</a></li>
+<li><a href="#s16"><span class="toc-num">16</span>Input-Required: Multi-Turn Agent Conversations</a></li>
+<li><a href="#s17"><span class="toc-num">17</span>Client sends follow-up</a></li>
+<li><a href="#s18"><span class="toc-num">18</span>Building an A2A Agent</a></li>
+<li><a href="#s19"><span class="toc-num">19</span>Agent Card</a></li>
+<li><a href="#s20"><span class="toc-num">20</span>AGENT_CARD = {</a></li>
+<li><a href="#s21"><span class="toc-num">21</span>Practical Takeaways</a></li>
+<li><a href="#s22"><span class="toc-num">22</span>Ep 80: Structured Output / JSON Mode</a></li>
+<li><a href="#s23"><span class="toc-num">23</span>Ep 82: Webhooks & Event-Driven AI</a></li>
+</ul>
+</div>
+  <article class="prose" id="s0">
+<p>MCP lets AI talk to tools. Function calling lets AI take actions. But what happens when you need AI talking to AI?</p>
+<p>Your travel agent needs to coordinate with a booking agent, a weather agent, and a budgeting agent. Each is built by a different team, runs on a different stack, and knows nothing about the others.</p>
+<p>How do they discover each other? How do they negotiate capabilities? How do they hand off tasks and stream results?</p>
+<p>Google's A2A (Agent-to-Agent) protocol answers all of this. It's HTTP-based, JSON-first, and designed for the world where autonomous agents need to collaborate across organizational boundaries.</p>
+<p>Why Not Just Use MCP?</p>
+<p>MCP connects a model to tools. The model is the brain; tools are the hands.</p>
+<p>A2A connects an agent to another agent. Both are brains. Both can make decisions. The interaction is a conversation between peers, not a command-and-control hierarchy.</p>
+<h2 id="s1">MCP	A2A</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>Relationship</th><th>Model → Tool (master/servant)</th><th>Agent ↔ Agent (peer-to-peer)</th></tr></thead><tbody><tr><td>Intelligence</td><td>Only the model is smart</td><td>Both sides are smart</td></tr><tr><td>Communication</td><td>JSON-RPC, command/response</td><td>Task-based, conversational</td></tr><tr><td>Discovery</td><td>Server declares tools</td><td>Agent Card with capabilities</td></tr><tr><td>Use case</td><td>AI reads files, queries DB</td><td>AI delegates to another AI</td></tr></tbody></table></div>
+<p>They're complementary, not competing. An agent uses MCP for its tools and A2A to collaborate with other agents.</p>
+<div class="callout callout-tip"><span class="callout-icon">⚡</span><p></p></div>
+<h2 id="s2">A2A Architecture: Four Building Blocks</h2><div class="section-rule"></div>
+<ol><li>Agent Card — The Business Card</li></ol>
+<p>Every A2A agent publishes an Agent Card — a JSON document describing who it is and what it can do:</p>
+<p>json</p>
+<p>{</p>
+<p>"name": "Weather Agent",</p>
+<p>"description": "Provides real-time weather data and forecasts for any location worldwide",</p>
+<p>"url": "https://weather-agent.example.com",</p>
+<p>"version": "1.0.0",</p>
+<p>"capabilities": {</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>"streaming": true,
+    "pushNotifications": true</code></pre></div>
+</div>
+<p>},</p>
+<p>"skills": [</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>{
+      "id": "current-weather",
+      "name": "Current Weather",
+      "description": "Get current weather conditions for a city",
+      "inputModes": ["text"],
+      "outputModes": ["text", "json"]
+    },
+    {
+      "id": "forecast",
+      "name": "Weather Forecast",
+      "description": "Get 7-day weather forecast",
+      "inputModes": ["text"],
+      "outputModes": ["text", "json"]
+    }</code></pre></div>
+</div>
+<p>],</p>
+<p>"authentication": {</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>"schemes": ["bearer"]</code></pre></div>
+</div>
+<p>}</p>
+<p>}</p>
+<p>Agent Cards are hosted at a well-known URL: https://agent.example.com/.well-known/agent.json</p>
+<p>Any client can discover an agent by fetching its card. No registration, no marketplace, no middleman.</p>
+<ol><li>Tasks — Units of Work</li></ol>
+<p>Everything in A2A revolves around tasks. A client creates a task, the agent processes it, and the task goes through states:</p>
+<h2 id="s3">Task Lifecycle:</h2><div class="section-rule"></div>
+<p>submitted → working → completed</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>↘ failed
+                   ↘ canceled
+         → input-required (agent needs more info)</code></pre></div>
+</div>
+<p>json</p>
+<p>{</p>
+<p>"id": "task-abc123",</p>
+<p>"status": {</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>"state": "working",
+    "message": "Fetching weather data for Mumbai..."</code></pre></div>
+</div>
+<p>},</p>
+<p>"artifacts": [],</p>
+<p>"history": [</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>{
+      "role": "user",
+      "parts": [
+        {"type": "text", "text": "What's the weather in Mumbai today?"}
+      ]
+    }</code></pre></div>
+</div>
+<p>]</p>
+<p>}</p>
+<ol><li>Messages — The Conversation</li></ol>
+<p>Tasks contain messages (called "history"). Each message has parts — text, files, or structured data:</p>
+<p>json</p>
+<p>{</p>
+<p>"role": "agent",</p>
+<p>"parts": [</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>{
+      "type": "text",
+      "text": "Here's the current weather in Mumbai:"
+    },
+    {
+      "type": "data",
+      "data": {
+        "temperature": 32,
+        "unit": "celsius",
+        "conditions": "partly cloudy",
+        "humidity": 75
+      }
+    }</code></pre></div>
+</div>
+<p>]</p>
+<p>}</p>
+<p>Parts can carry multiple content types — text for humans, structured data for machines, files for media. This multi-modal approach means agents can communicate in whatever format makes sense.</p>
+<ol><li>Artifacts — The Outputs</li></ol>
+<p>When an agent produces a result, it creates an artifact:</p>
+<p>json</p>
+<p>{</p>
+<p>"name": "weather-report",</p>
+<p>"parts": [</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>{
+      "type": "text",
+      "text": "Mumbai Weather Report - January 15, 2025\n\nTemperature: 32°C\nConditions: Partly Cloudy\nHumidity: 75%\nWind: 12 km/h NW"
+    }</code></pre></div>
+</div>
+<p>]</p>
+<p>}</p>
+<p>Artifacts are the final deliverables — they persist after the task completes and can be referenced by other agents.</p>
+<p>🔧</p>
+<h2 id="s4">The A2A Protocol: HTTP Endpoints</h2><div class="section-rule"></div>
+<p>A2A is a REST-ish protocol over HTTP. Here are the core endpoints:</p>
+<h2 id="s5">Endpoint	Method	Purpose</h2><div class="section-rule"></div>
+<h2 id="s6">/.well-known/agent.json	GET	Agent Card (discovery)</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>/tasks/send</th><th>POST</th><th>Create or update a task</th></tr></thead><tbody><tr><td>/tasks/sendSubscribe</td><td>POST</td><td>Create task + subscribe to SSE stream</td></tr><tr><td>/tasks/get</td><td>POST</td><td>Get task status and history</td></tr><tr><td>/tasks/cancel</td><td>POST</td><td>Cancel a running task</td></tr><tr><td>/tasks/pushNotification/set</td><td>POST</td><td>Register webhook for updates</td></tr><tr><td>/tasks/pushNotification/get</td><td>POST</td><td>Get notification config</td></tr></tbody></table></div>
+<h2 id="s7">Creating a Task</h2><div class="section-rule"></div>
+<p>python</p>
+<p>import httpx</p>
+<h2 id="s8">Discover the agent</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>card = httpx.get("https://weather-agent.example.com/.well-known/agent.json").json()
+print(f"Found agent: {card['name']} with skills: {[s['name'] for s in card['skills']]}")</code></pre></div>
+</div>
+<h2 id="s9">Create a task</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>task = httpx.post(f"{card['url']}/tasks/send", json={
+"jsonrpc": "2.0",
+    "id": "req-1",
+    "method": "tasks/send",
+    "params": {
+        "id": "task-001",
+        "message": {
+            "role": "user",
+            "parts": [{"type": "text", "text": "7-day forecast for Mumbai"}]
+        }
+    }</code></pre></div>
+</div>
+<p>}).json()</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>print(f"Task status: {task['result']['status']['state']}")</code></pre></div>
+</div>
+<h2 id="s10">"completed" or "working"</h2><div class="section-rule"></div>
+<h2 id="s11">Streaming Results</h2><div class="section-rule"></div>
+<p>For long-running tasks, use Server-Sent Events:</p>
+<p>python</p>
+<p>import httpx</p>
+<h2 id="s12">Subscribe to task updates via SSE</h2><div class="section-rule"></div>
+<p>with httpx.stream("POST", f"{card['url']}/tasks/sendSubscribe", json={</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>"jsonrpc": "2.0",
+    "id": "req-2",
+    "method": "tasks/sendSubscribe",
+    "params": {
+        "id": "task-002",
+        "message": {
+            "role": "user",
+            "parts": [{"type": "text", "text": "Detailed analysis of Mumbai weather trends"}]
+        }
+    }</code></pre></div>
+</div>
+<p>}) as response:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>for line in response.iter_lines():
+        if line.startswith("data: "):
+            event = json.loads(line[6:])
+            status = event.get("result", {}).get("status", {})
+            print(f"Status: {status.get('state')} - {status.get('message', '')}")</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># Check for artifacts
+            artifact = event.get("result", {}).get("artifact")
+            if artifact:
+                print(f"Got artifact: {artifact['name']}")</code></pre></div>
+</div>
+<p>📊</p>
+<h2 id="s13">Multi-Agent Orchestration</h2><div class="section-rule"></div>
+<p>Here's where A2A shines — a coordinator agent delegating to specialized agents:</p>
+<p>python</p>
+<p>class TravelPlannerAgent:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>"""Coordinator that delegates to specialized agents."""</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>def __init__(self):
+        # Discover agents
+        self.weather = discover_agent("https://weather.example.com")
+        self.flights = discover_agent("https://flights.example.com")
+        self.hotels = discover_agent("https://hotels.example.com")
+        self.budget = discover_agent("https://budget.example.com")</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>async def plan_trip(self, destination, dates, budget):
+        # Launch parallel tasks to different agents
+        weather_task = self.weather.send_task(
+            f"Weather in {destination} during {dates}"
+        )
+        flights_task = self.flights.send_task(
+            f"Cheapest flights to {destination} for {dates}"
+        )
+        hotels_task = self.hotels.send_task(
+            f"Hotels in {destination} under ${budget/2} per night"
+        )</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># Wait for all agents to complete
+        weather, flights, hotels = await asyncio.gather(
+            weather_task, flights_task, hotels_task
+        )</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># Send combined results to budget agent
+        budget_task = await self.budget.send_task(
+            f"Analyze this trip plan:\n"
+            f"Weather: {weather.artifacts}\n"
+            f"Flights: {flights.artifacts}\n"
+            f"Hotels: {hotels.artifacts}\n"
+            f"Total budget: ${budget}"
+        )</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>return budget_task.artifacts</code></pre></div>
+</div>
+<p>┌──────────────────┐</p>
+<p>│ Travel Planner   │ (Coordinator)</p>
+<p>│ Agent            │</p>
+<p>└──────┬───────────┘</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>│
+       ├──→ Weather Agent ──→ "32°C, partly cloudy, pack light"
+       │
+       ├──→ Flights Agent ──→ "Air India ₹8,500, IndiGo ₹7,200"
+       │
+       ├──→ Hotels Agent  ──→ "Taj: ₹12K/night, OYO: ₹2K/night"
+       │
+       └──→ Budget Agent  ──→ "Total: ₹45,000. Under budget by ₹5K"</code></pre></div>
+</div>
+<h2 id="s14">A2A vs Other Agent Protocols</h2><div class="section-rule"></div>
+<h2 id="s15">Feature	A2A (Google)	MCP (Anthropic)	AutoGen	CrewAI</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>Scope</th><th>Agent ↔ Agent</th><th>Model → Tools</th><th>Framework</th><th>Framework</th></tr></thead><tbody><tr><td>Transport</td><td>HTTP/SSE</td><td>stdio/HTTP</td><td>In-process</td><td>In-process</td></tr><tr><td>Discovery</td><td>Agent Cards</td><td>Server lists tools</td><td>Code-defined</td><td>Code-defined</td></tr><tr><td>Streaming</td><td>✅ SSE</td><td>✅ Notifications</td><td>✅</td><td>❌</td></tr><tr><td>Cross-org</td><td>✅ Designed for it</td><td>✅</td><td>❌</td><td>❌</td></tr><tr><td>Authentication</td><td>Built-in schemes</td><td>Not specified</td><td>N/A</td><td>N/A</td></tr><tr><td>Language-agnostic</td><td>✅ HTTP/JSON</td><td>✅ JSON-RPC</td><td>❌ Python</td><td>❌ Python</td></tr></tbody></table></div>
+<p>The key distinction: AutoGen and CrewAI are frameworks (code libraries). A2A and MCP are protocols (standards). You can build with any framework and communicate via A2A.</p>
+<div class="callout callout-tip"><span class="callout-icon">💡</span><p></p></div>
+<h2 id="s16">Input-Required: Multi-Turn Agent Conversations</h2><div class="section-rule"></div>
+<p>Agents can request more information mid-task, creating multi-turn conversations:</p>
+<p>json</p>
+<p>// Agent responds with input-required state</p>
+<p>{</p>
+<p>"id": "task-003",</p>
+<p>"status": {</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>"state": "input-required",
+    "message": "I found 15 hotels. What's your preference?"</code></pre></div>
+</div>
+<p>},</p>
+<p>"history": [</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>{
+      "role": "user",
+      "parts": [{"type": "text", "text": "Find hotels in Mumbai"}]
+    },
+    {
+      "role": "agent",
+      "parts": [{"type": "text", "text": "I found 15 hotels. Do you prefer: (1) Budget (under ₹3K/night), (2) Mid-range (₹3K-8K), or (3) Luxury (₹8K+)?"}]
+    }</code></pre></div>
+</div>
+<p>]</p>
+<p>}</p>
+<p>python</p>
+<h2 id="s17">Client sends follow-up</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>response = httpx.post(f"{url}/tasks/send", json={
+"jsonrpc": "2.0",
+    "id": "req-3",
+    "method": "tasks/send",
+    "params": {
+        "id": "task-003",  # Same task ID — continues the conversation
+        "message": {
+            "role": "user",
+            "parts": [{"type": "text", "text": "Budget please, under 3K"}]
+        }
+    }</code></pre></div>
+</div>
+<p>}).json()</p>
+<p>🔬</p>
+<h2 id="s18">Building an A2A Agent</h2><div class="section-rule"></div>
+<p>Here's a minimal A2A agent implementation:</p>
+<p>python</p>
+<p>from flask import Flask, request, jsonify, Response</p>
+<p>import json</p>
+<p>import uuid</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>app = Flask(__name__)
+tasks = {}</code></pre></div>
+</div>
+<h2 id="s19">Agent Card</h2><div class="section-rule"></div>
+<h2 id="s20">AGENT_CARD = {</h2><div class="section-rule"></div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>"name": "Sentiment Analyzer",
+    "description": "Analyzes text sentiment using AI",
+    "url": "http://localhost:5000",
+    "version": "1.0.0",
+    "capabilities": {"streaming": False, "pushNotifications": False},
+    "skills": [{
+        "id": "analyze",
+        "name": "Sentiment Analysis",
+        "description": "Determine if text is positive, negative, or neutral",
+        "inputModes": ["text"],
+        "outputModes": ["text", "json"]
+    }]</code></pre></div>
+</div>
+<p>}</p>
+<p>@app.route("/.well-known/agent.json")</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>def agent_card():
+return jsonify(AGENT_CARD)</code></pre></div>
+</div>
+<p>@app.route("/tasks/send", methods=["POST"])</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>def send_task():
+req = request.json
+    params = req["params"]
+    task_id = params.get("id", str(uuid.uuid4()))
+    message = params["message"]
+    text = message["parts"][0]["text"]
+# Simple sentiment analysis (replace with actual model)
+    sentiment = analyze_sentiment(text)
+task = {
+        "id": task_id,
+        "status": {"state": "completed"},
+        "artifacts": [{
+            "name": "sentiment-result",
+            "parts": [
+                {"type": "text", "text": f"Sentiment: {sentiment['label']}"},
+                {"type": "data", "data": sentiment}
+            ]
+        }],
+        "history": [message, {
+            "role": "agent",
+            "parts": [{"type": "text", "text": f"Analysis complete: {sentiment['label']}"}]
+        }]
+    }
+    tasks[task_id] = task
+return jsonify({"jsonrpc": "2.0", "id": req["id"], "result": task})</code></pre></div>
+</div>
+<p>def analyze_sentiment(text):</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># Your ML model here
+    return {"label": "positive", "score": 0.92, "text": text}</code></pre></div>
+</div>
+<p>if __name__ == "__main__":</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>app.run(port=5000)</code></pre></div>
+</div>
+<p>🛡️</p>
+<h2 id="s21">Practical Takeaways</h2><div class="section-rule"></div>
+<p>A2A is for agent-to-agent communication — MCP for tools, A2A for peer agents</p>
+<p>Agent Cards enable discovery — any agent can find and understand another via .well-known/agent.json</p>
+<p>Tasks are the unit of work — submitted → working → completed/failed, with history and artifacts</p>
+<p>SSE streaming handles long-running tasks — real-time progress updates</p>
+<p>Input-required enables multi-turn — agents can ask for clarification mid-task</p>
+<p>It's a protocol, not a framework — build with any language/framework, communicate via HTTP</p>
+<p>📦</p>
+<p>What's Next?</p>
+<p>Episode 82: Webhooks & Event-Driven AI — A2A uses SSE for streaming. But real production systems need more: webhooks, message queues, async pipelines. We'll explore how to build event-driven AI architectures that process triggers, handle backpressure, and scale to millions of events.</p>
+<p>← Previous</p>
+<h2 id="s22">Ep 80: Structured Output / JSON Mode</h2><div class="section-rule"></div>
+<p>Next →</p>
+<h2 id="s23">Ep 82: Webhooks & Event-Driven AI</h2><div class="section-rule"></div>
+<p>Next: Episode 82 — Webhooks & Event-Driven AI</p>
+<p>Request/response works for chatbots. Production AI systems aren't chatbots. They need event-driven architectures.</p>
+<p>This is part of a 98-episode series covering AI engineering from tokens to production deployment.</p>
+  </article>
+  <div class="ep-nav">
+    <a href="episode-80.html" class="ep-nav-card">
+      <span class="ep-nav-dir">← Previous</span>
+      <span class="ep-nav-title">Ep 80: Structured Output / JSON Mode: Making AI Responses Mach…</span>
+    </a>
+    <a href="episode-82.html" class="ep-nav-card next">
+      <span class="ep-nav-dir">Next Episode →</span>
+      <span class="ep-nav-title">Ep 82: Webhooks & Event-Driven AI: Async Architectures That Sc…</span>
+    </a>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <img class="footer-logo" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+      <div class="footer-tagline">98 Field Manual · Build with AI, not just use it · Free forever</div>
+    </div>
+    <div class="footer-links">
+      <a href="field-manual-index.html">All Episodes</a>
+      <a href="field-manual-index.html#g12">Protocols & Standards</a>
+      <a href="episode-80.html">← Ep 80</a>
+      <a href="episode-82.html">Ep 82 →</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+const prog=document.getElementById('prog');
+window.addEventListener('scroll',()=>{
+  const total=document.documentElement.scrollHeight-window.innerHeight;
+  prog.style.width=Math.min(100,(window.scrollY/total)*100)+'%';
+},{passive:true});
+
+// Build section nav dots from h2s
+const h2s=document.querySelectorAll('.prose h2');
+const sNav=document.getElementById('sectionNav');
+const dots=[];
+h2s.forEach((h,i)=>{
+  const btn=document.createElement('button');
+  btn.className='snav-dot';
+  btn.setAttribute('data-label',h.textContent.trim().substring(0,28));
+  btn.onclick=()=>h.scrollIntoView({behavior:'smooth',block:'start'});
+  sNav.appendChild(btn);
+  dots.push({btn,h});
+});
+
+const dotObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      const idx=dots.findIndex(d=>d.h===e.target);
+      if(idx>-1) dots.forEach((d,i)=>d.btn.classList.toggle('active',i===idx));
+    }
+  });
+},{rootMargin:'-30% 0px -60% 0px'});
+dots.forEach(d=>dotObs.observe(d.h));
+
+// Scroll reveal
+const revObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='translateY(0)';}});
+},{threshold:0.08});
+document.querySelectorAll('.toc,.callout,.table-wrap,.code-block,.ep-nav-card').forEach(el=>{
+  el.style.opacity='0';
+  el.style.transform='translateY(14px)';
+  el.style.transition='opacity 0.55s ease,transform 0.55s ease';
+  revObs.observe(el);
+});
+</script>
+</body>
+</html>

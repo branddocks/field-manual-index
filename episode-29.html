@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ep 29: What Is an Agent: When AI Stops Answering and Starts Doing</title>
+<meta name="description" content="ChatGPT answers your questions. An agent does your work. That's the difference — and it changes everything.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,300&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0d0d1a;--page:#ffffff;--paper:#f8f9ff;
+  --navy:#124093;--navy-dim:rgba(18,64,147,0.07);--navy-mid:rgba(18,64,147,0.15);
+  --red:#e2190e;--gold:#c8973a;--muted:#6b7280;--rule:#e5e7ef;--code-bg:#0d0d1f;
+  --title:'Roboto',sans-serif;--body:'Poppins',sans-serif;--mono:'DM Mono',monospace;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--page);color:var(--ink);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:#fff}
+::-webkit-scrollbar-thumb{background:var(--navy);border-radius:2px}
+
+/* NAV */
+nav.top{position:sticky;top:0;z-index:200;background:#fff;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(20px,5vw,60px);border-bottom:1px solid var(--rule);box-shadow:0 1px 12px rgba(0,0,0,0.05)}
+.logo-wrap{display:flex;align-items:center;text-decoration:none}
+.logo-img{height:38px;width:auto;object-fit:contain;display:block}
+.nav-right{display:flex;align-items:center;gap:6px}
+.nav-link{font-family:var(--body);font-size:11.5px;font-weight:500;color:var(--muted);text-decoration:none;padding:6px 14px;border-radius:6px;transition:all 0.2s}
+.nav-link:hover{color:var(--navy);background:var(--navy-dim)}
+.nav-cta{background:var(--navy)!important;color:#fff!important}
+.nav-cta:hover{background:#1a52c0!important;color:#fff!important}
+
+/* PROGRESS */
+.progress-bar-fixed{position:fixed;top:60px;left:0;right:0;height:2.5px;background:rgba(18,64,147,0.1);z-index:199}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--navy),#4f7ff7);width:0%;transition:width 0.1s;border-radius:0 2px 2px 0}
+
+/* HERO */
+.hero{background:#fff;position:relative;overflow:hidden;min-height:88vh;display:flex;flex-direction:column;justify-content:center}
+.hero-bg{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.hero-blob-1{position:absolute;top:-120px;right:-120px;width:700px;height:700px;background:radial-gradient(circle at 60% 40%,rgba(18,64,147,0.07) 0%,rgba(18,64,147,0.03) 40%,transparent 70%);border-radius:50%}
+.hero-blob-2{position:absolute;bottom:-80px;left:-80px;width:500px;height:500px;background:radial-gradient(circle,rgba(79,127,247,0.06) 0%,transparent 65%);border-radius:50%}
+.hero-lines{position:absolute;top:0;right:0;width:45%;height:100%;opacity:0.06}
+.hero-lines svg{width:100%;height:100%}
+.hero-tokens{position:absolute;top:0;right:0;width:46%;height:100%;display:flex;align-items:center;justify-content:center}
+.token-float-wrap{position:relative;width:360px;height:360px}
+.tf{position:absolute;font-family:var(--mono);font-size:13px;font-weight:500;padding:8px 16px;border-radius:8px;white-space:nowrap;animation:float-anim 6s ease-in-out infinite;box-shadow:0 4px 20px rgba(0,0,0,0.08)}
+.tf-1{top:20px;left:60px;background:rgba(18,64,147,0.09);color:#124093;border:1px solid rgba(18,64,147,0.18);animation-delay:0s}
+.tf-2{top:70px;right:20px;background:rgba(79,127,247,0.09);color:#2563eb;border:1px solid rgba(79,127,247,0.2);animation-delay:0.8s}
+.tf-3{top:140px;left:20px;background:rgba(16,185,129,0.08);color:#059669;border:1px solid rgba(16,185,129,0.18);animation-delay:1.6s}
+.tf-4{top:170px;right:50px;background:rgba(168,85,247,0.08);color:#7c3aed;border:1px solid rgba(168,85,247,0.18);animation-delay:0.4s}
+.tf-5{bottom:140px;left:80px;background:rgba(234,179,8,0.08);color:#b45309;border:1px solid rgba(234,179,8,0.2);animation-delay:1.2s}
+.tf-6{bottom:90px;right:30px;background:rgba(236,72,153,0.08);color:#db2777;border:1px solid rgba(236,72,153,0.2);animation-delay:2s}
+.tf-7{bottom:30px;left:40px;background:rgba(239,68,68,0.08);color:#dc2626;border:1px solid rgba(239,68,68,0.18);animation-delay:0.6s}
+.tf-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:110px;height:110px;background:var(--navy);border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;box-shadow:0 12px 40px rgba(18,64,147,0.3);animation:pulse-center 3s ease-in-out infinite}
+.tf-center .big{font-family:var(--title);font-size:28px;font-weight:900;color:#fff;line-height:1}
+.tf-center .small{font-family:var(--body);font-size:9px;font-weight:500;color:rgba(255,255,255,0.6);letter-spacing:1.5px;text-transform:uppercase}
+@keyframes float-anim{0%,100%{transform:translateY(0px)}50%{transform:translateY(-10px)}}
+@keyframes pulse-center{0%,100%{box-shadow:0 12px 40px rgba(18,64,147,0.3)}50%{box-shadow:0 12px 60px rgba(18,64,147,0.5)}}
+.hero-content{position:relative;z-index:2;width:54%;padding:clamp(48px,8vw,96px) clamp(24px,5vw,72px) clamp(48px,8vw,96px)}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:5px 14px;background:var(--navy-dim);border:1px solid rgba(18,64,147,0.18);border-radius:100px;margin-bottom:22px;font-family:var(--body);font-size:10px;font-weight:600;color:var(--navy);letter-spacing:1.2px;text-transform:uppercase}
+.hero-eyebrow .dot{width:5px;height:5px;background:var(--navy);border-radius:50%}
+.hero h1{font-family:var(--title);font-size:clamp(28px,4.5vw,52px);font-weight:900;color:var(--ink);line-height:1.08;letter-spacing:-1.2px;margin-bottom:20px}
+.hero h1 .line2{display:block;color:var(--navy)}
+.hero-sub{font-family:var(--body);font-size:clamp(13px,1.6vw,15px);font-weight:300;color:#4b5563;line-height:1.85;max-width:500px;margin-bottom:34px}
+.breadcrumb{display:flex;align-items:center;gap:7px;margin-bottom:28px;font-family:var(--mono);font-size:10px;color:#9ca3af}
+.breadcrumb a{color:inherit;text-decoration:none;transition:color 0.2s}
+.breadcrumb a:hover{color:var(--navy)}
+.breadcrumb .sep{color:#d1d5db}
+.breadcrumb .cur{color:#6b7280}
+.meta-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:14px 20px;background:var(--paper);border:1px solid var(--rule);border-radius:10px;margin-bottom:24px}
+.meta-item{font-family:var(--body);font-size:10.5px;font-weight:500;color:var(--muted);display:flex;align-items:center;gap:5px}
+.tags-row{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-family:var(--body);font-size:10px;font-weight:500;color:var(--navy);background:var(--navy-dim);padding:4px 11px;border-radius:100px;border:1px solid rgba(18,64,147,0.15)}
+@media(max-width:900px){.hero{min-height:auto;padding-bottom:48px}.hero-content{width:100%;padding:48px 24px 36px}.hero-tokens{display:none}.hero-lines{display:none}}
+
+/* SECTION NAV DOTS */
+.section-nav{position:fixed;right:clamp(12px,2vw,24px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:9px;z-index:100}
+.snav-dot{width:7px;height:7px;border-radius:50%;background:#d1d5db;border:none;padding:0;cursor:pointer;transition:all 0.3s;position:relative}
+.snav-dot::after{content:attr(data-label);position:absolute;right:16px;top:50%;transform:translateY(-50%);font-family:var(--body);font-size:9px;font-weight:500;color:var(--ink);background:#fff;padding:3px 9px;border-radius:4px;border:1px solid var(--rule);box-shadow:0 2px 8px rgba(0,0,0,0.06);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.2s}
+.snav-dot:hover::after{opacity:1}
+.snav-dot.active{background:var(--navy);transform:scale(1.5)}
+.snav-dot:hover:not(.active){background:rgba(18,64,147,0.4)}
+@media(max-width:768px){.section-nav{display:none}}
+
+/* LAYOUT */
+.layout{max-width:860px;margin:0 auto;padding:clamp(40px,6vw,68px) clamp(20px,5vw,56px) 80px}
+
+/* TOC */
+.toc{background:var(--paper);border:1px solid var(--rule);border-left:4px solid var(--navy);border-radius:10px;padding:22px 26px;margin-bottom:52px}
+.toc-title{font-family:var(--title);font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
+.toc-list{list-style:none;display:flex;flex-direction:column;gap:3px}
+.toc-list li a{display:flex;align-items:center;gap:12px;text-decoration:none;padding:6px 0;font-family:var(--body);font-size:13px;font-weight:400;color:var(--ink);transition:color 0.2s}
+.toc-list li a:hover{color:var(--navy)}
+.toc-num{font-family:var(--mono);font-size:9px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* PROSE */
+.prose{line-height:1.85}
+.prose h2{font-family:var(--title);font-size:clamp(18px,2.5vw,23px);font-weight:700;color:var(--ink);letter-spacing:-0.4px;margin:52px 0 8px;line-height:1.2;scroll-margin-top:80px;padding-left:18px;position:relative}
+.prose h2::before{content:'';position:absolute;left:0;top:5px;bottom:5px;width:3px;background:var(--navy);border-radius:2px}
+.prose h2:first-child{margin-top:0}
+.prose h3{font-family:var(--title);font-size:14px;font-weight:700;color:var(--ink);margin:26px 0 8px}
+.section-rule{width:36px;height:2px;background:var(--navy);border-radius:2px;margin:8px 0 22px 18px;opacity:0.4}
+.prose p{font-family:var(--body);font-size:clamp(13.5px,1.7vw,15px);line-height:1.88;color:#374151;margin-bottom:16px;font-weight:300}
+.prose p strong{font-weight:600;color:var(--ink)}
+.prose ul,.prose ol{list-style:none;padding:0;margin:4px 0 20px}
+.prose ul li,.prose ol li{font-family:var(--body);font-size:clamp(13.5px,1.7vw,14.5px);line-height:1.8;color:#374151;padding:4px 0 4px 26px;position:relative;font-weight:300}
+.prose ul li::before{content:'';position:absolute;left:5px;top:14px;width:5px;height:5px;background:var(--navy);border-radius:50%;opacity:0.55}
+.prose ol{counter-reset:li}
+.prose ol li{counter-increment:li}
+.prose ol li::before{content:counter(li);position:absolute;left:0;top:5px;font-family:var(--mono);font-size:8px;font-weight:500;color:#4f7ff7;background:var(--navy-dim);width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.ic{font-family:var(--mono);font-size:12.5px;background:var(--navy-dim);color:var(--navy);padding:1.5px 6px;border-radius:4px;border:1px solid rgba(18,64,147,0.15)}
+
+/* CODE */
+.code-block{background:var(--code-bg);border-radius:10px;margin:24px 0;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.12),0 0 0 1px rgba(18,64,147,0.1)}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.02)}
+.code-dots{display:flex;gap:5px}
+.cd{width:10px;height:10px;border-radius:50%}
+.cd-r{background:#ff5f56}.cd-y{background:#ffbd2e}.cd-g{background:#27c93f}
+.code-filename{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,0.25)}
+.code-lang{font-family:var(--mono);font-size:9px;color:rgba(91,140,247,0.6);letter-spacing:1px;text-transform:uppercase}
+.code-body{padding:20px 22px;overflow-x:auto}
+.code-body pre{margin:0}
+.code-body code{font-family:var(--mono);font-size:12.5px;line-height:1.9;color:#c9d4f5}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;margin:24px 0;border-radius:10px;border:1px solid var(--rule);box-shadow:0 2px 12px rgba(0,0,0,0.04)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:var(--ink)}
+thead th{padding:12px 16px;text-align:left;font-family:var(--body);font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,0.45)}
+thead th:first-child{color:#6b9fff}
+tbody tr{border-bottom:1px solid var(--rule);transition:background 0.15s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--paper)}
+tbody td{padding:10px 16px;font-family:var(--body);font-size:13px;color:#374151;font-weight:300;line-height:1.5}
+tbody td:first-child{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--navy)}
+
+/* CALLOUTS */
+.callout{border-radius:9px;padding:16px 20px;margin:24px 0;display:flex;gap:13px;align-items:flex-start}
+.callout-tip{background:rgba(18,64,147,0.05);border:1px solid rgba(18,64,147,0.16);border-left:3px solid var(--navy)}
+.callout-warn{background:rgba(220,38,38,0.04);border:1px solid rgba(220,38,38,0.14);border-left:3px solid #dc2626}
+.callout-note{background:rgba(200,151,58,0.05);border:1px solid rgba(200,151,58,0.2);border-left:3px solid var(--gold)}
+.callout-icon{font-size:16px;flex-shrink:0;margin-top:1px;line-height:1}
+.callout p{font-size:13.5px!important;line-height:1.7!important;color:#374151!important;margin:0!important}
+
+/* EP NAV */
+.ep-nav{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:64px;padding-top:32px;border-top:1px solid var(--rule)}
+@media(max-width:500px){.ep-nav{grid-template-columns:1fr}}
+.ep-nav-card{display:flex;flex-direction:column;text-decoration:none;padding:20px 22px;border:1px solid var(--rule);border-radius:10px;background:var(--paper);transition:all 0.25s;gap:5px}
+.ep-nav-card:hover{border-color:rgba(18,64,147,0.3);background:var(--navy-dim);transform:translateY(-2px);box-shadow:0 6px 20px rgba(18,64,147,0.08)}
+.ep-nav-dir{font-family:var(--body);font-size:9px;font-weight:600;color:var(--navy);letter-spacing:1px;text-transform:uppercase}
+.ep-nav-title{font-family:var(--title);font-size:13px;font-weight:600;color:var(--ink);line-height:1.4}
+.ep-nav-card.next{align-items:flex-end;text-align:right}
+
+/* FOOTER */
+footer{background:var(--ink);padding:44px clamp(20px,5vw,60px);border-top:3px solid var(--navy)}
+.footer-inner{max-width:860px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.footer-logo{height:32px;width:auto;object-fit:contain;filter:brightness(0) invert(1);opacity:0.7}
+.footer-tagline{font-family:var(--body);font-size:11px;color:rgba(255,255,255,0.22);font-style:italic;margin-top:4px;font-weight:300}
+.footer-links{display:flex;gap:20px;flex-wrap:wrap}
+.footer-links a{font-family:var(--body);font-size:11px;font-weight:400;color:rgba(255,255,255,0.3);text-decoration:none;transition:color 0.2s}
+.footer-links a:hover{color:rgba(255,255,255,0.75)}
+
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.hero-content>*{animation:fadeUp 0.65s cubic-bezier(0.22,1,0.36,1) both}
+.hero-content>*:nth-child(1){animation-delay:0.05s}
+.hero-content>*:nth-child(2){animation-delay:0.1s}
+.hero-content>*:nth-child(3){animation-delay:0.15s}
+.hero-content>*:nth-child(4){animation-delay:0.2s}
+.hero-content>*:nth-child(5){animation-delay:0.25s}
+.hero-content>*:nth-child(6){animation-delay:0.3s}
+.hero-content>*:nth-child(7){animation-delay:0.35s}
+@media(max-width:640px){.nav-link:not(.nav-cta){display:none}}
+</style>
+</head>
+<body>
+
+<div class="progress-bar-fixed"><div class="progress-fill" id="prog"></div></div>
+
+<nav class="top">
+  <a href="field-manual-index.html" class="logo-wrap">
+    <img class="logo-img" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+  </a>
+  <div class="nav-right">
+    <a href="field-manual-index.html" class="nav-link">All Episodes</a>
+    <a href="field-manual-index.html#g5" class="nav-link nav-cta">🤖 AI Agents</a>
+  </div>
+</nav>
+
+<nav class="section-nav" id="sectionNav"></nav>
+
+<header class="hero">
+  <div class="hero-bg">
+    <div class="hero-blob-1"></div>
+    <div class="hero-blob-2"></div>
+    <div class="hero-lines">
+      <svg viewBox="0 0 600 800" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+        <line x1="0" y1="200" x2="600" y2="0" stroke="#124093" stroke-width="1"/>
+        <line x1="0" y1="400" x2="600" y2="200" stroke="#124093" stroke-width="0.6"/>
+        <line x1="0" y1="600" x2="600" y2="400" stroke="#124093" stroke-width="0.4"/>
+        <circle cx="500" cy="150" r="120" stroke="#124093" stroke-width="0.8" fill="none"/>
+        <circle cx="500" cy="150" r="80" stroke="#124093" stroke-width="0.4" fill="none"/>
+        <circle cx="500" cy="150" r="40" stroke="#124093" stroke-width="0.3" fill="none"/>
+        <line x1="300" y1="0" x2="300" y2="800" stroke="#124093" stroke-width="0.4" stroke-dasharray="6,12"/>
+        <rect x="360" y="480" width="160" height="160" stroke="#124093" stroke-width="0.6" fill="none" transform="rotate(15 440 560)"/>
+      </svg>
+    </div>
+  </div>
+  <div class="hero-tokens" aria-hidden="true">
+    <div class="token-float-wrap">
+      <div class="tf tf-1">token</div>
+<div class="tf tf-2">model</div>
+<div class="tf tf-3">layer</div>
+<div class="tf tf-4">vector</div>
+<div class="tf tf-5">embed</div>
+<div class="tf tf-6">weight</div>
+<div class="tf tf-7">param</div>
+      <div class="tf-center">
+        <span class="big">WHAT</span>
+        <span class="small">EP 29</span>
+      </div>
+    </div>
+  </div>
+  <div class="hero-content">
+    <nav class="breadcrumb">
+      <a href="field-manual-index.html">Field Manual</a>
+      <span class="sep">›</span>
+      <a href="field-manual-index.html#g5">🤖 AI Agents</a>
+      <span class="sep">›</span>
+      <span class="cur">Episode 29</span>
+    </nav>
+    <div class="hero-eyebrow"><span class="dot"></span>MODULE 5 &nbsp;·&nbsp; AI Agents</div>
+    <h1>What Is an Agent: When AI Stops Answering and Starts Doing</h1>
+    <p class="hero-sub">ChatGPT answers your questions. An agent does your work. That's the difference — and it changes everything.</p>
+    <div class="meta-row">
+      <div class="meta-item"><span>📅</span> Mar 2026</div>
+      <div class="meta-item"><span>⏱</span> 10 min read</div>
+      <div class="meta-item"><span>🎯</span> Episode 29 of 98</div>
+    </div>
+    <div class="tags-row"><span class="tag">AI Agents</span><span class="tag">Autonomy</span><span class="tag">Tool Use</span><span class="tag">Architecture</span></div>
+  </div>
+</header>
+
+<main class="layout">
+  <div class="toc">
+  <div class="toc-title">In this episode</div>
+  <ul class="toc-list"><li><a href="#s1"><span class="toc-num">1</span>The Three Ingredients of an Agent</a></li>
+<li><a href="#s2"><span class="toc-num">2</span>A Concrete Example</a></li>
+<li><a href="#s3"><span class="toc-num">3</span>Step	Think	Act	Observe</a></li>
+<li><a href="#s4"><span class="toc-num">4</span>Chatbot vs Agent</a></li>
+<li><a href="#s5"><span class="toc-num">5</span>Chatbot	Agent</a></li>
+<li><a href="#s6"><span class="toc-num">6</span>Input	User message	User goal</a></li>
+<li><a href="#s7"><span class="toc-num">7</span>Output	Text response	Completed task</a></li>
+<li><a href="#s8"><span class="toc-num">8</span>The Autonomy Spectrum</a></li>
+<li><a href="#s9"><span class="toc-num">9</span>What Makes Agents Hard</a></li>
+<li><a href="#s10"><span class="toc-num">10</span>Reliability</a></li>
+<li><a href="#s11"><span class="toc-num">11</span>Cost</a></li>
+<li><a href="#s12"><span class="toc-num">12</span>Safety</a></li>
+<li><a href="#s13"><span class="toc-num">13</span>Evaluation</a></li>
+<li><a href="#s14"><span class="toc-num">14</span>Real-World Agent Examples</a></li>
+<li><a href="#s15"><span class="toc-num">15</span>Agent	Brain	Tools	Loop Type</a></li>
+<li><a href="#s16"><span class="toc-num">16</span>Building Your First Agent (Pseudocode)</a></li>
+<li><a href="#s17"><span class="toc-num">17</span>The Loop</a></li>
+<li><a href="#s18"><span class="toc-num">18</span>Practical Takeaways</a></li>
+<li><a href="#s19"><span class="toc-num">19</span>Ep 28: Production RAG</a></li>
+<li><a href="#s20"><span class="toc-num">20</span>Ep 30: Tool Calling</a></li>
+<li><a href="#s21"><span class="toc-num">21</span>Next: Episode 30 — Tool Calling</a></li>
+</ul>
+</div>
+  <article class="prose" id="s0">
+<p>ChatGPT answers your questions. An agent does your work.</p>
+<p>That's the difference. And it's massive.</p>
+<p>When you ask ChatGPT "what's the weather in Mumbai?" — it guesses. It might hallucinate. It doesn't actually check the weather. But an agent? It calls a weather API, gets the real data, reads it, and gives you the answer. Then it decides if you also need an umbrella recommendation and checks tomorrow's forecast too.</p>
+<p>The jump from "chatbot" to "agent" is like the jump from a Google search box to a personal assistant who actually does things. And right now, this is where the entire AI industry is headed.</p>
+<h2 id="s1">The Three Ingredients of an Agent</h2><div class="section-rule"></div>
+<p>Every AI agent — from a simple code assistant to a fully autonomous researcher — is built from the same three components:</p>
+<ol><li>An LLM (The Brain)</li></ol>
+<p>The large language model is the reasoning engine. It reads the situation, thinks about what to do, and decides the next action. GPT-4, Claude, Gemini — any of them can be the brain.</p>
+<p>But here's what makes it different from a chatbot: the LLM doesn't just generate text. It generates actions.</p>
+<ol><li>Tools (The Hands)</li></ol>
+<p>Tools are functions the agent can call. Search the web. Run code. Query a database. Send an email. Read a file. Call an API.</p>
+<p>Without tools, an LLM is just a very expensive autocomplete. With tools, it can interact with the real world.</p>
+<ol><li>A Loop (The Persistence)</li></ol>
+<p>This is the ingredient most people miss. A chatbot does one turn: you ask, it answers. An agent runs a loop:</p>
+<p>while task_not_complete:</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>1. Think about the current state
+    2. Decide what to do next
+    3. Execute an action (call a tool)
+    4. Observe the result
+    5. Update understanding
+    6. Repeat</code></pre></div>
+</div>
+<p>The loop is what turns a single LLM call into sustained, goal-directed behavior. The agent keeps going until it finishes the job — or runs out of budget.</p>
+<div class="callout callout-tip"><span class="callout-icon">⚡</span><p></p></div>
+<h2 id="s2">A Concrete Example</h2><div class="section-rule"></div>
+<p>Let's say you tell an agent: "Find the cheapest flight from Delhi to Bangalore next Friday and book it."</p>
+<p>Here's what happens inside the loop:</p>
+<h2 id="s3">Step	Think	Act	Observe</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>1</th><th>I need to search for flights DEL→BLR on Friday</th><th>Call flight search API</th><th>12 results, cheapest is ₹3,400 on IndiGo</th></tr></thead><tbody><tr><td>2</td><td>I should check if there's a better deal on other dates</td><td>Call API for Thursday and Saturday</td><td>Thursday is ₹2,800, Saturday is ₹3,100</td></tr><tr><td>3</td><td>Thursday is cheaper but user said Friday. Should I mention it?</td><td>Decide to inform user about Thursday option</td><td>—</td></tr><tr><td>4</td><td>User confirmed Friday. Let me book the ₹3,400 IndiGo flight</td><td>Call booking API</td><td>Booking confirmed, PNR: ABC123</td></tr><tr><td>5</td><td>Task complete. Let me summarize</td><td>Generate summary with PNR, time, price</td><td>Done</td></tr></tbody></table></div>
+<p>Five iterations of the loop. Five decisions. The LLM didn't just answer — it reasoned, acted, observed, and adapted.</p>
+<p>🔧</p>
+<h2 id="s4">Chatbot vs Agent</h2><div class="section-rule"></div>
+<p>People confuse these constantly. Here's the sharp distinction:</p>
+<h2 id="s5">Chatbot	Agent</h2><div class="section-rule"></div>
+<h2 id="s6">Input	User message	User goal</h2><div class="section-rule"></div>
+<h2 id="s7">Output	Text response	Completed task</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>Tools</th><th>None (or minimal)</th><th>Multiple, diverse</th></tr></thead><tbody><tr><td>Loop</td><td>Single turn</td><td>Multi-step</td></tr><tr><td>Decisions</td><td>None — just responds</td><td>Chooses what to do, when, and how</td></tr><tr><td>Autonomy</td><td>Zero</td><td>Variable (low to high)</td></tr><tr><td>State</td><td>Conversation history only</td><td>Task state, tool results, memory</td></tr><tr><td>Error handling</td><td>"Sorry, I can't do that"</td><td>Retries, tries different approach</td></tr></tbody></table></div>
+<p>A chatbot is like asking a friend for directions. An agent is like hiring a driver who takes you there.</p>
+<p>📊</p>
+<h2 id="s8">The Autonomy Spectrum</h2><div class="section-rule"></div>
+<p>Not all agents are created equal. There's a spectrum from "barely autonomous" to "fully autonomous":</p>
+<p>Level 0 — Chatbot: No tools, no loop. Just text in, text out.</p>
+<p>Level 1 — Tool-augmented LLM: Can call tools but only when explicitly asked. "Search for X" → calls search → returns results. One tool call per turn.</p>
+<p>Level 2 — Simple agent: Has a loop. Can chain multiple tool calls. "Research topic X and write a summary" → searches → reads pages → writes summary. But follows a fairly predictable path.</p>
+<p>Level 3 — Autonomous agent: Makes complex decisions. Handles errors. Backtracks when something doesn't work. Can plan multi-step strategies. Most coding agents (Cursor, Claude Code, Codex) are here.</p>
+<p>Level 4 — Fully autonomous: Runs for hours or days with minimal human input. Manages its own resources and priorities. We're not quite here yet for most use cases, but this is where things are heading.</p>
+<h2 id="s9">What Makes Agents Hard</h2><div class="section-rule"></div>
+<p>If it's just LLM + tools + loop, why isn't every app an agent? Because the devil is in the details:</p>
+<h2 id="s10">Reliability</h2><div class="section-rule"></div>
+<p>An LLM might decide to call the wrong tool. Or pass the wrong arguments. Or misinterpret a tool's output. In a single-turn chatbot, a bad answer is annoying. In an agent loop, a bad decision compounds — the agent goes down the wrong path, wastes money, and produces garbage.</p>
+<h2 id="s11">Cost</h2><div class="section-rule"></div>
+<p>Every iteration of the loop is at least one LLM call. A complex task might take 20-50 iterations. At $10-15 per million output tokens, an agent can burn through dollars in minutes. Imagine an infinite loop bug where the agent keeps calling tools forever — that's a real production concern.</p>
+<h2 id="s12">Safety</h2><div class="section-rule"></div>
+<p>A chatbot can only say wrong things. An agent can do wrong things. Delete files. Send emails to the wrong person. Execute bad code. Book the wrong flight. The stakes are higher because the agent has real-world capabilities.</p>
+<h2 id="s13">Evaluation</h2><div class="section-rule"></div>
+<p>How do you test something that makes dynamic decisions? A chatbot can be evaluated on answer quality. An agent needs to be evaluated on task completion, efficiency, cost, safety, and reliability — all at once.</p>
+<div class="callout callout-tip"><span class="callout-icon">💡</span><p></p></div>
+<h2 id="s14">Real-World Agent Examples</h2><div class="section-rule"></div>
+<p>Agents are already everywhere, even if you don't call them that:</p>
+<h2 id="s15">Agent	Brain	Tools	Loop Type</h2><div class="section-rule"></div>
+<div class="table-wrap"><table><thead><tr><th>Claude Code</th><th>Claude</th><th>File read/write, bash, search</th><th>Coding loop: read → edit → test → fix</th></tr></thead><tbody><tr><td>Devin</td><td>Custom</td><td>Browser, terminal, editor</td><td>Full software engineering loop</td></tr><tr><td>Perplexity</td><td>Mixed models</td><td>Web search, page reading</td><td>Research loop: search → read → synthesize</td></tr><tr><td>AutoGPT</td><td>GPT-4</td><td>Web, file system, code exec</td><td>Open-ended task loop</td></tr><tr><td>GitHub Copilot Workspace</td><td>GPT-4</td><td>GitHub API, code analysis</td><td>Issue → plan → implement → PR</td></tr><tr><td>OpenClaw</td><td>Multiple</td><td>Discord, browser, SSH, files</td><td>Personal assistant loop</td></tr></tbody></table></div>
+<p>The pattern is always the same: LLM + tools + loop. The difference is in which tools are available and how sophisticated the loop is.</p>
+<p>🔬</p>
+<h2 id="s16">Building Your First Agent (Pseudocode)</h2><div class="section-rule"></div>
+<p>Here's what a minimal agent looks like:</p>
+<p>python</p>
+<p>import openai</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>tools = {
+"search_web": search_web_function,
+    "read_page": read_page_function,
+    "write_file": write_file_function,</code></pre></div>
+</div>
+<p>}</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">snippet</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>messages = [
+{"role": "system", "content": "You are a research agent. Use tools to complete tasks."},
+    {"role": "user", "content": "Research the latest AI agent frameworks and write a summary."}</code></pre></div>
+</div>
+<p>]</p>
+<h2 id="s17">The Loop</h2><div class="section-rule"></div>
+<p>for step in range(20):  # Max 20 steps to prevent infinite loops</p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>response = openai.chat.completions.create(
+        model="gpt-4o",
+        messages=messages,
+        tools=tool_definitions,
+    )</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code>message = response.choices[0].message
+    messages.append(message)</code></pre></div>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-dots"><div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div></div>
+    <div class="code-filename">example</div>
+    <div class="code-lang">code</div>
+  </div>
+  <div class="code-body"><pre><code># Check if the agent wants to call a tool
+    if message.tool_calls:
+        for tool_call in message.tool_calls:
+            result = tools[tool_call.function.name](
+                **json.loads(tool_call.function.arguments)
+            )
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "content": str(result)
+            })
+    else:
+        # No tool calls = agent is done, it's giving a final answer
+        print(message.content)
+        break</code></pre></div>
+</div>
+<p>That's a working agent in ~30 lines. The LLM decides when to call tools, which tools to call, and when it's done. The loop keeps going until the agent either finishes or hits the step limit.</p>
+<p>🛡️</p>
+<p>The Agent Pattern — Why Now?</p>
+<p>Agents aren't a new idea. The concept of autonomous AI systems dates back decades. But three things converged in 2024-2025 that made them practical:</p>
+<p>Models got good enough — GPT-4 and Claude 3+ can reliably follow complex instructions, use tools correctly, and reason about multi-step plans</p>
+<p>Tool calling became standard — Every major API now supports structured function calling, making it easy to connect LLMs to external tools</p>
+<p>Context windows got huge — 128K-1M token windows mean agents can maintain context across many loop iterations without forgetting what they're doing</p>
+<p>Before these three things, agents were a research curiosity. Now they're a production reality.</p>
+<p>📦</p>
+<h2 id="s18">Practical Takeaways</h2><div class="section-rule"></div>
+<p>An agent = LLM + tools + loop — that's the recipe, everything else is details</p>
+<p>The loop is what separates agents from chatbots — sustained, multi-step execution toward a goal</p>
+<p>Autonomy is a spectrum — from simple tool-augmented LLMs to fully autonomous systems</p>
+<p>Agents can DO things, not just SAY things — this raises the stakes on reliability and safety</p>
+<p>Cost control is critical — always set max iterations, token budgets, and spending limits</p>
+<p>Every major AI product is becoming an agent — this is the direction of the entire industry</p>
+<p>🚀</p>
+<p>What's Next?</p>
+<p>Episode 30: Tool Calling — How does an LLM actually "call" a function? It can't run code. It doesn't have hands. So how does tool calling work under the hood? The answer involves JSON schemas, structured output, and a clever trick that makes text generation feel like programming.</p>
+<p>← Previous</p>
+<h2 id="s19">Ep 28: Production RAG</h2><div class="section-rule"></div>
+<p>Next →</p>
+<h2 id="s20">Ep 30: Tool Calling</h2><div class="section-rule"></div>
+<h2 id="s21">Next: Episode 30 — Tool Calling</h2><div class="section-rule"></div>
+<p>An LLM can't run code, access the internet, or call APIs. So how does it 'use' tools? The answer is surprisingly elegant.</p>
+<p>This is part of a 98-episode series covering AI engineering from tokens to production deployment.</p>
+  </article>
+  <div class="ep-nav">
+    <a href="episode-28.html" class="ep-nav-card">
+      <span class="ep-nav-dir">← Previous</span>
+      <span class="ep-nav-title">Ep 28: Production RAG: From Demo to Deployment</span>
+    </a>
+    <a href="episode-30.html" class="ep-nav-card next">
+      <span class="ep-nav-dir">Next Episode →</span>
+      <span class="ep-nav-title">Ep 30: Tool Calling: How an LLM Actually "Uses" Tools</span>
+    </a>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <img class="footer-logo" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+      <div class="footer-tagline">98 Field Manual · Build with AI, not just use it · Free forever</div>
+    </div>
+    <div class="footer-links">
+      <a href="field-manual-index.html">All Episodes</a>
+      <a href="field-manual-index.html#g5">AI Agents</a>
+      <a href="episode-28.html">← Ep 28</a>
+      <a href="episode-30.html">Ep 30 →</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+const prog=document.getElementById('prog');
+window.addEventListener('scroll',()=>{
+  const total=document.documentElement.scrollHeight-window.innerHeight;
+  prog.style.width=Math.min(100,(window.scrollY/total)*100)+'%';
+},{passive:true});
+
+// Build section nav dots from h2s
+const h2s=document.querySelectorAll('.prose h2');
+const sNav=document.getElementById('sectionNav');
+const dots=[];
+h2s.forEach((h,i)=>{
+  const btn=document.createElement('button');
+  btn.className='snav-dot';
+  btn.setAttribute('data-label',h.textContent.trim().substring(0,28));
+  btn.onclick=()=>h.scrollIntoView({behavior:'smooth',block:'start'});
+  sNav.appendChild(btn);
+  dots.push({btn,h});
+});
+
+const dotObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      const idx=dots.findIndex(d=>d.h===e.target);
+      if(idx>-1) dots.forEach((d,i)=>d.btn.classList.toggle('active',i===idx));
+    }
+  });
+},{rootMargin:'-30% 0px -60% 0px'});
+dots.forEach(d=>dotObs.observe(d.h));
+
+// Scroll reveal
+const revObs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='translateY(0)';}});
+},{threshold:0.08});
+document.querySelectorAll('.toc,.callout,.table-wrap,.code-block,.ep-nav-card').forEach(el=>{
+  el.style.opacity='0';
+  el.style.transform='translateY(14px)';
+  el.style.transition='opacity 0.55s ease,transform 0.55s ease';
+  revObs.observe(el);
+});
+</script>
+</body>
+</html>
