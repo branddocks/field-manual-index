@@ -514,6 +514,22 @@ footer{
   .modules-grid{grid-template-columns:repeat(2,1fr);}
   footer{flex-direction:column;align-items:flex-start;}
 }
+
+/* ═══════════════════════════ SCROLL TO TOP ═══════════════════════════ */
+#scrollTopBtn{
+  position:fixed;right:24px;bottom:24px;z-index:900;
+  width:46px;height:46px;border-radius:50%;border:1px solid var(--border);
+  cursor:pointer;background:var(--bg);color:var(--text2);font-size:16px;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:var(--shadow-md);
+  opacity:0;visibility:hidden;transform:translateY(14px);
+  transition:opacity .3s ease,transform .3s ease,visibility .3s,background .2s,color .2s,border-color .2s;
+}
+#scrollTopBtn.show{opacity:1;visibility:visible;transform:translateY(0);}
+#scrollTopBtn:hover{background:var(--blue);color:#fff;border-color:var(--blue);}
+@media(max-width:600px){
+  #scrollTopBtn{right:16px;bottom:16px;width:42px;height:42px;font-size:15px;}
+}
 </style>
 </head>
 <body>
@@ -816,6 +832,9 @@ footer{
     </div>
   </div>
 </section>
+
+<!-- ═══════════════════════════ SCROLL TO TOP ═══════════════════════════ -->
+<button id="scrollTopBtn" aria-label="Scroll to top" onclick="window.scrollTo({top:0,behavior:'smooth'})">&#8593;</button>
 
 <!-- ═══════════════════════════ FOOTER ═══════════════════════════ -->
 <footer>
@@ -1420,6 +1439,12 @@ document.getElementById('ep-search').addEventListener('input',e=>{
 // ══════════════════════════════════════════════
 const navbar=document.getElementById('navbar');
 window.addEventListener('scroll',()=>navbar.classList.toggle('scrolled',window.scrollY>40),{passive:true});
+
+// ══════════════════════════════════════════════
+// SCROLL TO TOP
+// ══════════════════════════════════════════════
+const scrollTopBtn=document.getElementById('scrollTopBtn');
+window.addEventListener('scroll',()=>scrollTopBtn.classList.toggle('show',window.scrollY>480),{passive:true});
 
 // ══════════════════════════════════════════════
 // SCROLL REVEAL
