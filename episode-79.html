@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html class="bd-field-episode" lang="en-IN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ep 79: OpenAI Function Calling Spec: Making AI Actually Do Things</title>
+<title>OpenAI Function Calling Spec: Making AI Actually Do Things | 98 Field Manual by Brand Docks</title>
 <meta name="description" content="The model can write essays and solve math, but it can't check the weather. Function calling bridges that gap.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,300&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -173,6 +173,38 @@ footer{background:var(--ink);padding:44px clamp(20px,5vw,60px);border-top:3px so
 .hero-content>*:nth-child(7){animation-delay:0.35s}
 @media(max-width:640px){.nav-link:not(.nav-cta){display:none}}
 </style>
+
+
+
+
+
+
+
+
+
+<!-- BRAND_DOCKS_FIELD_SYSTEM_START -->
+<meta name="robots" content="index,follow,max-image-preview:large">
+<meta name="author" content="Brand Docks">
+<meta name="keywords" content="AI engineering, Protocols & Standards, OpenAI Function Calling Spec: Making AI Actually Do Things, Gujarati AI course, 98 Field Manual, Brand Docks">
+<link rel="canonical" href="https://ai.branddocks.com/field-manual/episode-79.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="98 Field Manual by Brand Docks">
+<meta property="og:title" content="OpenAI Function Calling Spec: Making AI Actually Do Things | 98 Field Manual by Brand Docks">
+<meta property="og:description" content="The model can write essays and solve math, but it can't check the weather. Function calling bridges that gap. Free bilingual AI engineering field lesson by Br">
+<meta property="og:url" content="https://ai.branddocks.com/field-manual/episode-79.html">
+<meta property="og:image" content="https://ai.branddocks.com/field-manual/brand-docks-logo.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="OpenAI Function Calling Spec: Making AI Actually Do Things | 98 Field Manual by Brand Docks">
+<meta name="twitter:description" content="The model can write essays and solve math, but it can't check the weather. Function calling bridges that gap. Free bilingual AI engineering field lesson by Br">
+<link rel="icon" type="image/png" href="brand-docks-logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+Gujarati:wght@400;500;600;700&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="field-manual-system.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"OpenAI Function Calling Spec: Making AI Actually Do Things","description":"The model can write essays and solve math, but it can't check the weather. Function calling bridges that gap. Free bilingual AI engineering field lesson by Br","url":"https://ai.branddocks.com/field-manual/episode-79.html","inLanguage":["en-IN","gu-IN"],"position":79,"isPartOf":{"@type":"Course","name":"98 Field Manual - Zero to AI Builder","url":"https://ai.branddocks.com/field-manual/field-manual-index.html","provider":{"@type":"Organization","name":"Brand Docks","url":"https://www.branddocks.com"}},"author":{"@type":"Organization","name":"Brand Docks","url":"https://www.branddocks.com"},"publisher":{"@type":"Organization","name":"Brand Docks","logo":{"@type":"ImageObject","url":"https://ai.branddocks.com/field-manual/brand-docks-logo.png"}}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"98 Field Manual","item":"https://ai.branddocks.com/field-manual/field-manual-index.html"},{"@type":"ListItem","position":2,"name":"Protocols & Standards","item":"https://ai.branddocks.com/field-manual/field-manual-index.html#module-12"},{"@type":"ListItem","position":3,"name":"OpenAI Function Calling Spec: Making AI Actually Do Things","item":"https://ai.branddocks.com/field-manual/episode-79.html"}]}]}</script>
+<script defer src="field-manual-data.js"></script>
+<script defer src="field-manual-reader.js"></script>
+<!-- BRAND_DOCKS_FIELD_SYSTEM_END -->
 </head>
 <body>
 
@@ -180,11 +212,11 @@ footer{background:var(--ink);padding:44px clamp(20px,5vw,60px);border-top:3px so
 
 <nav class="top">
   <a href="field-manual-index.html" class="logo-wrap">
-    <img class="logo-img" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
+    <img class="logo-img" src="brand-docks-logo.png" alt="Brand Docks" />
   </a>
   <div class="nav-right">
     <a href="field-manual-index.html" class="nav-link">All Episodes</a>
-    <a href="field-manual-index.html#g12" class="nav-link nav-cta">📡 Protocols & Standards</a>
+    <a href="field-manual-index.html#module-12" class="nav-link nav-cta">📡 Protocols & Standards</a>
   </div>
 </nav>
 
@@ -226,7 +258,7 @@ footer{background:var(--ink);padding:44px clamp(20px,5vw,60px);border-top:3px so
     <nav class="breadcrumb">
       <a href="field-manual-index.html">Field Manual</a>
       <span class="sep">›</span>
-      <a href="field-manual-index.html#g12">📡 Protocols & Standards</a>
+      <a href="field-manual-index.html#module-12">📡 Protocols & Standards</a>
       <span class="sep">›</span>
       <span class="cur">Episode 79</span>
     </nav>
@@ -863,18 +895,60 @@ model="gpt-4o",
   </div>
 </main>
 
-<footer>
-  <div class="footer-inner">
+
+
+
+
+
+<footer class="bd-main-footer" aria-label="Brand Docks footer">
+  <div class="bd-footer-grid">
+    <div class="bd-footer-lead">
+      <a href="https://www.branddocks.com" aria-label="Brand Docks home">
+        <img src="brand-docks-logo.png" alt="Brand Docks - Dock. Dominate. Disrupt." width="1000" height="300" loading="lazy">
+      </a>
+      <p class="bd-footer-statement">Dock. Dominate. Disrupt.</p>
+      <p>A full-service digital marketing and AI agency from Junagadh, Gujarat. Strategy, design, performance and automation under one roof.</p>
+      <div class="bd-social-row" aria-label="Brand Docks social links">
+        <a href="https://www.instagram.com/branddocks" aria-label="Instagram">IG</a>
+        <a href="https://www.facebook.com/branddocks" aria-label="Facebook">FB</a>
+        <a href="https://www.linkedin.com/company/branddocks" aria-label="LinkedIn">LI</a>
+        <a href="https://wa.me/918200010069" aria-label="WhatsApp">WA</a>
+      </div>
+    </div>
     <div>
-      <img class="footer-logo" src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" />
-      <div class="footer-tagline">98 Field Manual · Build with AI, not just use it · Free forever</div>
+      <p class="bd-footer-label">Explore</p>
+      <ul>
+        <li><a href="https://www.branddocks.com/#about">About</a></li>
+        <li><a href="https://www.branddocks.com/#services">Services</a></li>
+        <li><a href="https://www.branddocks.com/#cases">Case Studies</a></li>
+        <li><a href="https://branddocks.com/portfolio">Portfolio</a></li>
+        <li><a href="https://branddocks.com/package">Packages</a></li>
+      </ul>
     </div>
-    <div class="footer-links">
-      <a href="field-manual-index.html">All Episodes</a>
-      <a href="field-manual-index.html#g12">Protocols & Standards</a>
-      <a href="episode-78.html">← Ep 78</a>
-      <a href="episode-80.html">Ep 80 →</a>
+    <div>
+      <p class="bd-footer-label">AI Lab</p>
+      <ul>
+        <li><a href="https://ai.branddocks.com/">Aapdu AI</a></li>
+        <li><a href="https://app.branddocks.com/">ERP</a></li>
+        <li><a href="https://auto.branddocks.com">AutoDocks</a></li>
+        <li><a href="https://branddocks.com/workshops">AI Workshops</a></li>
+        <li><a href="field-manual-index.html">98 Field Manual</a></li>
+      </ul>
     </div>
+    <div>
+      <p class="bd-footer-label">Contact</p>
+      <ul>
+        <li><a href="tel:+918200010069">+91 82000-100-69</a></li>
+        <li><a href="mailto:branddocks@gmail.com">branddocks@gmail.com</a></li>
+        <li><a href="https://www.branddocks.com">branddocks.com ↗</a></li>
+        <li><a href="https://login.branddocks.com/u2/79289/schedule-meet-with-brand-docks-team">Schedule a meeting ↗</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="bd-footer-bottom">
+    <p>© 2026 Brand Docks. Built with love in Junagadh.</p>
+    <div><a href="https://branddocks.com/privacy-policy">Privacy</a><a href="https://branddocks.com/policies">Terms</a><a href="https://branddocks.com/refund-policy">Refund policy</a></div>
+    <a href="#top">Back to top ↑</a>
   </div>
 </footer>
 
