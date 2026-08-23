@@ -1,1467 +1,285 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="en-IN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>98 Field Manual — Build AI Systems. Not AI Demos.</title>
-<meta name="description" content="A free 98-episode engineering field manual. From tokens to production deployment. Written for engineers who build real AI systems.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<!-- NOTE: Save your Brand Docks logo as "brand-docks-logo.png" in the same folder as this file. -->
-<style>
-/* ═══════════════════════════ VARIABLES ═══════════════════════════ */
-:root {
-  --bg:      #FFFFFF;
-  --surface: #F8F9FA;
-  --surface2:#F1F3F4;
-  --surface3:#E8EAED;
-  --border:  #DADCE0;
-  --border2: #BDC1C6;
-  --text:    #202124;
-  --text2:   #5F6368;
-  --text3:   #9AA0A6;
-  --blue:    #1A73E8;
-  --shadow-sm:0 1px 2px rgba(60,64,67,.15),0 1px 3px 1px rgba(60,64,67,.10);
-  --shadow-md:0 2px 4px rgba(60,64,67,.15),0 4px 12px 2px rgba(60,64,67,.10);
-  --shadow-lg:0 4px 8px rgba(60,64,67,.15),0 8px 24px 4px rgba(60,64,67,.10);
-}
-/* Module palette */
-:root {
-  --m1:#1A73E8;  --m1b:#E8F0FE;  --m1x:#A8C7FA;
-  --m2:#1E8E3E;  --m2b:#E6F4EA;  --m2x:#A8D5B5;
-  --m3:#D93025;  --m3b:#FCE8E6;  --m3x:#F28B82;
-  --m4:#E8710A;  --m4b:#FEF3E2;  --m4x:#FCAD70;
-  --m5:#7B1FA2;  --m5b:#F3E8FD;  --m5x:#D09AEB;
-  --m6:#00897B;  --m6b:#E6F4F1;  --m6x:#80CBC4;
-  --m7:#1967D2;  --m7b:#E8EAFD;  --m7x:#A8B3F5;
-  --m8:#C5221F;  --m8b:#FDECEA;  --m8x:#F5A3A1;
-  --m9:#BF5A00;  --m9b:#FFF3E0;  --m9x:#FFB74D;
-  --m10:#6A0F9E; --m10b:#EDE7F6; --m10x:#CE93D8;
-  --m11:#006064; --m11b:#E0F7FA; --m11x:#80DEEA;
-  --m12:#1565C0; --m12b:#E3F2FD; --m12x:#90CAF9;
-  --m13:#2E7D32; --m13b:#E8F5E9; --m13x:#A5D6A7;
-  --m14:#BF360C; --m14b:#FBE9E7; --m14x:#FFAB91;
-}
-
-/* ═══════════════════════════ RESET ═══════════════════════════ */
-*{margin:0;padding:0;box-sizing:border-box}
-html{scroll-behavior:smooth}
-body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;-webkit-font-smoothing:antialiased;line-height:1.6}
-::-webkit-scrollbar{width:6px}
-::-webkit-scrollbar-track{background:var(--surface)}
-::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
-::-webkit-scrollbar-thumb:hover{background:var(--text3)}
-
-/* ═══════════════════════════ NAV ═══════════════════════════ */
-nav{
-  position:fixed;top:0;left:0;width:100%;z-index:1000;
-  height:64px;padding:0 32px;
-  display:flex;align-items:center;justify-content:space-between;
-  background:rgba(255,255,255,.95);
-  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-  border-bottom:1px solid var(--border);
-  transition:box-shadow .25s;
-}
-nav.scrolled{box-shadow:var(--shadow-sm);}
-nav::after{
-  content:'';position:absolute;bottom:0;left:0;
-  height:2px;background:var(--blue);
-  width:var(--nav-progress,0%);
-  transition:width .5s cubic-bezier(.4,0,.2,1);
-}
-.nav-left{display:flex;align-items:center;gap:0;}
-.nav-brand-link{display:flex;align-items:center;text-decoration:none;flex-shrink:0;}
-.nav-bd-logo{height:30px;width:auto;border-radius:6px;display:block;}
-.nav-bd-fallback{
-  display:none;align-items:center;gap:6px;
-  padding:5px 12px;background:#000;border-radius:6px;
-  font-size:12px;font-weight:800;color:#fff;letter-spacing:.5px;
-}
-.nav-bd-logo.error{display:none;}
-.nav-bd-logo.error + .nav-bd-fallback{display:flex;}
-.nav-divider{width:1px;height:24px;background:var(--border);margin:0 16px;flex-shrink:0;}
-.nav-logo{display:flex;align-items:center;gap:8px;text-decoration:none;}
-.nav-logo-chip{
-  width:32px;height:32px;border-radius:8px;background:var(--blue);
-  display:flex;align-items:center;justify-content:center;
-  font-size:13px;font-weight:800;color:#fff;letter-spacing:-.5px;flex-shrink:0;
-}
-.nav-logo-text{font-size:14px;font-weight:700;color:var(--text);letter-spacing:-.2px;}
-.nav-logo-text span{color:var(--blue);}
-.nav-center{display:flex;align-items:center;gap:28px;}
-.nav-center a{font-size:13px;font-weight:500;color:var(--text2);text-decoration:none;transition:color .2s;}
-.nav-center a:hover{color:var(--blue);}
-.nav-right{display:flex;align-items:center;gap:12px;}
-.nav-progress-chip{
-  display:flex;align-items:center;gap:6px;padding:5px 12px;
-  border-radius:20px;background:var(--surface);border:1px solid var(--border);
-  font-size:12px;font-weight:600;color:var(--text2);white-space:nowrap;
-}
-.nav-progress-dot{width:7px;height:7px;border-radius:50%;background:#1E8E3E;flex-shrink:0;}
-.nav-cta{
-  font-size:13px;font-weight:600;color:#fff;
-  background:var(--blue);border:none;padding:9px 20px;border-radius:8px;
-  text-decoration:none;cursor:pointer;transition:all .2s;white-space:nowrap;
-  box-shadow:0 1px 3px rgba(26,115,232,.3);
-}
-.nav-cta:hover{background:#1557B0;box-shadow:0 2px 8px rgba(26,115,232,.4);transform:translateY(-1px);}
-
-/* ═══════════════════════════ HERO ═══════════════════════════ */
-.hero{
-  position:relative;min-height:100vh;padding:120px 40px 80px;
-  display:flex;align-items:center;justify-content:center;
-  background:linear-gradient(170deg,#EBF3FF 0%,#F8F9FA 40%,#FFFFFF 100%);
-  overflow:hidden;
-}
-.hero::before{
-  content:'';position:absolute;inset:0;
-  background-image:radial-gradient(circle,#C5D4E8 1px,transparent 1px);
-  background-size:28px 28px;opacity:.6;pointer-events:none;
-}
-.hero-glow{
-  position:absolute;top:-100px;left:50%;transform:translateX(-50%);
-  width:800px;height:600px;
-  background:radial-gradient(ellipse,rgba(26,115,232,.08) 0%,transparent 65%);
-  pointer-events:none;
-}
-.hero-inner{position:relative;z-index:2;text-align:center;max-width:820px;margin:0 auto;}
-.hero-badge{
-  display:inline-flex;align-items:center;gap:8px;
-  padding:6px 16px;border-radius:100px;
-  background:rgba(26,115,232,.07);border:1px solid rgba(26,115,232,.18);
-  margin-bottom:28px;animation:fadeUp .7s ease both;
-}
-.hero-badge-dot{
-  width:6px;height:6px;border-radius:50%;background:#1E8E3E;
-  box-shadow:0 0 6px rgba(30,142,62,.5);animation:pulse 2s infinite;
-}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
-.hero-badge span{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--blue);}
-.hero-eyebrow{font-size:clamp(14px,1.5vw,17px);font-weight:500;color:var(--text2);margin-bottom:14px;animation:fadeUp .7s ease .1s both;}
-.hero-headline{
-  font-size:clamp(36px,5.5vw,72px);font-weight:800;
-  line-height:1.06;letter-spacing:-2.5px;color:var(--text);
-  margin-bottom:24px;animation:fadeUp .7s ease .2s both;
-}
-.hero-headline em{
-  font-style:italic;font-weight:700;
-  background:linear-gradient(135deg,var(--blue),#4285F4);
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
-}
-.hero-body{
-  font-size:clamp(15px,1.5vw,17px);color:var(--text2);line-height:1.75;
-  max-width:580px;margin:0 auto 40px;animation:fadeUp .7s ease .3s both;
-}
-.hero-body strong{color:var(--text);font-weight:600;}
-.hero-cta-group{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;animation:fadeUp .7s ease .4s both;}
-@keyframes fadeUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
-
-/* ═══════════════════════════ BUTTONS ═══════════════════════════ */
-.btn-primary{
-  display:inline-flex;align-items:center;gap:8px;
-  background:var(--blue);color:#fff;
-  padding:13px 26px;border-radius:8px;
-  font-size:14px;font-weight:600;text-decoration:none;
-  transition:all .2s;box-shadow:0 2px 6px rgba(26,115,232,.28);
-  border:none;cursor:pointer;font-family:'Inter',sans-serif;
-}
-.btn-primary:hover{background:#1557B0;transform:translateY(-1px);box-shadow:0 4px 14px rgba(26,115,232,.35);}
-.btn-outline{
-  display:inline-flex;align-items:center;gap:8px;
-  background:#fff;color:var(--blue);
-  padding:13px 26px;border-radius:8px;
-  font-size:14px;font-weight:600;text-decoration:none;
-  border:1.5px solid var(--blue);transition:all .2s;font-family:'Inter',sans-serif;cursor:pointer;
-}
-.btn-outline:hover{background:#E8F0FE;transform:translateY(-1px);}
-.arrow{transition:transform .2s}
-.btn-primary:hover .arrow,.btn-outline:hover .arrow{transform:translateX(4px)}
-
-/* ═══════════════════════════ STATS ═══════════════════════════ */
-.stats-section{padding:0 40px 72px;background:var(--bg);position:relative;z-index:1;}
-.stats-row{
-  max-width:900px;margin:0 auto;
-  display:grid;grid-template-columns:repeat(4,1fr);
-  border:1px solid var(--border);border-radius:16px;overflow:hidden;
-  background:var(--bg);box-shadow:var(--shadow-sm);
-}
-.stat-card{
-  padding:28px 24px;text-align:center;
-  border-right:1px solid var(--border);transition:background .2s;
-}
-.stat-card:last-child{border-right:none;}
-.stat-card:hover{background:var(--surface);}
-.stat-val{font-size:34px;font-weight:800;color:var(--text);letter-spacing:-1.5px;line-height:1;margin-bottom:6px;}
-.stat-val span{color:var(--blue);}
-.stat-label{font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--text3);}
-
-/* ═══════════════════════════ SECTION COMMONS ═══════════════════════════ */
-.section-tag{
-  display:inline-block;font-size:10px;font-weight:700;letter-spacing:1.5px;
-  text-transform:uppercase;color:var(--blue);
-  background:#E8F0FE;border:1px solid #A8C7FA;
-  padding:4px 12px;border-radius:20px;margin-bottom:16px;
-}
-.section-title{
-  font-size:clamp(26px,3.2vw,44px);font-weight:800;
-  color:var(--text);letter-spacing:-1.5px;line-height:1.1;margin-bottom:14px;
-}
-.section-title em{font-style:italic;font-weight:700;color:var(--blue);}
-.section-sub{font-size:16px;color:var(--text2);line-height:1.7;max-width:540px;}
-
-/* ═══════════════════════════ MODULE ROADMAP ═══════════════════════════ */
-.modules-section{
-  padding:88px 40px;
-  background:var(--surface);
-  border-top:1px solid var(--border);border-bottom:1px solid var(--border);
-}
-.modules-inner{max-width:1200px;margin:0 auto;}
-.modules-header{text-align:center;margin-bottom:52px;}
-.modules-header .section-sub{margin:0 auto;}
-
-.modules-grid{
-  display:grid;
-  grid-template-columns:repeat(7,1fr);
-  gap:8px;
-}
-.module-card{
-  background:var(--bg);border:1px solid var(--border);
-  border-radius:14px;padding:18px 12px;
-  text-align:center;cursor:pointer;
-  transition:all .25s;position:relative;overflow:hidden;
-}
-.module-card::before{
-  content:'';position:absolute;top:0;left:0;right:0;height:3px;
-  background:var(--mc-color,var(--blue));border-radius:14px 14px 0 0;
-}
-.module-card:hover{
-  transform:translateY(-4px);
-  box-shadow:var(--shadow-md);
-  border-color:var(--mc-color,var(--blue));
-}
-.module-card-icon{
-  width:40px;height:40px;border-radius:11px;
-  background:var(--mc-bg,#E8F0FE);
-  display:flex;align-items:center;justify-content:center;
-  font-size:20px;margin:0 auto 10px;
-  border:1px solid var(--mc-muted,#A8C7FA);
-}
-.module-card-num{
-  font-size:10px;font-weight:700;letter-spacing:1px;
-  text-transform:uppercase;color:var(--mc-color,var(--blue));margin-bottom:5px;
-}
-.module-card-name{font-size:11px;font-weight:600;color:var(--text);line-height:1.35;margin-bottom:5px;}
-.module-card-eps{
-  display:inline-block;margin-top:8px;padding:2px 9px;border-radius:10px;
-  background:var(--mc-bg,#E8F0FE);
-  font-size:10px;font-weight:700;color:var(--mc-color,var(--blue));
-}
-
-/* ═══════════════════════════ PHILOSOPHY ═══════════════════════════ */
-.philosophy-section{padding:88px 40px;border-top:1px solid var(--border);}
-.philosophy-inner{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:72px;align-items:center;}
-.phil-item{
-  padding:22px;background:var(--bg);
-  border:1px solid var(--border);border-radius:12px;
-  transition:all .25s;margin-bottom:12px;
-}
-.phil-item:last-child{margin-bottom:0;}
-.phil-item:hover{border-color:var(--blue);transform:translateX(4px);box-shadow:var(--shadow-sm);}
-.phil-icon{font-size:20px;margin-bottom:8px;}
-.phil-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:5px;}
-.phil-desc{font-size:13px;color:var(--text2);line-height:1.6;}
-
-/* ═══════════════════════════ EPISODE EXPLORER ═══════════════════════════ */
-.explorer-section{padding:88px 40px;border-top:1px solid var(--border);}
-.explorer-inner{max-width:1200px;margin:0 auto;}
-
-/* Progress Summary */
-.progress-summary-card{
-  background:linear-gradient(135deg,#E8F0FE,var(--bg));
-  border:1px solid #A8C7FA;border-radius:16px;
-  padding:24px 28px;margin-bottom:32px;
-  display:flex;align-items:center;gap:24px;flex-wrap:wrap;
-}
-.psc-left{flex:1;min-width:200px;}
-.psc-title{font-size:13px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;}
-.psc-bar-track{height:10px;background:var(--surface3);border-radius:6px;overflow:hidden;margin-bottom:8px;}
-.psc-bar-fill{height:100%;background:linear-gradient(90deg,var(--blue),#4285F4);border-radius:6px;transition:width .6s cubic-bezier(.4,0,.2,1);width:0%;}
-.psc-label{font-size:13px;color:var(--text2);font-weight:500;}
-.psc-label strong{color:var(--text);font-weight:700;}
-.psc-modules{display:flex;gap:6px;flex-wrap:wrap;}
-.psc-module-pill{
-  display:flex;align-items:center;gap:4px;
-  padding:3px 9px;border-radius:10px;
-  background:var(--bg);border:1px solid var(--border);
-  font-size:10px;font-weight:600;color:var(--text2);white-space:nowrap;
-}
-.psc-module-pill .pip{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
-
-/* Controls */
-.explorer-controls{display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;align-items:center;}
-.search-box{
-  flex:1;min-width:220px;
-  display:flex;align-items:center;gap:8px;
-  background:var(--bg);border:1.5px solid var(--border);
-  border-radius:10px;padding:10px 14px;transition:border-color .2s;
-}
-.search-box:focus-within{border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,115,232,.1);}
-.search-box input{flex:1;background:none;border:none;outline:none;font-size:14px;color:var(--text);font-family:'Inter',sans-serif;}
-.search-box input::placeholder{color:var(--text3);}
-.search-box svg{color:var(--text3);flex-shrink:0;}
-.filter-group{display:flex;gap:6px;flex-wrap:wrap;}
-.filter-btn{
-  padding:6px 12px;
-  background:var(--bg);border:1.5px solid var(--border);
-  border-radius:8px;font-size:11.5px;font-weight:600;
-  color:var(--text2);cursor:pointer;transition:all .18s;
-  font-family:'Inter',sans-serif;white-space:nowrap;
-}
-.filter-btn:hover{
-  border-color:var(--fb-color,var(--blue));
-  color:var(--fb-color,var(--blue));
-  background:var(--fb-bg,#E8F0FE);
-}
-.filter-btn.active{
-  background:var(--fb-bg,#E8F0FE);
-  border-color:var(--fb-muted,#A8C7FA);
-  color:var(--fb-color,var(--blue));
-}
-.ep-count{
-  font-size:12px;color:var(--text3);margin-left:auto;white-space:nowrap;
-  background:var(--surface);border:1px solid var(--border);
-  padding:6px 12px;border-radius:8px;font-weight:600;
-}
-
-/* Module Accordions */
-.module-accordion{
-  border:1px solid var(--border);border-radius:14px;
-  overflow:hidden;margin-bottom:10px;
-  transition:box-shadow .25s;background:var(--bg);
-}
-.module-accordion.open{box-shadow:var(--shadow-sm);}
-.module-acc-header{
-  display:flex;align-items:center;gap:14px;
-  padding:14px 20px;cursor:pointer;
-  transition:background .18s;user-select:none;
-  border-left:4px solid var(--acc-color,var(--blue));
-  min-height:66px;
-}
-.module-acc-header:hover{background:var(--surface);}
-.module-acc-icon{
-  width:40px;height:40px;border-radius:11px;flex-shrink:0;
-  display:flex;align-items:center;justify-content:center;
-  font-size:19px;background:var(--acc-bg,#E8F0FE);
-  border:1px solid var(--acc-muted,#A8C7FA);
-}
-.module-acc-info{flex:1;min-width:0;}
-.module-acc-num{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--acc-color,var(--blue));margin-bottom:2px;}
-.module-acc-name{font-size:14px;font-weight:700;color:var(--text);}
-.module-acc-range{font-size:11px;color:var(--text3);font-weight:500;margin-top:2px;}
-.module-acc-right{display:flex;align-items:center;gap:14px;flex-shrink:0;}
-.module-acc-mini-bar{width:72px;height:5px;background:var(--surface3);border-radius:3px;overflow:hidden;}
-.module-acc-mini-fill{height:100%;background:var(--acc-color,var(--blue));border-radius:3px;transition:width .5s ease;}
-.module-acc-prog{font-size:12px;font-weight:700;color:var(--acc-color,var(--blue));}
-.module-acc-prog-lbl{font-size:10px;color:var(--text3);}
-.module-acc-toggle{
-  width:30px;height:30px;border-radius:8px;flex-shrink:0;
-  display:flex;align-items:center;justify-content:center;
-  background:var(--surface2);border:1px solid var(--border);
-  transition:all .25s;font-size:13px;color:var(--text2);
-}
-.module-accordion.open .module-acc-toggle{transform:rotate(180deg);background:var(--acc-bg,#E8F0FE);border-color:var(--acc-muted,#A8C7FA);color:var(--acc-color,var(--blue));}
-
-/* Accordion body */
-.module-acc-body{
-  display:grid;grid-template-rows:0fr;
-  transition:grid-template-rows .32s cubic-bezier(.4,0,.2,1);
-  background:var(--surface);border-top:1px solid transparent;
-}
-.module-accordion.open .module-acc-body{grid-template-rows:1fr;border-top-color:var(--border);}
-.module-acc-body-inner{overflow:hidden;}
-.module-acc-ep-grid{
-  display:grid;grid-template-columns:repeat(auto-fill,minmax(292px,1fr));
-  gap:10px;padding:16px;
-}
-
-/* Episode Cards */
-.ep-card{
-  background:var(--bg);border:1.5px solid var(--border);
-  border-radius:12px;padding:16px 18px;
-  display:flex;flex-direction:column;gap:6px;
-  position:relative;overflow:hidden;transition:all .2s;
-}
-.ep-card::before{
-  content:'';position:absolute;top:0;left:0;
-  width:3px;height:100%;background:var(--card-color,var(--blue));
-}
-.ep-card:hover{border-color:var(--card-color,var(--blue));transform:translateY(-2px);box-shadow:var(--shadow-md);}
-.ep-card.completed{background:var(--card-bg,#E8F0FE);border-color:var(--card-color,var(--blue));opacity:.85;}
-.ep-card.completed .ep-title-link{text-decoration:line-through;color:var(--text2);}
-.ep-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
-.ep-num-badge{
-  font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;
-  color:var(--card-color,var(--blue));background:var(--card-bg,#E8F0FE);
-  border:1px solid var(--card-muted,#A8C7FA);
-  padding:2px 8px;border-radius:6px;white-space:nowrap;flex-shrink:0;
-}
-.ep-check-btn{
-  display:flex;align-items:center;gap:4px;
-  padding:4px 10px;border-radius:7px;
-  font-size:11px;font-weight:600;cursor:pointer;
-  font-family:'Inter',sans-serif;border:1.5px solid var(--border);
-  background:var(--bg);color:var(--text2);transition:all .18s;white-space:nowrap;flex-shrink:0;
-}
-.ep-check-btn:hover{border-color:var(--card-color,var(--blue));color:var(--card-color,var(--blue));background:var(--card-bg,#E8F0FE);}
-.ep-check-btn.done{background:#1E8E3E;border-color:#1E8E3E;color:#fff;}
-.ep-check-btn.done:hover{background:#1A7A33;border-color:#1A7A33;color:#fff;}
-.ep-title-link{font-size:13px;font-weight:700;color:var(--text);text-decoration:none;line-height:1.4;transition:color .15s;display:block;}
-.ep-title-link:hover{color:var(--card-color,var(--blue));}
-.ep-sub{font-size:12px;color:var(--text2);line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
-.ep-module-tag{font-size:10px;font-weight:600;color:var(--text3);margin-top:4px;padding-top:8px;border-top:1px solid var(--border);text-transform:uppercase;letter-spacing:.5px;}
-.no-results{grid-column:1/-1;text-align:center;padding:48px;color:var(--text3);font-size:15px;}
-.flat-results-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(292px,1fr));gap:10px;}
-
-/* ═══════════════════════════ ARCHITECTURE ═══════════════════════════ */
-.arch-section{padding:88px 40px;border-top:1px solid var(--border);background:var(--surface);}
-.arch-inner{max-width:1100px;margin:0 auto;}
-.arch-header{text-align:center;margin-bottom:52px;}
-.arch-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
-.arch-card{
-  background:var(--bg);border:1px solid var(--border);
-  border-radius:14px;padding:28px;transition:all .25s;
-}
-.arch-card:hover{border-color:var(--blue);transform:translateY(-3px);box-shadow:var(--shadow-md);}
-.arch-card-icon{
-  width:48px;height:48px;border-radius:12px;
-  background:#E8F0FE;border:1px solid #A8C7FA;
-  display:flex;align-items:center;justify-content:center;
-  font-size:22px;margin-bottom:14px;
-}
-.arch-card-title{font-size:16px;font-weight:700;color:var(--text);margin-bottom:8px;}
-.arch-card-desc{font-size:13px;color:var(--text2);line-height:1.65;margin-bottom:16px;}
-.arch-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto;}
-.arch-tag{
-  font-size:10px;font-weight:600;letter-spacing:.5px;
-  padding:3px 9px;border-radius:5px;
-  background:#E8F0FE;border:1px solid #A8C7FA;color:var(--blue);
-}
-
-/* ═══════════════════════════ OUTCOMES ═══════════════════════════ */
-.outcomes-section{padding:88px 40px;border-top:1px solid var(--border);}
-.outcomes-inner{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:72px;align-items:start;}
-.outcomes-timeline{display:flex;flex-direction:column;gap:0;}
-.ot-item{display:flex;gap:16px;padding-bottom:28px;position:relative;}
-.ot-item:not(:last-child)::before{content:'';position:absolute;left:19px;top:40px;bottom:0;width:1px;background:var(--border);}
-.ot-dot{width:40px;height:40px;border-radius:50%;flex-shrink:0;background:var(--surface);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;}
-.ot-ep{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--blue);margin-bottom:4px;}
-.ot-skill{font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px;}
-.ot-desc{font-size:13px;color:var(--text2);line-height:1.6;}
-
-/* ═══════════════════════════ FINAL CTA ═══════════════════════════ */
-.final-cta{
-  padding:120px 40px;border-top:1px solid var(--border);
-  text-align:center;position:relative;overflow:hidden;
-  background:linear-gradient(160deg,#EBF3FF 0%,#FFFFFF 50%,#F0FFF4 100%);
-}
-.final-cta::before{
-  content:'';position:absolute;inset:0;
-  background-image:radial-gradient(circle,#C5D4E8 1px,transparent 1px);
-  background-size:28px 28px;opacity:.4;pointer-events:none;
-}
-.final-cta-inner{position:relative;z-index:2;max-width:660px;margin:0 auto;}
-.final-cta-headline{font-size:clamp(32px,4.5vw,60px);font-weight:800;color:var(--text);letter-spacing:-2px;line-height:1.06;margin-bottom:18px;}
-.final-cta-headline span{color:var(--blue);}
-.final-cta-sub{font-size:17px;color:var(--text2);line-height:1.7;margin-bottom:44px;}
-.final-cta-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
-
-/* ═══════════════════════════ FOOTER ═══════════════════════════ */
-footer{
-  padding:32px 40px;border-top:1px solid var(--border);background:var(--surface);
-  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;
-}
-.footer-brand{display:flex;align-items:center;gap:12px;}
-.footer-bd-link{display:flex;align-items:center;text-decoration:none;}
-.footer-bd-logo{height:24px;width:auto;border-radius:4px;}
-.footer-divider{width:1px;height:20px;background:var(--border);}
-.footer-fm-name{font-size:13px;font-weight:700;color:var(--text);}
-.footer-fm-name span{color:var(--blue);}
-.footer-copy{font-size:12px;color:var(--text3);}
-.footer-links{display:flex;gap:20px;}
-.footer-links a{font-size:12px;color:var(--text2);text-decoration:none;transition:color .2s;font-weight:500;}
-.footer-links a:hover{color:var(--blue);}
-
-/* ═══════════════════════════ SCROLL REVEAL ═══════════════════════════ */
-.reveal{opacity:0;transform:translateY(28px);transition:opacity .65s ease,transform .65s ease;}
-.reveal.visible{opacity:1;transform:translateY(0);}
-
-/* ═══════════════════════════ RESPONSIVE ═══════════════════════════ */
-@media(max-width:1100px){.modules-grid{grid-template-columns:repeat(7,1fr);}}
-@media(max-width:900px){
-  nav{padding:0 16px;}
-  .nav-center{display:none;}
-  .nav-divider,.nav-bd-fallback{display:none;}
-  .hero,.stats-section,.modules-section,.philosophy-section,.explorer-section,.arch-section,.outcomes-section,.final-cta{padding:72px 20px;}
-  .stats-row{grid-template-columns:repeat(2,1fr);}
-  .philosophy-inner,.outcomes-inner{grid-template-columns:1fr;gap:40px;}
-  .modules-grid{grid-template-columns:repeat(4,1fr);}
-  .arch-grid{grid-template-columns:1fr;}
-  footer{padding:28px 20px;}
-  .progress-summary-card{flex-direction:column;}
-}
-@media(max-width:600px){
-  .stats-row{grid-template-columns:1fr 1fr;}
-  .modules-grid{grid-template-columns:repeat(2,1fr);}
-  footer{flex-direction:column;align-items:flex-start;}
-}
-
-/* ═══════════════════════════ SCROLL TO TOP ═══════════════════════════ */
-#scrollTopBtn{
-  position:fixed;right:24px;bottom:24px;z-index:900;
-  width:46px;height:46px;border-radius:50%;border:1px solid var(--border);
-  cursor:pointer;background:var(--bg);color:var(--text2);font-size:16px;
-  display:flex;align-items:center;justify-content:center;
-  box-shadow:var(--shadow-md);
-  opacity:0;visibility:hidden;transform:translateY(14px);
-  transition:opacity .3s ease,transform .3s ease,visibility .3s,background .2s,color .2s,border-color .2s;
-}
-#scrollTopBtn.show{opacity:1;visibility:visible;transform:translateY(0);}
-#scrollTopBtn:hover{background:var(--blue);color:#fff;border-color:var(--blue);}
-@media(max-width:600px){
-  #scrollTopBtn{right:16px;bottom:16px;width:42px;height:42px;font-size:15px;}
-}
-</style>
-</head>
-<body>
-
-<!-- ═══════════════════════════ NAV ═══════════════════════════ -->
-<nav id="navbar">
-  <div class="nav-left">
-    <a href="https://www.branddocks.com" class="nav-brand-link" target="_blank" rel="noopener noreferrer">
-      <img src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" class="nav-bd-logo">
-    </a>
-    <div class="nav-divider"></div>
-    <a href="#" class="nav-logo">
-      <div class="nav-logo-chip">98</div>
-      <div class="nav-logo-text">Field <span>Manual</span></div>
-    </a>
-  </div>
-  <div class="nav-center">
-    <a href="#modules">Modules</a>
-    <a href="#explorer">Episodes</a>
-    <a href="#architecture">Architecture</a>
-    <a href="#outcomes">Outcomes</a>
-  </div>
-  <div class="nav-right">
-    <div class="nav-progress-chip">
-      <div class="nav-progress-dot"></div>
-      <span id="nav-progress-text">0 / 98 Done</span>
-    </div>
-    <a href="episode-01.html" class="nav-cta">Start Learning →</a>
-  </div>
-</nav>
-
-<!-- ═══════════════════════════ HERO ═══════════════════════════ -->
-<section class="hero">
-  <div class="hero-glow"></div>
-  <div class="hero-inner">
-    <div class="hero-badge">
-      <div class="hero-badge-dot"></div>
-      <span>Free · 98 Episodes · 14 Modules · Production-Grade</span>
-    </div>
-    <p class="hero-eyebrow">Build AI Systems. Not AI Demos.</p>
-    <h1 class="hero-headline">
-      The Complete Engineering<br>
-      <em>Field Manual</em> for Modern AI
-    </h1>
-    <p class="hero-body">
-      98 episodes. 14 modules. From <strong>tokens and transformers</strong> to RAG, agents, model serving, deployment, scaling and AI SaaS architecture. Written for engineers who want to ship real systems.
-    </p>
-    <div class="hero-cta-group">
-      <a href="episode-01.html" class="btn-primary">Start Episode 1 <span class="arrow">→</span></a>
-      <a href="#explorer" class="btn-outline">Explore 98 Episodes <span class="arrow">↓</span></a>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════════════════════ STATS ═══════════════════════════ -->
-<div class="stats-section" style="padding-top:0;transform:translateY(-28px);">
-  <div class="stats-row reveal">
-    <div class="stat-card">
-      <div class="stat-val"><span>98</span></div>
-      <div class="stat-label">Episodes</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-val"><span>14</span></div>
-      <div class="stat-label">Modules</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-val"><span>Ship</span></div>
-      <div class="stat-label">Production Ready</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-val"><span>Free</span></div>
-      <div class="stat-label">Forever</div>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════════════════════ 14-MODULE ROADMAP ═══════════════════════════ -->
-<section class="modules-section" id="modules">
-  <div class="modules-inner">
-    <div class="modules-header reveal">
-      <div class="section-tag">Learning Journey</div>
-      <h2 class="section-title">14 Modules. One <em>Complete Roadmap.</em></h2>
-      <p class="section-sub">Each module is a focused block of 7 episodes — building your skills systematically from inference fundamentals to production MLOps.</p>
-    </div>
-    <!-- Row 1: Modules 1–7 -->
-    <div class="modules-grid reveal" id="modules-grid">
-      <!-- Rendered by JS -->
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════════════════════ PHILOSOPHY ═══════════════════════════ -->
-<section class="philosophy-section">
-  <div style="max-width:1100px;margin:0 auto;">
-    <div class="philosophy-inner">
-      <div class="reveal">
-        <div class="section-tag">Why This Exists</div>
-        <h2 class="section-title" style="margin-bottom:20px;">Most people learn <em>prompts.</em> Engineers learn <em>systems.</em></h2>
-        <p style="font-size:16px;color:var(--text2);line-height:1.8;margin-bottom:18px;">The goal isn't to use AI. The goal is to understand inference, embeddings, retrieval, agents, serving, deployment, and production architecture — so you can build real AI products.</p>
-        <p style="font-size:16px;color:var(--text2);line-height:1.8;margin-bottom:32px;">This is the handbook for engineers and founders who want to stop being users and start being builders.</p>
-        <a href="episode-01.html" class="btn-primary">Begin Episode 1 <span class="arrow">→</span></a>
-      </div>
-      <div class="reveal">
-        <div class="phil-item">
-          <div class="phil-icon">⚙️</div>
-          <div class="phil-title">Production-Grade Knowledge</div>
-          <div class="phil-desc">No toy examples. Every concept taught the way it works in real deployed systems.</div>
-        </div>
-        <div class="phil-item">
-          <div class="phil-icon">🔬</div>
-          <div class="phil-title">First Principles, Not Tutorials</div>
-          <div class="phil-desc">Understand WHY things work — not just how to copy-paste code from StackOverflow.</div>
-        </div>
-        <div class="phil-item">
-          <div class="phil-icon">🚀</div>
-          <div class="phil-title">Engineer's Perspective</div>
-          <div class="phil-desc">Written for people who ship. From tokens all the way to scaling infrastructure under load.</div>
-        </div>
-        <div class="phil-item">
-          <div class="phil-icon">🆓</div>
-          <div class="phil-title">Free. Forever.</div>
-          <div class="phil-desc">All 98 episodes, all 14 modules. No paywall. No waitlist. No credit card.</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════════════════════ EPISODE EXPLORER ═══════════════════════════ -->
-<section class="explorer-section" id="explorer">
-  <div class="explorer-inner">
-
-    <div style="margin-bottom:32px;" class="reveal">
-      <div class="section-tag">Episode Explorer</div>
-      <h2 class="section-title">All 98 Episodes.<br><em>Track Your Progress.</em></h2>
-    </div>
-
-    <!-- Global Progress Summary -->
-    <div class="progress-summary-card reveal">
-      <div class="psc-left">
-        <div class="psc-title">Course Progress</div>
-        <div class="psc-bar-track">
-          <div class="psc-bar-fill" id="psc-bar-fill"></div>
-        </div>
-        <div class="psc-label">
-          <strong id="psc-count">0</strong> of 98 episodes completed &nbsp;·&nbsp;
-          <strong id="psc-pct">0%</strong> complete
-        </div>
-      </div>
-      <div class="psc-modules" id="psc-modules"><!-- Filled by JS --></div>
-    </div>
-
-    <!-- Controls -->
-    <div class="explorer-controls reveal">
-      <div class="search-box">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <input type="text" id="ep-search" placeholder="Search episodes, topics, modules…" autocomplete="off">
-      </div>
-      <div class="filter-group" id="module-filters"><!-- Rendered by JS --></div>
-      <span class="ep-count" id="ep-count">98 episodes</span>
-    </div>
-
-    <!-- Module Accordions (default view) -->
-    <div id="ep-accordions"></div>
-
-    <!-- Flat grid (search / single-module filter) -->
-    <div id="ep-flat-grid" style="display:none;" class="flat-results-grid"></div>
-
-  </div>
-</section>
-
-<!-- ═══════════════════════════ ARCHITECTURE ═══════════════════════════ -->
-<section class="arch-section" id="architecture">
-  <div class="arch-inner">
-    <div class="arch-header reveal">
-      <div class="section-tag">Architecture Showcase</div>
-      <h2 class="section-title">From Theory <em>to Production</em></h2>
-      <p class="section-sub" style="margin:0 auto;text-align:center;">The six systems every production AI engineer must understand.</p>
-    </div>
-    <div class="arch-grid reveal">
-      <div class="arch-card">
-        <div class="arch-card-icon">🗂️</div>
-        <div class="arch-card-title">RAG Systems</div>
-        <div class="arch-card-desc">Retrieval-Augmented Generation — how to give your LLM access to your entire knowledge base without fine-tuning. Parsing, chunking, vector retrieval, reranking, context stuffing.</div>
-        <div class="arch-tags"><span class="arch-tag">Module 3</span><span class="arch-tag">Module 4</span><span class="arch-tag">14 Episodes</span></div>
-      </div>
-      <div class="arch-card">
-        <div class="arch-card-icon">🤖</div>
-        <div class="arch-card-title">AI Agents</div>
-        <div class="arch-card-desc">Tool calling, ReAct loops, multi-agent coordination, memory architectures, failure modes. Build agents that don't just answer — they act, observe, and iterate.</div>
-        <div class="arch-tags"><span class="arch-tag">Module 5</span><span class="arch-tag">7 Episodes</span></div>
-      </div>
-      <div class="arch-card">
-        <div class="arch-card-icon">🗄️</div>
-        <div class="arch-card-title">Vector Databases</div>
-        <div class="arch-card-desc">HNSW indexing, approximate nearest neighbors, Pinecone vs Weaviate vs pgvector, hybrid search, scaling to billions of embeddings in production.</div>
-        <div class="arch-tags"><span class="arch-tag">Module 3</span><span class="arch-tag">7 Episodes</span></div>
-      </div>
-      <div class="arch-card">
-        <div class="arch-card-icon">⚡</div>
-        <div class="arch-card-title">Model Serving</div>
-        <div class="arch-card-desc">vLLM, TGI, Ollama, OpenAI API spec, streaming, prompt caching, rate limiting, load balancing. Serve AI to thousands of users without melting your infra.</div>
-        <div class="arch-tags"><span class="arch-tag">Module 6</span><span class="arch-tag">7 Episodes</span></div>
-      </div>
-      <div class="arch-card">
-        <div class="arch-card-icon">🎯</div>
-        <div class="arch-card-title">Fine Tuning</div>
-        <div class="arch-card-desc">LoRA, QLoRA, when to fine-tune vs RAG, training data quality, evaluation frameworks, model merging, RLHF, DPO. Make the model yours — without a supercomputer.</div>
-        <div class="arch-tags"><span class="arch-tag">Module 7</span><span class="arch-tag">7 Episodes</span></div>
-      </div>
-      <div class="arch-card">
-        <div class="arch-card-icon">🏗️</div>
-        <div class="arch-card-title">AI SaaS Infrastructure</div>
-        <div class="arch-card-desc">How ChatGPT, Cursor, Perplexity, and Midjourney actually work end-to-end. Build your own production AI SaaS with real architecture, not demos.</div>
-        <div class="arch-tags"><span class="arch-tag">Module 14</span><span class="arch-tag">7 Episodes</span></div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════════════════════ OUTCOMES ═══════════════════════════ -->
-<section class="outcomes-section" id="outcomes">
-  <div class="outcomes-inner">
-    <div class="reveal">
-      <div class="section-tag">Learning Outcomes</div>
-      <h2 class="section-title" style="margin-bottom:18px;">By Episode 98 You Will <em>Understand</em></h2>
-      <p style="font-size:15px;color:var(--text2);line-height:1.75;margin-bottom:32px;">Not at a surface level. At the level of someone who has shipped AI to production, debugged inference latency at 3am, and explained it to a CTO.</p>
-      <a href="episode-01.html" class="btn-primary">Start the Journey <span class="arrow">→</span></a>
-    </div>
-    <div class="outcomes-timeline reveal">
-      <div class="ot-item">
-        <div class="ot-dot">🧠</div>
-        <div class="ot-content">
-          <div class="ot-ep">M1–M2 · Episodes 1–14</div>
-          <div class="ot-skill">LLM Internals & Local Inference</div>
-          <div class="ot-desc">Tokens, transformers, parameters, inference, context windows, KV cache, quantization, speculative decoding.</div>
-        </div>
-      </div>
-      <div class="ot-item">
-        <div class="ot-dot">🔍</div>
-        <div class="ot-content">
-          <div class="ot-ep">M3–M4 · Episodes 15–28</div>
-          <div class="ot-skill">RAG & Vector Architecture</div>
-          <div class="ot-desc">Embeddings, HNSW, hybrid search, chunking, retrieval strategies, and end-to-end RAG deployment.</div>
-        </div>
-      </div>
-      <div class="ot-item">
-        <div class="ot-dot">🤖</div>
-        <div class="ot-content">
-          <div class="ot-ep">M5–M6 · Episodes 29–42</div>
-          <div class="ot-skill">AI Agents & Model APIs</div>
-          <div class="ot-desc">Tool calling, ReAct, multi-agent systems, streaming, prompt caching, and production serving.</div>
-        </div>
-      </div>
-      <div class="ot-item">
-        <div class="ot-dot">🎯</div>
-        <div class="ot-content">
-          <div class="ot-ep">M7–M8 · Episodes 43–56</div>
-          <div class="ot-skill">Fine-Tuning, Security & Alignment</div>
-          <div class="ot-desc">LoRA, QLoRA, guardrails, prompt injection, privacy, cost optimization, and observability.</div>
-        </div>
-      </div>
-      <div class="ot-item">
-        <div class="ot-dot">🚀</div>
-        <div class="ot-content">
-          <div class="ot-ep">M9–M10 · Episodes 57–70</div>
-          <div class="ot-skill">Frontier Models & GPU Infrastructure</div>
-          <div class="ot-desc">MoE, multimodal, diffusion, test-time compute, VRAM math, multi-GPU, FlashAttention.</div>
-        </div>
-      </div>
-      <div class="ot-item">
-        <div class="ot-dot">🔤</div>
-        <div class="ot-content">
-          <div class="ot-ep">M11–M12 · Episodes 71–84</div>
-          <div class="ot-skill">Tokenizers, Formats & Protocols</div>
-          <div class="ot-desc">BPE, GGUF, SafeTensors, MCP, A2A, function calling, structured output, semantic caching.</div>
-        </div>
-      </div>
-      <div class="ot-item">
-        <div class="ot-dot">⚙️</div>
-        <div class="ot-content">
-          <div class="ot-ep">M13–M14 · Episodes 85–98</div>
-          <div class="ot-skill">MLOps & Production AI SaaS</div>
-          <div class="ot-desc">Model registries, CI/CD for AI, scaling laws, evals — and how ChatGPT, Cursor, Perplexity are built.</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════════════════════ FINAL CTA ═══════════════════════════ -->
-<section class="final-cta">
-  <div class="final-cta-inner reveal">
-    <div class="section-tag" style="margin-bottom:24px;">Start Now</div>
-    <h2 class="final-cta-headline">Stop Using AI.<br><span>Start Building</span> With It.</h2>
-    <p class="final-cta-sub">98 episodes. 14 modules. One complete AI engineering roadmap.<br>Free. Forever. Starts with Token #1.</p>
-    <div class="final-cta-btns">
-      <a href="episode-01.html" class="btn-primary" style="font-size:15px;padding:15px 30px;">Start Learning Free <span class="arrow">→</span></a>
-      <a href="#modules" class="btn-outline" style="font-size:15px;padding:15px 30px;">View All Modules</a>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════════════════════ SCROLL TO TOP ═══════════════════════════ -->
-<button id="scrollTopBtn" aria-label="Scroll to top" onclick="window.scrollTo({top:0,behavior:'smooth'})">&#8593;</button>
-
-<!-- ═══════════════════════════ FOOTER ═══════════════════════════ -->
-<footer>
-  <div class="footer-brand">
-    <a href="https://www.branddocks.com" class="footer-bd-link" target="_blank" rel="noopener noreferrer">
-      <img src="https://storagev2.files-vault.com/uploads/blacklabel-380/sub-account-79289/1775541373-bchJFljNp0.webp" alt="Brand Docks" class="footer-bd-logo">
-    </a>
-    <div class="footer-divider"></div>
-    <div>
-      <div class="footer-fm-name">Field <span>Manual</span> · 98 Episodes</div>
-      <div class="footer-copy">Build with AI, not just use it</div>
-    </div>
-  </div>
-  <div class="footer-links">
-    <a href="episode-01.html">Episode 1</a>
-    <a href="episode-50.html">Episode 50</a>
-    <a href="episode-98.html">Episode 98</a>
-    <a href="#modules">All Modules</a>
-    <a href="https://www.branddocks.com" target="_blank" rel="noopener">Brand Docks</a>
-  </div>
-</footer>
-
-<!-- ═══════════════════════════════════════════════════════════════
-     SCRIPTS
-═══════════════════════════════════════════════════════════════ -->
-<script>
-// ══════════════════════════════════════════════
-// 14 MODULE DEFINITIONS
-// ══════════════════════════════════════════════
-const MODULES_DATA = [
-  { num:1,  name:'How LLMs Work',              range:'Ep 1–7',   icon:'🧠', color:'#1A73E8', bg:'#E8F0FE', muted:'#A8C7FA' },
-  { num:2,  name:'Running Models & Inference', range:'Ep 8–14',  icon:'⚡', color:'#1E8E3E', bg:'#E6F4EA', muted:'#A8D5B5' },
-  { num:3,  name:'Embeddings & Vector Search', range:'Ep 15–21', icon:'🔍', color:'#D93025', bg:'#FCE8E6', muted:'#F28B82' },
-  { num:4,  name:'RAG Architecture',           range:'Ep 22–28', icon:'📚', color:'#E8710A', bg:'#FEF3E2', muted:'#FCAD70' },
-  { num:5,  name:'AI Agents',                  range:'Ep 29–35', icon:'🤖', color:'#7B1FA2', bg:'#F3E8FD', muted:'#D09AEB' },
-  { num:6,  name:'Model Serving & APIs',       range:'Ep 36–42', icon:'🌐', color:'#00897B', bg:'#E6F4F1', muted:'#80CBC4' },
-  { num:7,  name:'Fine-Tuning',                range:'Ep 43–49', icon:'🎯', color:'#1967D2', bg:'#E8EAFD', muted:'#A8B3F5' },
-  { num:8,  name:'Security & Production',      range:'Ep 50–56', icon:'🔒', color:'#C5221F', bg:'#FDECEA', muted:'#F5A3A1' },
-  { num:9,  name:'The Cutting Edge',           range:'Ep 57–63', icon:'🚀', color:'#BF5A00', bg:'#FFF3E0', muted:'#FFB74D' },
-  { num:10, name:'GPU & Hardware',             range:'Ep 64–70', icon:'💻', color:'#6A0F9E', bg:'#EDE7F6', muted:'#CE93D8' },
-  { num:11, name:'Tokenizers & Data Formats',  range:'Ep 71–77', icon:'🔤', color:'#006064', bg:'#E0F7FA', muted:'#80DEEA' },
-  { num:12, name:'Protocols & Standards',      range:'Ep 78–84', icon:'📡', color:'#1565C0', bg:'#E3F2FD', muted:'#90CAF9' },
-  { num:13, name:'MLOps & DevOps',             range:'Ep 85–91', icon:'⚙️', color:'#2E7D32', bg:'#E8F5E9', muted:'#A5D6A7' },
-  { num:14, name:'Real-World Architectures',   range:'Ep 92–98', icon:'🏗️', color:'#BF360C', bg:'#FBE9E7', muted:'#FFAB91' },
-];
-
-// ══════════════════════════════════════════════
-// ALL 98 EPISODES  (do not abbreviate)
-// ══════════════════════════════════════════════
-const EPISODES = [
-  // ─── Module 1: How LLMs Work (Ep 1–7) ────────────────────────────────────
-  {num:1,  module:1,  href:'episode-01.html',
-   title:'Tokens: What AI Actually Sees (Not Words)',
-   sub:'When you type "Build me an app" into ChatGPT, you probably think the AI is reading words. It isn\'t.'},
-  {num:2,  module:1,  href:'episode-02.html',
-   title:'Transformers: The Paper That Changed Everything',
-   sub:'Have you ever wondered — how does ChatGPT actually understand what you\'re saying?'},
-  {num:3,  module:1,  href:'episode-03.html',
-   title:'Parameters: What "70 Billion" Actually Means',
-   sub:'GPT-5 — estimated 2 to 5 trillion parameters. Your brain — 100 trillion synapses.'},
-  {num:4,  module:1,  href:'episode-04.html',
-   title:'Training vs Inference: How AI Learns and How It Responds',
-   sub:'AI does ONE thing — predict the next word. But HOW it learns that skill is a different story.'},
-  {num:5,  module:1,  href:'episode-05.html',
-   title:'Context Window: Why 128K Tokens Matters (And Why Conversations Get Dumber)',
-   sub:'You\'re 30 minutes into a ChatGPT conversation and it forgets your name. Here\'s why.'},
-  {num:6,  module:1,  href:'episode-06.html',
-   title:'Temperature, Top-p, Top-k: The Knobs That Control Creativity',
-   sub:'Ask ChatGPT "Write me a poem about rain" ten times. You\'ll get ten different poems. Here\'s why.'},
-  {num:7,  module:1,  href:'episode-07.html',
-   title:'Why LLMs Hallucinate: Confidence Without Correctness',
-   sub:'A lawyer used ChatGPT to write a legal brief. It cited six court cases. None of them existed.'},
-
-  // ─── Module 2: Running Models & Inference (Ep 8–14) ──────────────────────
-  {num:8,  module:2,  href:'episode-08.html',
-   title:'CPU vs GPU Inference: Why Your Graphics Card Matters More Than Your Processor',
-   sub:'A friend bought an RTX 4090 for ₹1,60,000. His wife thought it was for gaming. It wasn\'t.'},
-  {num:9,  module:2,  href:'episode-09.html',
-   title:'Quantization: Running 70B Models on Your Laptop',
-   sub:'Llama 3.1 70B needs 140 GB in FP16. Your GPU has 24 GB. Math says it doesn\'t fit. Quantization disagrees.'},
-  {num:10, module:2,  href:'episode-10.html',
-   title:'llama.cpp: The Project That Made Local AI Possible',
-   sub:'In March 2023, a Bulgarian developer made Meta\'s LLaMA run on a MacBook. That single commit changed everything.'},
-  {num:11, module:2,  href:'episode-11.html',
-   title:'Ollama vs vLLM vs TGI: Choosing Your Inference Engine',
-   sub:'Your boss says: put this in production, serve 100 users simultaneously. Which engine do you pick?'},
-  {num:12, module:2,  href:'episode-12.html',
-   title:'KV Cache: Why Your AI Conversations Slow Down',
-   sub:'Open ChatGPT. Type a message. Get a response in 2 seconds. Now continue the conversation. Why does it slow?'},
-  {num:13, module:2,  href:'episode-13.html',
-   title:'Batching & Concurrency: Serving AI to a Thousand Users',
-   sub:'One user, 500ms response. Beautiful. Now a thousand users hit simultaneously. Welcome to production.'},
-  {num:14, module:2,  href:'episode-14.html',
-   title:'Speculative Decoding: Getting 2-3x Speed for Free',
-   sub:'Here\'s a management trick that works for both humans and AI: let a junior do the first draft.'},
-
-  // ─── Module 3: Embeddings & Vector Search (Ep 15–21) ─────────────────────
-  {num:15, module:3,  href:'episode-15.html',
-   title:'Embeddings: Turning Words Into Numbers Machines Actually Understand',
-   sub:'How does a computer know that "king" is to "queen" as "man" is to "woman"? Embeddings.'},
-  {num:16, module:3,  href:'episode-16.html',
-   title:'Vector Similarity: How Machines Measure "Closeness" of Meaning',
-   sub:'You\'ve turned text into numbers. Every sentence is now a point in 768-dimensional space.'},
-  {num:17, module:3,  href:'episode-17.html',
-   title:'HNSW: The Algorithm That Makes Vector Search Feel Instant',
-   sub:'10 million embeddings. One search query. You need the 10 most similar vectors — in milliseconds.'},
-  {num:18, module:3,  href:'episode-18.html',
-   title:'Vector Databases: Where Embeddings Live and How They Work',
-   sub:'You can\'t dump 50 million vectors into a Python list and call it a day. You need a vector DB.'},
-  {num:19, module:3,  href:'episode-19.html',
-   title:'Chunking Strategies: Why How You Split Documents Changes Everything',
-   sub:'You\'ve got a 50-page PDF. You can\'t embed it as one vector. How you split it changes everything.'},
-  {num:20, module:3,  href:'episode-20.html',
-   title:'Hybrid Search: When Pure Vector Search Isn\'t Enough',
-   sub:'User searches "error KB-4092". Vector search returns semantically relevant results. Not the right ones.'},
-  {num:21, module:3,  href:'episode-21.html',
-   title:'Reranking: Why Your First Search Results Aren\'t the Best',
-   sub:'Your vector DB returns 10 results. The perfect answer is at position #7. Reranking fixes this.'},
-
-  // ─── Module 4: RAG Architecture (Ep 22–28) ───────────────────────────────
-  {num:22, module:4,  href:'episode-22.html',
-   title:'RAG Pipeline End-to-End: From Document to Answer',
-   sub:'You\'ve learned the pieces: embeddings, vector databases, chunking, hybrid search. Now put them together.'},
-  {num:23, module:4,  href:'episode-23.html',
-   title:'Document Parsing: Getting Clean Text From Messy Formats',
-   sub:'Your boss hands you a 200-page PDF. "Build a chatbot that answers questions about this." Sure.'},
-  {num:24, module:4,  href:'episode-24.html',
-   title:'Embedding Models: Which One to Pick and Why It Matters',
-   sub:'"Just use OpenAI\'s embedding model." That\'s like saying "just use a Toyota" when asked about cars.'},
-  {num:25, module:4,  href:'episode-25.html',
-   title:'Retrieval Strategies: Beyond Naive RAG',
-   sub:'The basic RAG pipeline works surprisingly well. Until it doesn\'t. Here\'s how to level it up.'},
-  {num:26, module:4,  href:'episode-26.html',
-   title:'Context Stuffing: How to Feed Documents to an LLM Without Losing the Plot',
-   sub:'You retrieve 5 beautiful, relevant chunks. Then you stuff them into the prompt and the model gets confused.'},
-  {num:27, module:4,  href:'episode-27.html',
-   title:'RAG Evaluation: How Do You Know If Your Pipeline Actually Works?',
-   sub:'Your RAG pipeline is live. Users are asking questions. But is it answering correctly?'},
-  {num:28, module:4,  href:'episode-28.html',
-   title:'Production RAG: From Demo to Deployment',
-   sub:'You built a RAG pipeline. It works on your laptop. Everyone clapped. Now put it in production.'},
-
-  // ─── Module 5: AI Agents (Ep 29–35) ─────────────────────────────────────
-  {num:29, module:5,  href:'episode-29.html',
-   title:'What Is an Agent: When AI Stops Answering and Starts Doing',
-   sub:'ChatGPT answers your questions. An agent does your work. That\'s the difference — and it\'s massive.'},
-  {num:30, module:5,  href:'episode-30.html',
-   title:'Tool Calling: How an LLM Actually "Uses" Tools',
-   sub:'An LLM can\'t run code, access the internet, or call APIs. So how does it "use" tools?'},
-  {num:31, module:5,  href:'episode-31.html',
-   title:'ReAct Pattern: Think → Act → Observe — The Brain of Every AI Agent',
-   sub:'Every AI agent you\'ve used — Cursor, Claude Code, Perplexity, Devin — runs the same core loop.'},
-  {num:32, module:5,  href:'episode-32.html',
-   title:'Multi-Agent Systems: When One Brain Isn\'t Enough',
-   sub:'One agent is powerful. Multiple agents working together? That\'s where it gets wild.'},
-  {num:33, module:5,  href:'episode-33.html',
-   title:'Agent Memory: Why Your AI Keeps Forgetting (And How to Fix It)',
-   sub:'You\'ve told ChatGPT your name ten times. It keeps asking. Here\'s why AI memory is hard.'},
-  {num:34, module:5,  href:'episode-34.html',
-   title:'Agent Frameworks: LangChain, CrewAI, AutoGen, Smolagents — The Real Story',
-   sub:'Everyone has an opinion on agent frameworks. Here\'s what they\'re actually good and bad at.'},
-  {num:35, module:5,  href:'episode-35.html',
-   title:'Agent Failure Modes: When AI Agents Go Wrong (Spectacularly)',
-   sub:'A chatbot that gives wrong answers is annoying. An agent that takes wrong actions is catastrophic.'},
-
-  // ─── Module 6: Model Serving & APIs (Ep 36–42) ───────────────────────────
-  {num:36, module:6,  href:'episode-36.html',
-   title:'The OpenAI API Spec: The Standard Everyone Follows',
-   sub:'Google, Anthropic, Meta, Mistral — dozens of providers, but they all speak the same language.'},
-  {num:37, module:6,  href:'episode-37.html',
-   title:'Streaming: Why AI Responds One Word at a Time (And Why It Feels Fast)',
-   sub:'Watch ChatGPT\'s words appear one by one, like someone typing in real time. It\'s not real time.'},
-  {num:38, module:6,  href:'episode-38.html',
-   title:'Prompt Caching: How to Cut Your AI Costs by 90%',
-   sub:'Every API call re-reads your entire system prompt. Every. Single. Time. Prompt caching fixes this.'},
-  {num:39, module:6,  href:'episode-39.html',
-   title:'Rate Limiting & Token Budgets: Surviving Production AI',
-   sub:'Ten users? Flawless. A hundred? Smooth. Two thousand hit simultaneously? HTTP 429.'},
-  {num:40, module:6,  href:'episode-40.html',
-   title:'Load Balancing Multiple Models: How Production AI Stays Alive',
-   sub:'One provider. One model. One point of failure. Production AI needs load balancing.'},
-  {num:41, module:6,  href:'episode-41.html',
-   title:'Edge Deployment: Running AI on Your Phone, Raspberry Pi, and Browser',
-   sub:'Your words travel to Iowa, hit an H100 GPU, and come back. What if they didn\'t have to?'},
-  {num:42, module:6,  href:'episode-42.html',
-   title:'Model Gateways: One API to Rule Them All',
-   sub:'OpenAI for GPT-4. Claude for coding. Gemini for long context. Self-hosted Llama for cost control.'},
-
-  // ─── Module 7: Fine-Tuning (Ep 43–49) ────────────────────────────────────
-  {num:43, module:7,  href:'episode-43.html',
-   title:'When to Fine-Tune vs When to RAG: The Decision That Saves You Months',
-   sub:'The model sounds wrong. Doesn\'t use your terminology, doesn\'t match your voice. Fine-tune or RAG?'},
-  {num:44, module:7,  href:'episode-44.html',
-   title:'LoRA: Fine-Tune 0.1% of the Model, Get 95% of the Results',
-   sub:'Fine-tuning Llama 3 70B normally needs 8x A100 GPUs. LoRA does it on one consumer GPU.'},
-  {num:45, module:7,  href:'episode-45.html',
-   title:'QLoRA: Fine-Tune a 70B Model on Your Gaming GPU',
-   sub:'LoRA needs an A100. You\'ve got an RTX 3090 in your gaming PC. QLoRA bridges the gap.'},
-  {num:46, module:7,  href:'episode-46.html',
-   title:'Training Data for Fine-Tuning: Quality Is the Only Thing That Matters',
-   sub:'You fire up training and the model outputs garbage. Worse than the base model. Here\'s why.'},
-  {num:47, module:7,  href:'episode-47.html',
-   title:'Fine-Tune Evaluation: How to Know If Your Model Is Actually Good',
-   sub:'Loss went down. Training finished. The response looks... okay? But "okay" isn\'t a metric.'},
-  {num:48, module:7,  href:'episode-48.html',
-   title:'Model Merging: Frankenstein Your Way to a Better Model',
-   sub:'One model is amazing at coding. Another at creative writing. You want both. Model merging.'},
-  {num:49, module:7,  href:'episode-49.html',
-   title:'RLHF & DPO: How Models Learn to Be Helpful (Not Just Correct)',
-   sub:'GPT-3 was brilliant but also a nightmare. RLHF and DPO taught it to be helpful instead of just correct.'},
-
-  // ─── Module 8: Security & Production (Ep 50–56) ──────────────────────────
-  {num:50, module:8,  href:'episode-50.html',
-   title:'Prompt Injection: The Unsolvable Security Problem',
-   sub:'One sentence broke every AI chatbot on the internet. And there is no complete fix.'},
-  {num:51, module:8,  href:'episode-51.html',
-   title:'Jailbreaks: How People Break AI Safety and Why It Matters',
-   sub:'One sentence on Reddit kicked off an arms race between AI companies and the internet.'},
-  {num:52, module:8,  href:'episode-52.html',
-   title:'Guardrails: Keeping AI on the Rails',
-   sub:'Your LLM is a Formula 1 car. Incredibly fast, absurdly powerful, and it will fly off the track.'},
-  {num:53, module:8,  href:'episode-53.html',
-   title:'Sandboxing AI Agents: Because Code Execution Is a Loaded Gun',
-   sub:'You gave your AI agent the ability to run Python code. It was supposed to analyze sales data.'},
-  {num:54, module:8,  href:'episode-54.html',
-   title:'Data Privacy in AI Systems: What Gets Sent Where',
-   sub:'Every word you type into ChatGPT, every document you upload to Claude — it all goes somewhere.'},
-  {num:55, module:8,  href:'episode-55.html',
-   title:'Cost Optimization: Stop Burning Money on AI Inference',
-   sub:'A side project costs ₹500/month. At scale, ₹5,00,000/month. The code doesn\'t change. The scale does.'},
-  {num:56, module:8,  href:'episode-56.html',
-   title:'Monitoring & Observability: Seeing Your AI in Production',
-   sub:'Your AI app works on your laptop. The demos were great. Then it hits production and becomes a black box.'},
-
-  // ─── Module 9: The Cutting Edge (Ep 57–63) ───────────────────────────────
-  {num:57, module:9,  href:'episode-57.html',
-   title:'Mixture of Experts: How GPT-4 and Mixtral Cheat at Being Smart',
-   sub:'What if GPT-4 doesn\'t use all its parameters for every question? It doesn\'t. That\'s the trick.'},
-  {num:58, module:9,  href:'episode-58.html',
-   title:'Multi-modal AI: How Vision Models Actually See Your Images',
-   sub:'When you upload a screenshot to ChatGPT and it reads the text and identifies UI elements — how?'},
-  {num:59, module:9,  href:'episode-59.html',
-   title:'Voice & TTS: How AI Turns Text Into Human Speech',
-   sub:'Close your eyes and listen to someone speak. Not the words — the way they speak. AI learned this.'},
-  {num:60, module:9,  href:'episode-60.html',
-   title:'Diffusion Models: How AI Turns Noise Into Art',
-   sub:'Take a photo. Add static noise until nothing remains but TV static. Now reverse the process.'},
-  {num:61, module:9,  href:'episode-61.html',
-   title:'State Space Models: Mamba and the Transformer Alternative',
-   sub:'Self-attention scales quadratically. Double the context, quadruple the compute. Mamba changes this.'},
-  {num:62, module:9,  href:'episode-62.html',
-   title:'Test-Time Compute: Why "Thinking" Models Are Different',
-   sub:'Ask GPT-4 a tricky math problem. It answers in 2 seconds. Wrong. Ask o1 the same question. Different.'},
-  {num:63, module:9,  href:'episode-63.html',
-   title:'What\'s Next in AI: Where This Is All Heading',
-   sub:'You now understand how modern AI actually works — not as a user, but as an engineer.'},
-
-  // ─── Module 10: GPU & Hardware (Ep 64–70) ────────────────────────────────
-  {num:64, module:10, href:'episode-64.html',
-   title:'GPU Architecture Basics: Why GPUs Are AI\'s Engine',
-   sub:'Your CPU has 8 cores. Maybe 16. A single NVIDIA H100 has 16,896 CUDA cores. Scale matters.'},
-  {num:65, module:10, href:'episode-65.html',
-   title:'VRAM Math: How to Calculate If a Model Fits',
-   sub:'Every AI engineer asks: will this model fit on my GPU? Here\'s how to calculate it exactly.'},
-  {num:66, module:10, href:'episode-66.html',
-   title:'Multi-GPU Setups: Splitting Models Across GPUs',
-   sub:'Llama 3 405B in FP16 is 810 GB. The biggest GPU has 192 GB. You need at least 5 of them.'},
-  {num:67, module:10, href:'episode-67.html',
-   title:'Apple Silicon for AI: Why Macs Are Legit for Inference',
-   sub:'A Mac Studio with M4 Ultra can run Llama 3 70B unquantized in FP16. No multi-GPU setup needed.'},
-  {num:68, module:10, href:'episode-68.html',
-   title:'Cloud GPU Pricing: Where to Train and Inference Without Going Broke',
-   sub:'You need GPU compute. Cloud providers all want your money. Here\'s the real pricing breakdown.'},
-  {num:69, module:10, href:'episode-69.html',
-   title:'TPUs vs GPUs: Google\'s Bet on Custom Silicon',
-   sub:'NVIDIA GPUs power virtually every AI model you\'ve heard of. So why did Google build TPUs?'},
-  {num:70, module:10, href:'episode-70.html',
-   title:'The AI Chip War: Everyone Wants a Piece of NVIDIA\'s Empire',
-   sub:'NVIDIA is worth more than $3 trillion. More than Apple. More than any company in history.'},
-
-  // ─── Module 11: Tokenizers & Data Formats (Ep 71–77) ─────────────────────
-  {num:71, module:11, href:'episode-71.html',
-   title:'BPE Tokenizer: How AI Builds Its Vocabulary From Scratch',
-   sub:'You type "unhappiness" into ChatGPT. The model doesn\'t see a word. It sees [\'un\',\'happ\',\'iness\'].'},
-  {num:72, module:11, href:'episode-72.html',
-   title:'SentencePiece vs tiktoken: The Tokenizer War You Didn\'t Know About',
-   sub:'Every AI model has a tokenizer. But not all tokenizers are built the same way.'},
-  {num:73, module:11, href:'episode-73.html',
-   title:'Model Formats: GGUF, SafeTensors, ONNX — The File Behind the Intelligence',
-   sub:'SafeTensors, GGUF, ONNX, AWQ, EXL2 — five different formats for the same model.'},
-  {num:74, module:11, href:'episode-74.html',
-   title:'Attention Variants: MHA, MQA, GQA — Speed vs Quality at Scale',
-   sub:'The original Multi-Head Attention has a dirty secret: it\'s a memory hog. MQA and GQA fix this.'},
-  {num:75, module:11, href:'episode-75.html',
-   title:'FlashAttention: The GPU Memory Hack That Changed Everything',
-   sub:'Standard attention wastes 90% of its time waiting for data to move between memory levels.'},
-  {num:76, module:11, href:'episode-76.html',
-   title:'PagedAttention: How vLLM Serves AI Like an Operating System',
-   sub:'50 users chatting simultaneously. Pre-allocated GPU memory for max context length. It\'s a disaster.'},
-  {num:77, module:11, href:'episode-77.html',
-   title:'RoPE & Position Encoding: How AI Knows Word Order',
-   sub:'Transformers process all tokens in parallel. No left-to-right reading. So how does the model know word order?'},
-
-  // ─── Module 12: Protocols & Standards (Ep 78–84) ─────────────────────────
-  {num:78, module:12, href:'episode-78.html',
-   title:'MCP (Model Context Protocol): The USB-C of AI Tool Integration',
-   sub:'Every AI assistant needs tools. Every tool has a different API. MCP is the universal connector.'},
-  {num:79, module:12, href:'episode-79.html',
-   title:'OpenAI Function Calling Spec: Making AI Actually Do Things',
-   sub:'The model can write essays and solve math, but it can\'t check the weather. Function calling bridges this.'},
-  {num:80, module:12, href:'episode-80.html',
-   title:'Structured Output / JSON Mode: Making AI Responses Machine-Readable',
-   sub:'Your JSON.parse() explodes. The model wrapped valid JSON inside markdown. This bug hits everyone.'},
-  {num:81, module:12, href:'episode-81.html',
-   title:'A2A (Agent-to-Agent): How AI Agents Talk to Each Other',
-   sub:'MCP lets AI talk to tools. Function calling lets AI take actions. But what happens when agents talk to agents?'},
-  {num:82, module:12, href:'episode-82.html',
-   title:'Webhooks & Event-Driven AI: Async Architectures That Scale',
-   sub:'Request/response works for chatbots. Production AI systems aren\'t chatbots. They need async.'},
-  {num:83, module:12, href:'episode-83.html',
-   title:'Semantic Caching: Cache by Meaning, Not Exact Match',
-   sub:'Exact-match caching is boring. Same question, same answer. Semantic caching matches by meaning.'},
-  {num:84, module:12, href:'episode-84.html',
-   title:'AI Gateway Architecture: One API to Rule Them All',
-   sub:'OpenAI, Claude, Gemini, self-hosted Llama — managing all of them is a nightmare. Gateway fixes this.'},
-
-  // ─── Module 13: MLOps & DevOps (Ep 85–91) ────────────────────────────────
-  {num:85, module:13, href:'episode-85.html',
-   title:'Model Registries: The Git for Your AI Models',
-   sub:'You\'ve trained a model. It works. You push it to production. Then someone asks: which version is this?'},
-  {num:86, module:13, href:'episode-86.html',
-   title:'CI/CD for AI: Ship Models Like You Ship Code',
-   sub:'You wouldn\'t deploy code without tests or skip staging. Why are you doing it with AI models?'},
-  {num:87, module:13, href:'episode-87.html',
-   title:'Feature Stores: The Data Layer Your Models Are Missing',
-   sub:'Your recommendation model needs real-time user features. Computing them on every request is insane.'},
-  {num:88, module:13, href:'episode-88.html',
-   title:'Data Pipelines for AI: Feeding the Beast at Scale',
-   sub:'Every AI system is only as good as its data. The best model with a garbage data pipeline is garbage.'},
-  {num:89, module:13, href:'episode-89.html',
-   title:'Scaling Laws: Why Bigger Isn\'t Always Better',
-   sub:'OpenAI spent $1 billion training GPT-5. Google poured billions into Gemini Ultra. Is bigger always better?'},
-  {num:90, module:13, href:'episode-90.html',
-   title:'Synthetic Data: When AI Trains on Its Own Output',
-   sub:'The internet has 5-10 trillion tokens of quality text. We\'re running out of human-generated data.'},
-  {num:91, module:13, href:'episode-91.html',
-   title:'Evaluation Frameworks: How Do You Know If Your Model Is Good?',
-   sub:'"89.3% on MMLU" sounds impressive but means almost nothing for production. How do you actually evaluate?'},
-
-  // ─── Module 14: Real-World Architectures (Ep 92–98) ──────────────────────
-  {num:92, module:14, href:'episode-92.html',
-   title:'How ChatGPT Works: The Full Stack, End to End',
-   sub:'You type a question. Two seconds later, words stream onto your screen. Here\'s everything that happens.'},
-  {num:93, module:14, href:'episode-93.html',
-   title:'How Cursor/Copilot Works: AI Coding Assistants Under the Hood',
-   sub:'You pause for half a second. Grey text appears — completing your function. How?'},
-  {num:94, module:14, href:'episode-94.html',
-   title:'How Perplexity Works: The Search Engine That Actually Answers',
-   sub:'Google gives you 10 blue links. Perplexity gives you the answer with citations. Here\'s how.'},
-  {num:95, module:14, href:'episode-95.html',
-   title:'How Midjourney Works: From Text to Stunning Images',
-   sub:'You type "a cyberpunk street in Mumbai, neon lights, rain, 8k" and get art that looks like a film still.'},
-  {num:96, module:14, href:'episode-96.html',
-   title:'How Voice Assistants Work: STT → LLM → TTS Pipeline',
-   sub:'You speak. Two seconds later, a voice responds with the weather. Three AI systems in 2 seconds.'},
-  {num:97, module:14, href:'episode-97.html',
-   title:'How Recommendation Systems Use AI',
-   sub:'You open Netflix. The perfect show is already on your home screen. That\'s not luck.'},
-  {num:98, module:14, href:'episode-98.html',
-   title:'Building Your Own AI SaaS: The Complete Architecture',
-   sub:'You\'ve made it. 98 episodes. Now let\'s put it all together and build a production AI SaaS.'},
-];
-
-// ══════════════════════════════════════════════
-// PROGRESS / LOCALSTORAGE
-// ══════════════════════════════════════════════
-const STORAGE_KEY = 'fm98_completed_v2';
-function getCompleted(){try{return new Set(JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]'));}catch{return new Set();}}
-function saveCompleted(s){try{localStorage.setItem(STORAGE_KEY,JSON.stringify([...s]));}catch{}}
-let completed = getCompleted();
-
-function toggleEpisode(epNum){
-  if(completed.has(epNum)){completed.delete(epNum);}else{completed.add(epNum);}
-  saveCompleted(completed);
-  updateAllProgress();
-  updateCardState(epNum);
-}
-
-function updateCardState(epNum){
-  document.querySelectorAll(`.ep-card[data-ep="${epNum}"]`).forEach(card=>{
-    const btn = card.querySelector('.ep-check-btn');
-    if(completed.has(epNum)){
-      card.classList.add('completed');
-      if(btn){btn.classList.add('done');btn.textContent='✓ Done';}
-    }else{
-      card.classList.remove('completed');
-      if(btn){btn.classList.remove('done');btn.textContent='○ Mark Done';}
-    }
-  });
-}
-
-function updateAllProgress(){
-  const done = completed.size, total = 98;
-  const pct = Math.round(done/total*100);
-  // Nav
-  document.getElementById('navbar').style.setProperty('--nav-progress',pct+'%');
-  document.getElementById('nav-progress-text').textContent=`${done} / ${total} Done`;
-  // PSC bar
-  const fill=document.getElementById('psc-bar-fill');if(fill)fill.style.width=pct+'%';
-  const cnt=document.getElementById('psc-count');if(cnt)cnt.textContent=done;
-  const pctEl=document.getElementById('psc-pct');if(pctEl)pctEl.textContent=pct+'%';
-  // Per-module pills + accordion mini-bars
-  MODULES_DATA.forEach(m=>{
-    const mEps=EPISODES.filter(e=>e.module===m.num);
-    const mDone=mEps.filter(e=>completed.has(e.num)).length;
-    const pill=document.getElementById(`pill-m${m.num}`);
-    if(pill)pill.querySelector('.pip-count').textContent=`${mDone}/7`;
-    const mFill=document.getElementById(`acc-fill-m${m.num}`);
-    if(mFill)mFill.style.width=(mDone/7*100)+'%';
-    const mProg=document.getElementById(`acc-prog-m${m.num}`);
-    if(mProg)mProg.textContent=`${mDone}/7`;
-  });
-}
-
-// ══════════════════════════════════════════════
-// RENDER MODULE ROADMAP CARDS
-// ══════════════════════════════════════════════
-function renderModuleGrid(){
-  const grid=document.getElementById('modules-grid');
-  if(!grid)return;
-  grid.innerHTML=MODULES_DATA.map(m=>`
-    <div class="module-card" onclick="jumpToModule(${m.num})"
-         style="--mc-color:${m.color};--mc-bg:${m.bg};--mc-muted:${m.muted}">
-      <div class="module-card-icon">${m.icon}</div>
-      <div class="module-card-num">Module ${m.num}</div>
-      <div class="module-card-name">${m.name}</div>
-      <div class="module-card-eps">${m.range}</div>
-    </div>`).join('');
-}
-
-// ══════════════════════════════════════════════
-// RENDER MODULE FILTER BUTTONS
-// ══════════════════════════════════════════════
-function renderFilterButtons(){
-  const container=document.getElementById('module-filters');
-  if(!container)return;
-  // "All" button
-  let html=`<button class="filter-btn active" data-module="all"
-    style="--fb-color:var(--blue);--fb-bg:#E8F0FE;--fb-muted:#A8C7FA">All Modules</button>`;
-  html+=MODULES_DATA.map(m=>`
-    <button class="filter-btn" data-module="${m.num}"
-      style="--fb-color:${m.color};--fb-bg:${m.bg};--fb-muted:${m.muted}">
-      M${m.num}: ${m.name.split(' ')[0]}${m.name.split(' ').length > 1 ? ' ' + m.name.split(' ').slice(1,3).join(' ') : ''}
-    </button>`).join('');
-  container.innerHTML=html;
-  // Re-bind click
-  container.addEventListener('click',e=>{
-    const btn=e.target.closest('.filter-btn');if(!btn)return;
-    container.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    activeModule=btn.dataset.module;
-    searchQ='';
-    document.getElementById('ep-search').value='';
-    renderExplorer();
-  });
-}
-
-// ══════════════════════════════════════════════
-// RENDER PROGRESS PILLS
-// ══════════════════════════════════════════════
-function renderProgressPills(){
-  const container=document.getElementById('psc-modules');if(!container)return;
-  container.innerHTML=MODULES_DATA.map(m=>{
-    const mDone=EPISODES.filter(e=>e.module===m.num&&completed.has(e.num)).length;
-    return`<div class="psc-module-pill" id="pill-m${m.num}">
-      <div class="pip" style="background:${m.color}"></div>
-      <span style="color:${m.color};font-weight:700">M${m.num}</span>
-      <span class="pip-count">${mDone}/7</span>
-    </div>`;
-  }).join('');
-}
-
-// ══════════════════════════════════════════════
-// EPISODE CARD HTML
-// ══════════════════════════════════════════════
-function cardHTML(ep){
-  const m=MODULES_DATA[ep.module-1];
-  const isDone=completed.has(ep.num);
-  const numStr=String(ep.num).padStart(2,'0');
-  return`<div class="ep-card ${isDone?'completed':''}" data-ep="${ep.num}" data-module="${ep.module}"
-       style="--card-color:${m.color};--card-bg:${m.bg};--card-muted:${m.muted}">
-    <div class="ep-card-top">
-      <span class="ep-num-badge">Ep ${numStr}</span>
-      <button class="ep-check-btn ${isDone?'done':''}"
-              onclick="event.stopPropagation();toggleEpisode(${ep.num})">${isDone?'✓ Done':'○ Mark Done'}</button>
-    </div>
-    <a href="${ep.href}" class="ep-title-link">${ep.title}</a>
-    <p class="ep-sub">${ep.sub}</p>
-    <div class="ep-module-tag">M${ep.module} · ${m.name}</div>
-  </div>`;
-}
-
-// ══════════════════════════════════════════════
-// RENDER EXPLORER (accordions or flat grid)
-// ══════════════════════════════════════════════
-let activeModule='all', searchQ='';
-
-function renderExplorer(){
-  const accordionsEl=document.getElementById('ep-accordions');
-  const flatEl=document.getElementById('ep-flat-grid');
-  const q=searchQ.toLowerCase().trim();
-  const isFiltered=q.length>0||activeModule!=='all';
-
-  const filtered=EPISODES.filter(ep=>{
-    const mMatch=activeModule==='all'||ep.module===parseInt(activeModule);
-    const sMatch=!q||ep.title.toLowerCase().includes(q)||ep.sub.toLowerCase().includes(q)||
-      MODULES_DATA[ep.module-1].name.toLowerCase().includes(q)||
-      String(ep.num).includes(q)||`module ${ep.module}`.includes(q);
-    return mMatch&&sMatch;
-  });
-
-  document.getElementById('ep-count').textContent=`${filtered.length} episode${filtered.length!==1?'s':''}`;
-
-  if(isFiltered){
-    // Flat grid
-    accordionsEl.style.display='none';
-    flatEl.style.display='grid';
-    flatEl.innerHTML=filtered.length
-      ?filtered.map(ep=>cardHTML(ep)).join('')
-      :'<div class="no-results">No episodes found. Try a different search or filter.</div>';
-  }else{
-    // Full accordions
-    flatEl.style.display='none';
-    accordionsEl.style.display='block';
-    if(!accordionsEl.querySelector('.module-accordion')){
-      accordionsEl.innerHTML=MODULES_DATA.map((m,idx)=>{
-        const mEps=EPISODES.filter(e=>e.module===m.num);
-        const mDone=mEps.filter(e=>completed.has(e.num)).length;
-        return`<div class="module-accordion ${idx===0?'open':''}" data-acc-module="${m.num}"
-              style="--acc-color:${m.color};--acc-bg:${m.bg};--acc-muted:${m.muted}">
-          <div class="module-acc-header" onclick="toggleAccordion(${m.num})">
-            <div class="module-acc-icon">${m.icon}</div>
-            <div class="module-acc-info">
-              <div class="module-acc-num">Module ${m.num}</div>
-              <div class="module-acc-name">${m.name}</div>
-              <div class="module-acc-range">${m.range} · 7 Episodes</div>
-            </div>
-            <div class="module-acc-right">
-              <div>
-                <div class="module-acc-mini-bar">
-                  <div class="module-acc-mini-fill" id="acc-fill-m${m.num}"
-                       style="width:${(mDone/7*100).toFixed(0)}%"></div>
-                </div>
-                <div style="display:flex;align-items:center;gap:4px;margin-top:3px;">
-                  <span class="module-acc-prog" id="acc-prog-m${m.num}">${mDone}/7</span>
-                  <span class="module-acc-prog-lbl">done</span>
-                </div>
-              </div>
-              <div class="module-acc-toggle">▾</div>
-            </div>
-          </div>
-          <div class="module-acc-body">
-            <div class="module-acc-body-inner">
-              <div class="module-acc-ep-grid">
-                ${mEps.map(ep=>cardHTML(ep)).join('')}
-              </div>
-            </div>
-          </div>
-        </div>`;
-      }).join('');
-    }
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>98 Field Manual - Gujarati AI Engineering Course | Brand Docks</title>
+  <meta name="description" content="98 free Gujarati-English AI engineering lessons by Brand Docks. Learn LLMs, RAG, agents, APIs, security, GPU infrastructure, MLOps and AI SaaS architecture.">
+  <meta name="keywords" content="Gujarati AI course, AI engineering course India, 98 Field Manual, Brand Docks, LLM course, RAG tutorial, AI agents, MLOps">
+  <meta name="author" content="Brand Docks">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <meta name="theme-color" content="#f5f4ee">
+  <link rel="icon" type="image/png" href="brand-docks-logo.png">
+  <link rel="canonical" href="https://ai.branddocks.com/field-manual/field-manual-index.html">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="en_IN">
+  <meta property="og:locale:alternate" content="gu_IN">
+  <meta property="og:site_name" content="Brand Docks">
+  <meta property="og:title" content="98 Field Manual - Zero to AI Builder">
+  <meta property="og:description" content="98 bilingual lessons. 14 modules. One practical route from AI curiosity to production capability.">
+  <meta property="og:url" content="https://ai.branddocks.com/field-manual/field-manual-index.html">
+  <meta property="og:image" content="https://ai.branddocks.com/field-manual/brand-docks-logo.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="98 Field Manual by Brand Docks">
+  <meta name="twitter:description" content="A free Gujarati-English field guide for people building real AI systems.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+Gujarati:wght@400;500;600;700&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="field-manual-system.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Course",
+        "name": "98 Field Manual - Zero to AI Builder",
+        "description": "A free 98-episode Gujarati-English AI engineering curriculum covering LLMs, retrieval, agents, deployment, MLOps and AI SaaS architecture.",
+        "url": "https://ai.branddocks.com/field-manual/field-manual-index.html",
+        "inLanguage": ["en-IN", "gu-IN"],
+        "numberOfCredits": 98,
+        "educationalLevel": "Beginner to advanced",
+        "provider": {
+          "@type": "Organization",
+          "name": "Brand Docks",
+          "url": "https://www.branddocks.com",
+          "logo": "https://ai.branddocks.com/field-manual/brand-docks-logo.png"
+        },
+        "isAccessibleForFree": true
+      },
+      {
+        "@type": "Organization",
+        "name": "Brand Docks",
+        "url": "https://www.branddocks.com",
+        "logo": "https://ai.branddocks.com/field-manual/brand-docks-logo.png",
+        "telephone": "+91-82000-100-69",
+        "email": "branddocks@gmail.com",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Junagadh",
+          "addressRegion": "Gujarat",
+          "addressCountry": "IN"
+        }
+      }
+    ]
   }
-}
+  </script>
+  <script defer src="field-manual-data.js"></script>
+  <script defer src="field-manual-app.js"></script>
+</head>
+<body class="field-atlas-page">
+  <a class="skip-link" href="#field-console">Skip to the 98 lessons</a>
+  <div class="read-progress" aria-hidden="true"><span id="page-progress"></span></div>
 
-function toggleAccordion(modNum){
-  const acc=document.querySelector(`.module-accordion[data-acc-module="${modNum}"]`);
-  if(acc)acc.classList.toggle('open');
-}
+  <header class="atlas-nav" aria-label="Primary navigation">
+    <a class="atlas-brand" href="https://www.branddocks.com" aria-label="Brand Docks home">
+      <img src="brand-docks-logo.png" width="1000" height="300" alt="Brand Docks - Dock. Dominate. Disrupt.">
+    </a>
+    <div class="atlas-id" aria-label="98 Field Manual">
+      <strong>98</strong>
+      <span>FIELD<br>MANUAL</span>
+    </div>
+    <nav class="atlas-links" aria-label="Field Manual sections">
+      <a href="#route-map"><span lang="gu">માર્ગ</span> / Route</a>
+      <a href="#field-console"><span lang="gu">અનુક્રમ</span> / Index</a>
+      <a href="#outcome"><span lang="gu">પરિણામ</span> / Outcome</a>
+    </nav>
+    <div class="atlas-progress-chip" aria-live="polite">
+      <span class="signal-dot"></span>
+      <strong id="nav-completed">00</strong><span>/98 DONE</span>
+    </div>
+    <a class="atlas-start" href="episode-01.html">START / શરૂ કરો ↗</a>
+  </header>
 
-function jumpToModule(modNum){
-  activeModule=String(modNum);
-  searchQ='';
-  document.getElementById('ep-search').value='';
-  // Update filter button active state
-  document.querySelectorAll('#module-filters .filter-btn').forEach(b=>{
-    b.classList.toggle('active', b.dataset.module===activeModule);
-  });
-  renderExplorer();
-  document.getElementById('explorer').scrollIntoView({behavior:'smooth'});
-}
+  <main id="top">
+    <section class="atlas-hero" aria-labelledby="main-title">
+      <div class="atlas-coordinate" aria-hidden="true">21.5222° N / 70.4579° E / JUNAGADH</div>
+      <div class="atlas-hero-copy">
+        <p class="atlas-kicker"><span>OPEN CURRICULUM</span> / મફત શીખવાનો માર્ગ</p>
+        <h1 id="main-title">
+          <span lang="gu">અહીં AI માત્ર<br>શીખાતું નથી.</span>
+          <em>Here, AI gets built.</em>
+        </h1>
+        <p class="atlas-intro">
+          <span lang="gu">ટોકનથી પ્રોડક્શન સુધીનો સીધો, કામનો રસ્તો.</span>
+          <span>98 practical field lessons for engineers, founders and curious builders who want systems - not demos.</span>
+        </p>
+        <div class="atlas-actions">
+          <a href="#field-console" class="action-primary">મોડ્યુલ પસંદ કરો / Choose module <span>↓</span></a>
+          <a href="episode-01.html" class="action-link">Episode 01થી શરૂ કરો / Begin ↗</a>
+        </div>
+      </div>
 
-// ══════════════════════════════════════════════
-// SEARCH INPUT
-// ══════════════════════════════════════════════
-document.getElementById('ep-search').addEventListener('input',e=>{
-  searchQ=e.target.value;
-  renderExplorer();
-});
+      <aside class="atlas-hero-board" aria-label="Course coordinates">
+        <div class="board-head">
+          <span>BD / FIELD SYSTEM 98</span>
+          <span>STATUS: OPEN</span>
+        </div>
+        <div class="board-number" aria-hidden="true">98</div>
+        <dl class="board-stats">
+          <div><dt>MODULES</dt><dd>14</dd></div>
+          <div><dt>LESSONS</dt><dd>98</dd></div>
+          <div><dt>LANGUAGE</dt><dd>GU + EN</dd></div>
+          <div><dt>ACCESS</dt><dd>FREE</dd></div>
+        </dl>
+        <div class="board-route" id="hero-route" aria-hidden="true"></div>
+      </aside>
 
-// ══════════════════════════════════════════════
-// NAV SCROLL
-// ══════════════════════════════════════════════
-const navbar=document.getElementById('navbar');
-window.addEventListener('scroll',()=>navbar.classList.toggle('scrolled',window.scrollY>40),{passive:true});
+      <div class="atlas-stamp" aria-hidden="true">
+        <span>ZERO</span><strong>→</strong><span>AI BUILDER</span>
+      </div>
+    </section>
 
-// ══════════════════════════════════════════════
-// SCROLL TO TOP
-// ══════════════════════════════════════════════
-const scrollTopBtn=document.getElementById('scrollTopBtn');
-window.addEventListener('scroll',()=>scrollTopBtn.classList.toggle('show',window.scrollY>480),{passive:true});
+    <section class="field-principle" aria-label="Course philosophy">
+      <p lang="gu">પ્રોમ્પ્ટ યાદ ન કરો. સિસ્ટમ સમજો.</p>
+      <p>Don't memorise prompts. Understand the system.</p>
+      <span>BRAND DOCKS / AI FIELD EDUCATION</span>
+    </section>
 
-// ══════════════════════════════════════════════
-// SCROLL REVEAL
-// ══════════════════════════════════════════════
-const revObs=new IntersectionObserver(entries=>{
-  entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');revObs.unobserve(e.target);}});
-},{threshold:.08,rootMargin:'0px 0px -32px 0px'});
-document.querySelectorAll('.reveal').forEach(el=>revObs.observe(el));
+    <section class="route-map" id="route-map" aria-labelledby="route-title">
+      <header class="section-heading">
+        <p class="section-index">01 / ROUTE MAP</p>
+        <div>
+          <h2 id="route-title"><span lang="gu">તમારો રસ્તો પસંદ કરો.</span><br>Choose the problem you want to solve.</h2>
+          <p><span lang="gu">દરેક મોડ્યુલ સાત ચોક્કસ પગલાં છે.</span> Each module is a focused seven-lesson mission.</p>
+        </div>
+      </header>
 
-// ══════════════════════════════════════════════
-// INIT
-// ══════════════════════════════════════════════
-renderModuleGrid();
-renderFilterButtons();
-renderProgressPills();
-renderExplorer();
-updateAllProgress();
-</script>
+      <div class="route-switchboard" id="module-switchboard" aria-label="Fourteen AI engineering modules"></div>
+    </section>
+
+    <section class="field-console" id="field-console" aria-labelledby="console-title">
+      <header class="console-head">
+        <div>
+          <p class="section-index">02 / FIELD CONSOLE</p>
+          <h2 id="console-title"><span lang="gu">14 મોડ્યુલ. એક જ સપાટી.</span><br>One surface for all 98 lessons.</h2>
+        </div>
+        <div class="console-tools">
+          <label class="lesson-search">
+            <span>SEARCH / શોધો</span>
+            <input id="lesson-search" type="search" placeholder="RAG, GPU, agents, ટોકન..." autocomplete="off">
+            <kbd>⌘ K</kbd>
+          </label>
+          <button id="continue-learning" class="continue-learning" type="button">CONTINUE / આગળ વધો ↗</button>
+        </div>
+      </header>
+
+      <div class="console-frame">
+        <nav class="module-rail" id="module-rail" aria-label="Select a module"></nav>
+        <div class="mission-view">
+          <div class="mission-intro" id="mission-intro"></div>
+          <div class="lesson-grid" id="lesson-grid" aria-live="polite"></div>
+          <p class="no-results" id="no-results" hidden><span lang="gu">કંઈ મળ્યું નહીં.</span> Try a different topic.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="builder-chain" id="outcome" aria-labelledby="outcome-title">
+      <header class="section-heading inverse">
+        <p class="section-index">03 / OUTCOME</p>
+        <div>
+          <h2 id="outcome-title"><span lang="gu">જ્ઞાન નહીં, ક્ષમતા.</span><br>Capability, not content consumption.</h2>
+          <p><span lang="gu">Episode 98 સુધી તમે આખી પ્રોડક્શન સિસ્ટમને વાંચી શકશો.</span> By episode 98, you can reason about the entire production stack.</p>
+        </div>
+      </header>
+      <ol class="chain-list">
+        <li><span>01</span><strong>UNDERSTAND</strong><p lang="gu">AI અંદરથી કેમ કામ કરે છે</p></li>
+        <li><span>02</span><strong>CONNECT</strong><p lang="gu">મોડલ, ડેટા અને ટૂલ્સ જોડો</p></li>
+        <li><span>03</span><strong>PROTECT</strong><p lang="gu">ખર્ચ, પ્રાઇવસી અને જોખમ કાબૂમાં રાખો</p></li>
+        <li><span>04</span><strong>SHIP</strong><p lang="gu">વિશ્વસનીય AI પ્રોડક્ટ લાઇવ કરો</p></li>
+      </ol>
+      <div class="outcome-cta">
+        <p><span lang="gu">તમારો પહેલો field note હવે શરૂ થાય છે.</span><br>Your first useful field note starts now.</p>
+        <a href="episode-01.html">EPISODE 01 / TOKENS ↗</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="bd-main-footer" aria-label="Brand Docks footer">
+    <div class="bd-footer-grid">
+      <div class="bd-footer-lead">
+        <a href="https://www.branddocks.com" aria-label="Brand Docks home">
+          <img src="brand-docks-logo.png" alt="Brand Docks - Dock. Dominate. Disrupt." width="1000" height="300" loading="lazy">
+        </a>
+        <p class="bd-footer-statement">Dock. Dominate. Disrupt.</p>
+        <p>A full-service digital marketing and AI agency from Junagadh, Gujarat. Strategy, design, performance and automation under one roof.</p>
+        <div class="bd-social-row" aria-label="Brand Docks social links">
+          <a href="https://www.instagram.com/branddocks" aria-label="Instagram">IG</a>
+          <a href="https://www.facebook.com/branddocks" aria-label="Facebook">FB</a>
+          <a href="https://www.linkedin.com/company/branddocks" aria-label="LinkedIn">LI</a>
+          <a href="https://wa.me/918200010069" aria-label="WhatsApp">WA</a>
+        </div>
+      </div>
+      <div>
+        <p class="bd-footer-label">Explore</p>
+        <ul>
+          <li><a href="https://www.branddocks.com/#about">About</a></li>
+          <li><a href="https://www.branddocks.com/#services">Services</a></li>
+          <li><a href="https://www.branddocks.com/#cases">Case Studies</a></li>
+          <li><a href="https://branddocks.com/portfolio">Portfolio</a></li>
+          <li><a href="https://branddocks.com/package">Packages</a></li>
+        </ul>
+      </div>
+      <div>
+        <p class="bd-footer-label">AI Lab</p>
+        <ul>
+          <li><a href="https://ai.branddocks.com/">Aapdu AI</a></li>
+          <li><a href="https://app.branddocks.com/">ERP</a></li>
+          <li><a href="https://auto.branddocks.com">AutoDocks</a></li>
+          <li><a href="https://branddocks.com/workshops">AI Workshops</a></li>
+          <li><a href="field-manual-index.html">98 Field Manual</a></li>
+        </ul>
+      </div>
+      <div>
+        <p class="bd-footer-label">Contact</p>
+        <ul>
+          <li><a href="tel:+918200010069">+91 82000-100-69</a></li>
+          <li><a href="mailto:branddocks@gmail.com">branddocks@gmail.com</a></li>
+          <li><a href="https://www.branddocks.com">branddocks.com ↗</a></li>
+          <li><a href="https://login.branddocks.com/u2/79289/schedule-meet-with-brand-docks-team">Schedule a meeting ↗</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="bd-footer-bottom">
+      <p>© 2026 Brand Docks. Built with love in Junagadh.</p>
+      <div><a href="https://branddocks.com/privacy-policy">Privacy</a><a href="https://branddocks.com/policies">Terms</a><a href="https://branddocks.com/refund-policy">Refund policy</a></div>
+      <a href="#top">Back to top ↑</a>
+    </div>
+  </footer>
+
+  <dialog class="lesson-reader" id="lesson-reader" aria-labelledby="reader-title">
+    <div class="reader-shell">
+      <header class="reader-head">
+        <div>
+          <span id="reader-coordinate">EP 01 / M01</span>
+          <strong id="reader-title">Tokens: What AI Actually Sees</strong>
+        </div>
+        <nav aria-label="Lesson reader controls">
+          <button type="button" id="reader-prev" aria-label="Previous lesson">←</button>
+          <button type="button" id="reader-complete">MARK DONE / પૂર્ણ</button>
+          <a id="reader-open" href="episode-01.html">OPEN PAGE ↗</a>
+          <button type="button" id="reader-next" aria-label="Next lesson">→</button>
+          <button type="button" id="reader-close" aria-label="Close lesson reader">CLOSE ×</button>
+        </nav>
+      </header>
+      <iframe id="reader-frame" title="98 Field Manual lesson reader" loading="lazy"></iframe>
+    </div>
+  </dialog>
+
+  <noscript>
+    <section class="noscript-index">
+      <h2>All 98 lessons</h2>
+      <p>JavaScript is optional for the lessons. Use these direct links:</p>
+      <ol>
+        <li><a href="episode-01.html">Episode 01</a></li>
+        <li><a href="episode-14.html">Episode 14</a></li>
+        <li><a href="episode-28.html">Episode 28</a></li>
+        <li><a href="episode-42.html">Episode 42</a></li>
+        <li><a href="episode-56.html">Episode 56</a></li>
+        <li><a href="episode-70.html">Episode 70</a></li>
+        <li><a href="episode-84.html">Episode 84</a></li>
+        <li><a href="episode-98.html">Episode 98</a></li>
+      </ol>
+    </section>
+  </noscript>
 </body>
 </html>
